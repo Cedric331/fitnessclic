@@ -47,7 +47,7 @@ class SessionsTable
                     ->relationship('user', 'name')
                     ->searchable()
                     ->preload(),
-                SelectFilter::make('client_id')
+                SelectFilter::make('customer_id')
                     ->label('Client')
                     ->relationship('customer', 'first_name')
                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_name} {$record->last_name}")

@@ -51,7 +51,7 @@ class Customer extends Model
      */
     public function trainingSessions(): HasMany
     {
-        return $this->hasMany(Session::class, 'client_id');
+        return $this->hasMany(Session::class, 'customer_id');
     }
 
     /**

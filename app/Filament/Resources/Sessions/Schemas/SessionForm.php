@@ -18,7 +18,7 @@ class SessionForm
                     ->label('Utilisateur')
                     ->relationship('user', 'name')
                     ->required(),
-                Select::make('client_id')
+                Select::make('customer_id')
                     ->label('Client')
                     ->relationship('customer', 'first_name')
                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_name} {$record->last_name}")

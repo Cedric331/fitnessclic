@@ -131,4 +131,14 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
     {
         return $this->hasMany(Session::class);
     }
+
+    /**
+     * Check if the user has a customer
+     * @param Customer $customer
+     * @return bool
+     */
+    public function hasCustomer(Customer $customer): bool
+    {
+        return $this->customers()->where('id', $customer->id)->exists();
+    }
 }

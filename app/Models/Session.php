@@ -25,7 +25,7 @@ class Session extends Model
      */
     protected $fillable = [
         'user_id',
-        'client_id',
+        'customer_id',
         'name',
         'notes',
         'session_date',
@@ -56,7 +56,7 @@ class Session extends Model
      */
     public function customer(): BelongsTo
     {
-        return $this->belongsTo(Customer::class, 'client_id');
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     /**

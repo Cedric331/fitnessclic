@@ -23,7 +23,7 @@ class SessionsRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Forms\Components\Select::make('client_id')
+                Forms\Components\Select::make('customer_id')
                     ->label('Client')
                     ->relationship('customer', 'first_name')
                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_name} {$record->last_name}")
@@ -63,7 +63,7 @@ class SessionsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('client_id')
+                Tables\Filters\SelectFilter::make('customer_id')
                     ->label('Client')
                     ->relationship('customer', 'first_name')
                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_name} {$record->last_name}")

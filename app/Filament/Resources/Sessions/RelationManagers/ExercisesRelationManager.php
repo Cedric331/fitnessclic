@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Sessions\RelationManagers;
 
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -65,7 +66,9 @@ class ExercisesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('pivot.order')
                     ->label('Ordre')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable(query: function ($query, string $direction) {
+                        return $query->orderBy('session_exercise.order', $direction);
+                    }),
                 Tables\Columns\IconColumn::make('is_shared')
                     ->label('Partagé')
                     ->boolean(),
@@ -79,7 +82,7 @@ class ExercisesRelationManager extends RelationManager
                     ->boolean(),
             ])
             ->headerActions([
-                Tables\Actions\AttachAction::make()
+                Actions\AttachAction::make()
                     ->label('Attacher')
                     ->preloadRecordSelect()
                     ->form(fn (Forms\Components\Select $select): array => [
@@ -103,7 +106,7 @@ class ExercisesRelationManager extends RelationManager
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                Actions\EditAction::make()
                     ->label('Modifier')
                     ->form([
                         Forms\Components\TextInput::make('repetitions')
@@ -123,16 +126,18 @@ class ExercisesRelationManager extends RelationManager
                             ->numeric()
                             ->default(0),
                     ]),
-                Tables\Actions\DetachAction::make()
+                Actions\DetachAction::make()
                     ->label('Détacher'),
             ])
             ->toolbarActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DetachBulkAction::make()
+                Actions\BulkActionGroup::make([
+                    Actions\DetachBulkAction::make()
                         ->label('Détacher la sélection'),
                 ]),
             ])
-            ->defaultSort('pivot.order');
+            ->modifyQueryUsing(function ($query) {
+                return $query->orderBy('session_exercise.order', 'asc');
+            });
     }
 }
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Exercises\RelationManagers;
 
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -48,10 +49,10 @@ class SessionsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                Tables\Actions\AttachAction::make()
+                Actions\AttachAction::make()
                     ->label('Attacher')
                     ->preloadRecordSelect()
-                    ->form(fn (Tables\Actions\AttachAction $action): array => [
+                    ->form(fn (Actions\AttachAction $action): array => [
                         $action->getRecordSelect(),
                         Forms\Components\TextInput::make('repetitions')
                             ->label('Répétitions')
@@ -72,7 +73,7 @@ class SessionsRelationManager extends RelationManager
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
+                Actions\EditAction::make()
                     ->label('Modifier')
                     ->form([
                         Forms\Components\TextInput::make('repetitions')
@@ -92,12 +93,12 @@ class SessionsRelationManager extends RelationManager
                             ->numeric()
                             ->default(0),
                     ]),
-                Tables\Actions\DetachAction::make()
+                Actions\DetachAction::make()
                     ->label('Détacher'),
             ])
             ->toolbarActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DetachBulkAction::make()
+                Actions\BulkActionGroup::make([
+                    Actions\DetachBulkAction::make()
                         ->label('Détacher la sélection'),
                 ]),
             ]);

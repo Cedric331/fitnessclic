@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Exercises\RelationManagers;
 
+use Filament\Actions;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -45,17 +46,17 @@ class CategoriesRelationManager extends RelationManager
                     ]),
             ])
             ->headerActions([
-                Tables\Actions\AttachAction::make()
+                Actions\AttachAction::make()
                     ->label('Attacher')
                     ->preloadRecordSelect(),
             ])
             ->actions([
-                Tables\Actions\DetachAction::make()
+                Actions\DetachAction::make()
                     ->label('Détacher'),
             ])
             ->toolbarActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DetachBulkAction::make()
+                Actions\BulkActionGroup::make([
+                    Actions\DetachBulkAction::make()
                         ->label('Détacher la sélection'),
                 ]),
             ]);
