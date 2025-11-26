@@ -53,7 +53,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Catégories',
-        href: '/client/categories',
+        href: '/categories',
         icon: Tag,
     },
     {
@@ -195,10 +195,10 @@ const handleLogout = () => {
                 <SidebarMenuItem class="py-0.5">
                     <SidebarMenuButton
                         as-child
-                        :is-active="urlIsActive(edit(), page.url)"
+                        :is-active="urlIsActive(edit.url(), page.url)"
                         class="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 h-10 px-3"
                     >
-                        <Link :href="edit()" class="flex items-center gap-3">
+                    <Link :href="edit.url()" class="flex items-center gap-3">
                             <Settings class="size-4 text-slate-700 dark:text-white" />
                             <span class="text-slate-900 dark:text-white">Paramètres</span>
                         </Link>

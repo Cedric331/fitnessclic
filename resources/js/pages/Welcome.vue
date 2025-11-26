@@ -3,7 +3,9 @@ import { Head } from '@inertiajs/vue3';
 import NavBar from '@/components/welcome/NavBar.vue';
 import HeroSection from '@/components/welcome/HeroSection.vue';
 import FeaturesSection from '@/components/welcome/FeaturesSection.vue';
+import ScreenshotsSection from '@/components/welcome/ScreenshotsSection.vue';
 import BenefitsSection from '@/components/welcome/BenefitsSection.vue';
+import PricingSection from '@/components/welcome/PricingSection.vue';
 import CtaSection from '@/components/welcome/CtaSection.vue';
 import Footer from '@/components/welcome/Footer.vue';
 import CookieBanner from '@/components/welcome/CookieBanner.vue';
@@ -28,9 +30,11 @@ withDefaults(
         <main class="flex-1">
             <HeroSection />
             <FeaturesSection />
+            <ScreenshotsSection />
             <BenefitsSection />
+            <PricingSection />
             <CtaSection />
-            </main>
+        </main>
         <Footer />
         <CookieBanner />
     </div>

@@ -13,19 +13,19 @@ import { Link } from '@inertiajs/vue3';
 const sidebarNavItems: NavItem[] = [
     {
         title: 'Profile',
-        href: editProfile(),
+        href: editProfile.url(),
     },
     {
         title: 'Password',
-        href: editPassword(),
+        href: editPassword.url(),
     },
     {
         title: 'Two-Factor Auth',
-        href: show(),
+        href: show.url(),
     },
     {
         title: 'Appearance',
-        href: editAppearance(),
+        href: editAppearance.url(),
     },
 ];
 

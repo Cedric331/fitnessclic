@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
@@ -24,7 +23,7 @@ defineProps<Props>();
 const breadcrumbItems: BreadcrumbItem[] = [
     {
         title: 'Profile settings',
-        href: edit().url,
+        href: edit.url(),
     },
 ];
 
@@ -44,7 +43,8 @@ const user = page.props.auth.user;
                 />
 
                 <Form
-                    v-bind="ProfileController.update.form()"
+                    :action="edit.url()"
+                    method="patch"
                     class="space-y-6"
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
@@ -80,8 +80,8 @@ const user = page.props.auth.user;
                     <div v-if="mustVerifyEmail && !user.email_verified_at">
                         <p class="-mt-4 text-sm text-muted-foreground">
                             Your email address is unverified.
-                            <Link
-                                :href="send()"
+                        <Link
+                            :href="send.url()"
                                 as="button"
                                 class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
                             >

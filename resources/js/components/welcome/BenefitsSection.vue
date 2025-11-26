@@ -12,27 +12,53 @@ const benefits = [
 </script>
 
 <template>
-    <section class="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 py-20 dark:from-blue-800 dark:via-purple-800 dark:to-pink-800">
-        <div class="mx-auto max-w-7xl px-6 lg:px-8">
-            <div class="mx-auto max-w-2xl text-center">
-                <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+    <section class="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 py-24 dark:from-blue-800 dark:via-purple-800 dark:to-pink-800">
+        <!-- Éléments décoratifs -->
+        <div class="absolute inset-0 opacity-20">
+            <div class="absolute left-0 top-0 h-64 w-64 rounded-full bg-white blur-3xl"></div>
+            <div class="absolute right-0 bottom-0 h-64 w-64 rounded-full bg-white blur-3xl"></div>
+        </div>
+
+        <div class="relative mx-auto max-w-7xl px-6 lg:px-8">
+            <div class="mx-auto max-w-3xl text-center">
+                <h2 class="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
                     Pourquoi choisir FitnessClic ?
                 </h2>
-                <p class="mt-4 text-lg leading-8 text-blue-100">
-                    Une solution complète pour optimiser votre travail
+                <p class="mt-6 text-xl leading-8 text-blue-100">
+                    Une solution complète pour optimiser votre travail et gagner du temps
                 </p>
             </div>
 
-            <div class="mx-auto mt-16 grid max-w-2xl grid-cols-1 gap-4 sm:mt-20 lg:mx-0 lg:max-w-none lg:grid-cols-2">
+            <div class="mx-auto mt-20 grid max-w-4xl grid-cols-1 gap-6 sm:mt-24 lg:mx-0 lg:max-w-none lg:grid-cols-2">
                 <div
                     v-for="(benefit, index) in benefits"
                     :key="index"
-                    class="flex items-center gap-3 rounded-full bg-white/10 px-6 py-4 backdrop-blur-sm transition-all hover:bg-white/20"
+                    class="group flex items-center gap-4 rounded-2xl bg-white/10 px-8 py-6 backdrop-blur-md transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:shadow-xl"
+                    :style="{ animationDelay: `${index * 100}ms` }"
                 >
-                    <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/20">
-                        <Check class="h-4 w-4 text-white" />
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+                        <Check class="h-6 w-6 text-white" />
                     </div>
-                    <span class="text-base font-medium text-white">{{ benefit }}</span>
+                    <span class="text-lg font-semibold text-white">{{ benefit }}</span>
+                </div>
+            </div>
+
+            <!-- Section supplémentaire avec témoignage -->
+            <div class="mx-auto mt-16 max-w-3xl">
+                <div class="rounded-2xl bg-white/10 p-8 backdrop-blur-md">
+                    <div class="flex items-center gap-4">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-2xl font-bold text-white">
+                            "
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-lg italic text-white">
+                                FitnessClic a transformé ma façon de travailler. Je gagne plusieurs heures par semaine et mes clients apprécient la qualité professionnelle des séances.
+                            </p>
+                            <p class="mt-4 text-sm font-semibold text-blue-100">
+                                — Coach professionnel
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

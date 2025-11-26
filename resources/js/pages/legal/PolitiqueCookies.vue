@@ -9,7 +9,7 @@ import { ArrowLeft } from 'lucide-vue-next';
     <div class="min-h-screen bg-white dark:bg-gray-900">
         <div class="mx-auto max-w-4xl px-6 py-12 lg:px-8">
             <Link
-                :href="home()"
+                :href="home.url()"
                 class="mb-8 inline-flex items-center gap-2 text-sm text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             >
                 <ArrowLeft class="h-4 w-4" />

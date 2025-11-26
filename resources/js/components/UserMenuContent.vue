@@ -32,7 +32,7 @@ defineProps<Props>();
     <DropdownMenuSeparator />
     <DropdownMenuGroup>
         <DropdownMenuItem :as-child="true">
-            <Link class="block w-full" :href="edit()" prefetch as="button">
+            <Link class="block w-full" :href="edit.url()" prefetch as="button">
                 <Settings class="mr-2 h-4 w-4" />
                 Settings
             </Link>
@@ -40,9 +40,9 @@ defineProps<Props>();
     </DropdownMenuGroup>
     <DropdownMenuSeparator />
     <DropdownMenuItem :as-child="true">
-        <Link
-            class="block w-full"
-            :href="logout()"
+            <Link
+                class="block w-full"
+                :href="logout.url()"
             @click="handleLogout"
             as="button"
             data-test="logout-button"

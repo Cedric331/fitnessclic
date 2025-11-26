@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,7 +18,7 @@ class CustomersController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = Customer::where('user_id', auth()->id())
+        $query = Customer::where('user_id', Auth::id())
             ->withCount('trainingSessions');
 
         if ($request->has('search') && $request->search) {
@@ -49,17 +50,46 @@ class CustomersController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
+            'internal_note' => ['nullable', 'string'],
             'is_active' => ['boolean'],
         ]);
 
         $customer = Customer::create([
             ...$validated,
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
         return redirect()->route('client.customers.index')
             ->with('success', 'Client créé avec succès.');
+    }
+
+    /**
+     * Display the customer details.
+     */
+    public function show(Customer $customer)
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (!$user || !$user->hasCustomer($customer)) {
+            return redirect()->route('client.customers.index')
+                ->with('error', 'Vous n\'avez pas les permissions pour voir ce client.');
+        }
+
+        $trainingSessions = $customer->trainingSessions()
+            ->where('user_id', $user->id)
+            ->withCount('exercises')
+            ->orderByDesc('session_date')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $customer->setAttribute('training_sessions_count', $trainingSessions->count());
+
+        return Inertia::render('clients/Show', [
+            'customer' => $customer,
+            'training_sessions' => $trainingSessions,
+        ]);
     }
 
     /**
@@ -70,7 +100,10 @@ class CustomersController extends Controller
      */
     public function update(Request $request, Customer $customer)
     {
-        if (!auth()->user()->hasCustomer($customer)) {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (!$user || !$user->hasCustomer($customer)) {
             return redirect()->route('client.customers.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour modifier ce client.');
         }
@@ -80,6 +113,7 @@ class CustomersController extends Controller
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
+            'internal_note' => ['nullable', 'string'],
             'is_active' => ['boolean'],
         ]);
         
@@ -96,7 +130,10 @@ class CustomersController extends Controller
      */
     public function destroy(Customer $customer)
     {
-        if (!auth()->user()->hasCustomer($customer)) {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (!$user || !$user->hasCustomer($customer)) {
             return redirect()->route('client.customers.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour supprimer ce client.');
         }

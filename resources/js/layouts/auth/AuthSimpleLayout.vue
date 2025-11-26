@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
-import { home } from '@/routes';
+import { dashboard } from '@/routes';
 import { Link } from '@inertiajs/vue3';
 import { ArrowLeft } from 'lucide-vue-next';
 
@@ -16,7 +16,7 @@ defineProps<{
     >
         <!-- Bouton retour en haut à gauche -->
         <Link
-            :href="home()"
+            :href="dashboard.url()"
             class="absolute left-6 top-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:left-10 md:top-10"
         >
             <ArrowLeft class="h-4 w-4" />
@@ -26,8 +26,8 @@ defineProps<{
         <div class="w-full max-w-sm">
             <div class="flex flex-col gap-8">
                 <div class="flex flex-col items-center gap-4">
-                    <Link
-                        :href="home()"
+                        <Link
+                            :href="dashboard.url()"
                         class="flex flex-col items-center gap-2 font-medium"
                     >
                         <div

@@ -97,7 +97,7 @@ import { Form, Head } from '@inertiajs/vue3';
             <div class="text-center text-sm text-muted-foreground">
                 Already have an account?
                 <TextLink
-                    :href="login()"
+                    :href="login.url()"
                     class="underline underline-offset-4"
                     :tabindex="6"
                     >Log in</TextLink

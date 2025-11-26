@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { dashboard, login, register } from '@/routes';
 import { Link } from '@inertiajs/vue3';
-import AppLogo from '@/components/AppLogo.vue';
 import { useAppearance } from '@/composables/useAppearance';
 import { Moon, Sun, Menu, X } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
@@ -64,8 +63,13 @@ onMounted(() => {
 <template>
     <header class="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
         <nav class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-            <Link :href="dashboard()" class="flex items-center">
-                <AppLogo />
+            <Link :href="dashboard.url()" class="flex items-center gap-3 transition-opacity hover:opacity-80">
+                <img 
+                    src="/assets/logo_fitnessclic.png" 
+                    alt="FitnessClic Logo" 
+                    class="h-10 w-auto"
+                />
+                <span class="text-xl font-bold text-gray-900 dark:text-white">FitnessClic</span>
             </Link>
             
             <!-- Menu desktop -->
@@ -89,20 +93,20 @@ onMounted(() => {
 
                 <Link
                     v-if="$page.props.auth.user"
-                    :href="dashboard()"
+                    :href="dashboard.url()"
                     class="inline-block rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 >
                     Dashboard
                 </Link>
                 <template v-else>
                     <Link
-                        :href="login()"
+                        :href="login.url()"
                         class="inline-block rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 dark:text-gray-200 dark:hover:border-gray-600"
                     >
                         Connexion
                     </Link>
                     <Link
-                        :href="register()"
+                        :href="register.url()"
                         class="inline-block rounded-lg border border-blue-600 bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:border-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600"
                     >
                         S'inscrire
@@ -164,7 +168,7 @@ onMounted(() => {
                 <div class="space-y-1 px-6 pb-4 pt-4">
                     <Link
                         v-if="$page.props.auth.user"
-                        :href="dashboard()"
+                        :href="dashboard.url()"
                         @click="closeMobileMenu"
                         class="block rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                     >
@@ -172,14 +176,14 @@ onMounted(() => {
                     </Link>
                     <template v-else>
                         <Link
-                            :href="login()"
+                            :href="login.url()"
                             @click="closeMobileMenu"
                             class="block rounded-lg border border-transparent px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
                         >
                             Connexion
                         </Link>
                         <Link
-                            :href="register()"
+                            :href="register.url()"
                             @click="closeMobileMenu"
                             class="block rounded-lg border border-blue-600 bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:border-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600"
                         >
