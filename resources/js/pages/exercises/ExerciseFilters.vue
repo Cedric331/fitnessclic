@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { Input } from '@/components/ui/input';
-import { LayoutGrid, List, Search } from 'lucide-vue-next';
+import { LayoutGrid, Search } from 'lucide-vue-next';
 import { computed, ref, watch, watchEffect } from 'vue';
 
 const props = defineProps<{
     search?: string | null;
     categoryId?: number | null;
     sortOrder?: 'newest' | 'oldest';
-    viewMode?: 'grid-1' | 'grid-2' | 'grid-4' | 'list';
+    viewMode?: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8';
     categories: Array<{
         id: number;
         name: string;
@@ -18,7 +18,7 @@ const emit = defineEmits<{
     (e: 'update:search', value: string): void;
     (e: 'update:categoryId', value: number | null): void;
     (e: 'update:sortOrder', value: 'newest' | 'oldest'): void;
-    (e: 'update:viewMode', value: 'grid-1' | 'grid-2' | 'grid-4' | 'list'): void;
+    (e: 'update:viewMode', value: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8'): void;
     (e: 'apply'): void;
 }>();
 
@@ -54,10 +54,10 @@ watch(() => props.viewMode, (value) => {
     }
 }, { immediate: true });
 
-const isGrid1 = computed(() => localView.value === 'grid-1');
 const isGrid2 = computed(() => localView.value === 'grid-2');
 const isGrid4 = computed(() => localView.value === 'grid-4');
-const isList = computed(() => localView.value === 'list');
+const isGrid6 = computed(() => localView.value === 'grid-6');
+const isGrid8 = computed(() => localView.value === 'grid-8');
 
 // Debounce pour la recherche
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -91,7 +91,7 @@ const handleSortChange = (event: Event) => {
     emit('apply');
 };
 
-const handleViewChange = (mode: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => {
+const handleViewChange = (mode: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8') => {
     localView.value = mode;
     emit('update:viewMode', mode);
     // Le mode d'affichage ne nécessite pas de rechargement
@@ -99,28 +99,28 @@ const handleViewChange = (mode: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => {
 </script>
 
 <template>
-    <div class="w-full space-y-4">
-        <!-- Barre de recherche - toujours pleine largeur -->
-        <div class="flex flex-col gap-1.5">
-            <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
-                Rechercher
-            </label>
-            <div class="relative">
-                <Search class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 size-5 text-slate-400 dark:text-slate-300" />
-                <Input
-                    :model-value="localSearch"
-                    type="text"
-                    placeholder="Rechercher un exercice..."
-                    class="h-10 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-slate-900 shadow-sm transition focus:border-blue-500 focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
-                    @input="handleSearchInput"
-                />
+    <div class="w-full space-y-4 lg:space-y-0">
+        <!-- Filtres - disposition responsive : empilés sur mobile/tablette, sur une ligne en lg -->
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-3">
+            <!-- Barre de recherche -->
+            <div class="flex flex-col gap-1.5 lg:flex-1">
+                <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+                    Rechercher
+                </label>
+                <div class="relative">
+                    <Search class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 size-5 text-slate-400 dark:text-slate-300" />
+                    <Input
+                        :model-value="localSearch"
+                        type="text"
+                        placeholder="Rechercher un exercice..."
+                        class="h-10 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-slate-900 shadow-sm transition focus:border-blue-500 focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                        @input="handleSearchInput"
+                    />
+                </div>
             </div>
-        </div>
 
-        <!-- Filtres - disposition responsive -->
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-4 lg:grid-cols-5 lg:items-end">
             <!-- Catégorie -->
-            <div class="flex flex-col gap-1.5 sm:col-span-4 lg:col-span-2">
+            <div class="flex flex-col gap-1.5 lg:flex-1">
                 <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
                     Catégorie
                 </label>
@@ -138,7 +138,7 @@ const handleViewChange = (mode: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => {
             </div>
 
             <!-- Trier -->
-            <div class="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-2">
+            <div class="flex flex-col gap-1.5 lg:flex-1">
                 <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
                     Trier
                 </label>
@@ -153,7 +153,7 @@ const handleViewChange = (mode: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => {
             </div>
 
             <!-- Affichage - caché sur mobile, visible à partir de sm -->
-            <div class="hidden flex-col gap-1.5 sm:flex sm:w-auto sm:justify-self-end lg:justify-self-start">
+            <div class="hidden flex-col gap-1.5 md:flex w-auto">
                 <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
                     Affichage
                 </label>
@@ -169,7 +169,7 @@ const handleViewChange = (mode: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => {
                         @click="handleViewChange('grid-2')"
                     >
                         <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h8v8H4V4zm8 0h8v8h-8V4zM4 12h8v8H4v-8zm8 0h8v8h-8v-8z" />
                         </svg>
                     </button>
                     <button
@@ -186,15 +186,31 @@ const handleViewChange = (mode: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => {
                     </button>
                     <button
                         type="button"
-                        aria-label="Vue liste"
+                        aria-label="6 exercices par ligne"
                         class="inline-flex h-8 w-8 items-center justify-center rounded-xl transition"
                         :class="{
-                            'bg-slate-900 text-white dark:bg-white dark:text-slate-900': isList,
-                            'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white': !isList,
+                            'bg-slate-900 text-white dark:bg-white dark:text-slate-900': isGrid6,
+                            'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white': !isGrid6,
                         }"
-                        @click="handleViewChange('list')"
+                        @click="handleViewChange('grid-6')"
                     >
-                        <List class="size-4" />
+                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zM4 16h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z" />
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        aria-label="8 exercices par ligne"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-xl transition"
+                        :class="{
+                            'bg-slate-900 text-white dark:bg-white dark:text-slate-900': isGrid8,
+                            'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white': !isGrid8,
+                        }"
+                        @click="handleViewChange('grid-8')"
+                    >
+                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h4v4H3V3zm5 0h4v4H8V3zm5 0h4v4h-4V3zm5 0h4v4h-4V3zM3 8h4v4H3V8zm5 0h4v4H8V8zm5 0h4v4h-4V8zm5 0h4v4h-4V8zM3 13h4v4H3v-4zm5 0h4v4H8v-4zm5 0h4v4h-4v-4zm5 0h4v4h-4v-4zM3 18h4v4H3v-4zm5 0h4v4H8v-4zm5 0h4v4h-4v-4zm5 0h4v4h-4v-4z" />
+                        </svg>
                     </button>
                 </div>
             </div>

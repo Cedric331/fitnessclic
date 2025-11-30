@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { Exercise } from './types';
 import { computed } from 'vue';
+import { router } from '@inertiajs/vue3';
+import { Edit, Eye, Trash2 } from 'lucide-vue-next';
 
 const props = defineProps<{
     exercise: Exercise;
+    onEdit?: (exercise: Exercise) => void;
+}>();
+
+const emit = defineEmits<{
+    edit: [exercise: Exercise];
+    delete: [exercise: Exercise];
 }>();
 
 const formattedDate = computed(() => {
@@ -18,6 +27,24 @@ const formattedDate = computed(() => {
         year: 'numeric',
     });
 });
+
+const handleView = () => {
+    router.visit(`/exercises/${props.exercise.id}`);
+};
+
+const handleEdit = (event: Event) => {
+    event.stopPropagation();
+    if (props.onEdit) {
+        props.onEdit(props.exercise);
+    } else {
+        emit('edit', props.exercise);
+    }
+};
+
+const handleDelete = (event: Event) => {
+    event.stopPropagation();
+    emit('delete', props.exercise);
+};
 </script>
 
 <template>
@@ -42,26 +69,63 @@ const formattedDate = computed(() => {
                 >
                     {{ exercise.name }}
                 </h3>
-                <Badge
-                    variant="outline"
-                    class="w-fit text-xs uppercase tracking-[0.3em]"
-                >
-                    {{ exercise.category_name }}
-                </Badge>
+                <div class="flex flex-wrap gap-1.5">
+                    <Badge
+                        v-for="category in (exercise.categories || [])"
+                        :key="category.id"
+                        variant="outline"
+                        class="text-xs uppercase tracking-[0.3em]"
+                    >
+                        {{ category.name }}
+                    </Badge>
+                    <Badge
+                        v-if="!exercise.categories || exercise.categories.length === 0"
+                        variant="outline"
+                        class="text-xs uppercase tracking-[0.3em]"
+                    >
+                        {{ exercise.category_name || 'Sans catégorie' }}
+                    </Badge>
+                </div>
             </div>
 
-            <!-- Date et action -->
+            <!-- Date et actions -->
             <div class="mt-auto flex items-center justify-between gap-2">
                 <p class="text-xs text-slate-500 dark:text-slate-400">
                     {{ formattedDate }}
                 </p>
                 
-                <button
-                    type="button"
-                    class="shrink-0 text-xs font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-                >
-                    Voir →
-                </button>
+                <div class="flex items-center gap-1">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 px-2 text-xs"
+                        @click="handleView"
+                    >
+                        <Eye class="size-3 mr-1" />
+                        Voir
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 px-2 text-xs"
+                        @click="handleEdit"
+                    >
+                        <Edit class="size-3 mr-1" />
+                        Modifier
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                        @click="handleDelete"
+                    >
+                        <Trash2 class="size-3 mr-1" />
+                        Supprimer
+                    </Button>
+                </div>
             </div>
         </div>
     </article>

@@ -8,6 +8,9 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { BreadcrumbItemType } from '@/types';
 import ExerciseFilters from './ExerciseFilters.vue';
 import ExerciseListItem from './ExerciseListItem.vue';
+import ExerciseFormDialog from './ExerciseFormDialog.vue';
+import ExerciseImportDialog from './ExerciseImportDialog.vue';
+import ExerciseDeleteDialog from './ExerciseDeleteDialog.vue';
 import type { ExercisesProps } from './types';
 
 const props = defineProps<ExercisesProps>();
@@ -28,7 +31,7 @@ interface CachedFilters {
 
 // Interface pour le cache du mode d'affichage
 interface CachedViewMode {
-    view: 'grid-1' | 'grid-2' | 'grid-4' | 'list';
+    view: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8';
     timestamp: number;
 }
 
@@ -106,7 +109,7 @@ const getCachedViewMode = (): CachedViewMode | null => {
     }
 };
 
-const saveViewModeToCache = (view: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => {
+const saveViewModeToCache = (view: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8') => {
     if (typeof window === 'undefined') {
         return;
     }
@@ -155,7 +158,7 @@ const initialView = cachedViewMode?.view ?? props.filters?.view ?? 'grid-4';
 const searchTerm = ref(initialSearch);
 const categoryFilter = ref<number | null>(initialCategory);
 const sortOrder = ref<'newest' | 'oldest'>(initialSort);
-const viewMode = ref<'grid-1' | 'grid-2' | 'grid-4' | 'list'>(initialView);
+const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'grid-8'>(initialView as 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8');
 const currentPage = ref(props.exercises?.current_page ?? 1);
 const isLoading = ref(false);
 
@@ -403,24 +406,103 @@ onUnmounted(() => {
 
 const gridColsClass = computed(() => {
     switch (viewMode.value) {
-        case 'grid-4':
-            return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
         case 'grid-2':
             return 'grid-cols-1 sm:grid-cols-2';
-        case 'grid-1':
-        case 'list':
-            return 'grid-cols-1';
+        case 'grid-4':
+            return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+        case 'grid-6':
+            return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6';
+        case 'grid-8':
+            return 'grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8';
         default:
             return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
     }
 });
+
+const isExerciseDialogOpen = ref(false);
+const isImportDialogOpen = ref(false);
+const isDeleteDialogOpen = ref(false);
+const editingExercise = ref<{
+    id: number;
+    name: string;
+    title?: string;
+    description?: string | null;
+    suggested_duration?: string | null;
+    image_url: string;
+    is_shared?: boolean;
+    category_ids?: number[];
+    created_at: string;
+} | null>(null);
+const exerciseToDelete = ref<{
+    id: number;
+    name: string;
+    image_url: string;
+    category_name: string;
+    created_at: string;
+} | null>(null);
+
+const handleEditExercise = async (exercise: { id: number; name: string; image_url: string; category_name: string; created_at: string }) => {
+    // Charger les données complètes de l'exercice depuis le serveur sans changer de page
+    try {
+        const response = await fetch(`/exercises/${exercise.id}?json=true`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const exerciseData = data.exercise;
+            const categories = data.categories || [];
+            
+            // Mettre à jour l'exercice en cours d'édition AVANT d'ouvrir la modal
+            editingExercise.value = {
+                id: exerciseData.id,
+                name: exerciseData.title,
+                title: exerciseData.title,
+                description: exerciseData.description || null,
+                suggested_duration: exerciseData.suggested_duration || null,
+                image_url: exerciseData.image_url || '',
+                is_shared: exerciseData.is_shared || false,
+                category_ids: categories.map((cat: { id: number }) => cat.id),
+                created_at: exerciseData.created_at,
+            };
+            
+            // Attendre que Vue ait mis à jour le DOM avec les nouvelles données
+            await nextTick();
+            
+            // Ouvrir la modal après avoir défini les données
+            isExerciseDialogOpen.value = true;
+        } else {
+            const errorData = await response.json().catch(() => ({ error: response.statusText }));
+            console.error('Erreur lors du chargement de l\'exercice:', errorData);
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement de l\'exercice:', error);
+    }
+};
+
+const handleDialogClose = (value: boolean) => {
+    if (!value) {
+        // Quand la modal se ferme, réinitialiser l'exercice en cours d'édition
+        editingExercise.value = null;
+    }
+};
+
+const handleDeleteExercise = (exercise: { id: number; name: string; image_url: string; category_name: string; created_at: string }) => {
+    exerciseToDelete.value = exercise;
+    isDeleteDialogOpen.value = true;
+};
 </script>
 
 <template>
     <Head title="Bibliothèque d'Exercices" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="mx-auto flex h-full w-full max-w-6xl flex-1 flex-col gap-6 rounded-xl px-6 py-5">
+        <div class="mx-auto flex h-full w-full flex-1 flex-col gap-6 rounded-xl px-6 py-5">
             <div class="flex flex-col gap-2">
                 <div class="flex items-start justify-between gap-4">
                     <div>
@@ -430,11 +512,11 @@ const gridColsClass = computed(() => {
                         </p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <Button variant="outline" size="sm" class="gap-2">
+                        <Button variant="outline" size="sm" class="gap-2" @click="isImportDialogOpen = true">
                             <Upload class="size-4" />
                             <span>Importer</span>
                         </Button>
-                        <Button class="gap-2" size="sm">
+                        <Button size="sm" class="gap-2 bg-blue-600 hover:bg-blue-700 text-white" @click="isExerciseDialogOpen = true">
                             <Plus class="size-4" />
                             <span>Ajouter un exercice</span>
                         </Button>
@@ -451,7 +533,7 @@ const gridColsClass = computed(() => {
                 @update:search="(value: string) => { searchTerm = value; }"
                 @update:categoryId="(value: number | null) => { categoryFilter = value; }"
                 @update:sortOrder="(value: 'newest' | 'oldest') => { sortOrder = value; }"
-                @update:viewMode="(value: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => { viewMode = value; }"
+                @update:viewMode="(value: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8') => { viewMode = value; }"
                 @apply="async () => {
                     // Attendre que les valeurs soient synchronisées avant d'appliquer
                     await nextTick();
@@ -488,7 +570,13 @@ const gridColsClass = computed(() => {
                 class="grid auto-rows-min gap-4"
                 :class="gridColsClass"
             >
-                <ExerciseListItem v-for="exercise in exercises" :key="exercise.id" :exercise="exercise" />
+                <ExerciseListItem 
+                    v-for="exercise in exercises" 
+                    :key="exercise.id" 
+                    :exercise="exercise"
+                    @edit="handleEditExercise"
+                    @delete="handleDeleteExercise"
+                />
             </div>
 
             <p
@@ -515,6 +603,31 @@ const gridColsClass = computed(() => {
                 <div class="text-sm text-slate-500 dark:text-slate-400">Tous les exercices ont été chargés</div>
             </div>
         </div>
+
+        <ExerciseFormDialog
+            v-model:open="isExerciseDialogOpen"
+            :exercise="editingExercise"
+            :categories="props.categories"
+        />
+
+        <ExerciseImportDialog
+            v-model:open="isImportDialogOpen"
+            :user-exercise-ids="props.imported_public_exercise_ids || []"
+            @imported="() => {
+                isImportDialogOpen = false;
+                applyFilters(true);
+            }"
+        />
+
+        <ExerciseDeleteDialog
+            v-model:open="isDeleteDialogOpen"
+            :exercise="exerciseToDelete"
+            @update:open="(value: boolean) => {
+                if (!value) {
+                    exerciseToDelete.value = null;
+                }
+            }"
+        />
     </AppLayout>
 </template>
 

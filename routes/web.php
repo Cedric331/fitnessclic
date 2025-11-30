@@ -27,6 +27,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Exercises routes
     Route::get('/exercises', [ExercisesController::class, 'index'])->name('exercises.index');
+    Route::get('/exercises/available', [ExercisesController::class, 'available'])->name('exercises.available');
+    Route::get('/exercises/{exercise}', [ExercisesController::class, 'show'])->name('exercises.show');
+    Route::post('/exercises', [ExercisesController::class, 'store'])->name('exercises.store');
+    Route::post('/exercises/{exercise}/import', [ExercisesController::class, 'import'])->name('exercises.import');
+    Route::put('/exercises/{exercise}', [ExercisesController::class, 'update'])->name('exercises.update');
+    Route::delete('/exercises/{exercise}', [ExercisesController::class, 'destroy'])->name('exercises.destroy');
 
     // Categories routes
     Route::get('/categories', [CategoriesController::class, 'index'])->name('categories.index');

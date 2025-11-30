@@ -98,7 +98,7 @@ const startDeleteCategory = (category: Category) => {
     <Head title="Gérer les catégories" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="mx-auto flex h-full w-full max-w-7xl flex-1 flex-col gap-6 rounded-xl px-6 py-5">
+        <div class="mx-auto flex h-full w-full flex-1 flex-col gap-6 rounded-xl px-6 py-5">
             <div class="flex items-start justify-between gap-4">
                 <div class="flex flex-col gap-0.5">
                     <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">

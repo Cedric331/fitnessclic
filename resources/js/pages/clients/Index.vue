@@ -102,7 +102,7 @@ watch(isDeleteDialogOpen, (open) => {
     <Head title="Mes Clients" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 max-w-7xl mx-auto w-full px-6">
+        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 mx-auto w-full px-6">
             <!-- Messages Flash -->
             <Alert
                 v-if="flashMessage?.success"
