@@ -24,4 +24,45 @@ export default defineConfig({
             },
         }),
     ],
+    // Optimisations de performance
+    optimizeDeps: {
+        include: [
+            'vue',
+            '@inertiajs/vue3',
+            'vue-router',
+            '@vueuse/core',
+            'lucide-vue-next',
+        ],
+        exclude: ['@tailwindcss/vite'],
+    },
+    server: {
+        // Limiter les scans de fichiers pour améliorer les performances
+        fs: {
+            strict: false,
+            allow: ['.', '..'],
+        },
+        // Augmenter le timeout pour les environnements lents (WSL)
+        hmr: {
+            overlay: true,
+        },
+        watch: {
+            // Ignorer certains dossiers pour accélérer le watch
+            ignored: ['**/node_modules/**', '**/.git/**', '**/vendor/**', '**/storage/**'],
+        },
+    },
+    build: {
+        // Optimisations de build
+        target: 'esnext',
+        minify: 'esbuild',
+        sourcemap: false, // Désactiver en dev pour plus de vitesse
+        rollupOptions: {
+            output: {
+                manualChunks: undefined, // Laisser Vite gérer automatiquement
+            },
+        },
+    },
+    // Désactiver certaines vérifications en développement
+    esbuild: {
+        target: 'esnext',
+    },
 });

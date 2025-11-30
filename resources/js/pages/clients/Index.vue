@@ -131,6 +131,7 @@ watch(isDeleteDialogOpen, (open) => {
                         Gérez vos clients et leurs programmes d'entraînement
                     </p>
                 </div>
+            
                 <CustomerCreateDialog
                     v-model:open="isCreateDialogOpen"
                     trigger-label="Nouveau Client"

@@ -48,7 +48,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Bibliothèque',
-        href: '/client/library',
+        href: '/exercises',
         icon: Library,
     },
     {

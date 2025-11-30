@@ -1,0 +1,520 @@
+<script setup lang="ts">
+import AppLayout from '@/layouts/AppLayout.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { CheckCircle2, Plus, Upload, XCircle } from 'lucide-vue-next';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import type { BreadcrumbItemType } from '@/types';
+import ExerciseFilters from './ExerciseFilters.vue';
+import ExerciseListItem from './ExerciseListItem.vue';
+import type { ExercisesProps } from './types';
+
+const props = defineProps<ExercisesProps>();
+
+// Clés pour les caches
+const FILTERS_CACHE_KEY = 'exercises-filters-cache';
+const VIEW_MODE_CACHE_KEY = 'exercises-view-mode-cache';
+const FILTERS_CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+const VIEW_MODE_CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 1 semaine
+
+// Interface pour les filtres en cache (sans le mode d'affichage)
+interface CachedFilters {
+    search: string;
+    category_id: number | null;
+    sort: 'newest' | 'oldest';
+    timestamp: number;
+}
+
+// Interface pour le cache du mode d'affichage
+interface CachedViewMode {
+    view: 'grid-1' | 'grid-2' | 'grid-4' | 'list';
+    timestamp: number;
+}
+
+// Fonctions utilitaires pour le cache des filtres
+const getCachedFilters = (): CachedFilters | null => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const cached = localStorage.getItem(FILTERS_CACHE_KEY);
+        if (!cached) {
+            return null;
+        }
+
+        const parsed: CachedFilters = JSON.parse(cached);
+        const now = Date.now();
+
+        // Vérifier si le cache est encore valide (10 minutes)
+        if (now - parsed.timestamp > FILTERS_CACHE_DURATION_MS) {
+            localStorage.removeItem(FILTERS_CACHE_KEY);
+            return null;
+        }
+
+        return parsed;
+    } catch {
+        return null;
+    }
+};
+
+const saveFiltersToCache = (filters: {
+    search: string;
+    category_id: number | null;
+    sort: 'newest' | 'oldest';
+}) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        const cached: CachedFilters = {
+            ...filters,
+            timestamp: Date.now(),
+        };
+        localStorage.setItem(FILTERS_CACHE_KEY, JSON.stringify(cached));
+    } catch {
+        // Ignorer les erreurs de localStorage (quota, etc.)
+    }
+};
+
+// Fonctions utilitaires pour le cache du mode d'affichage
+const getCachedViewMode = (): CachedViewMode | null => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    try {
+        const cached = localStorage.getItem(VIEW_MODE_CACHE_KEY);
+        if (!cached) {
+            return null;
+        }
+
+        const parsed: CachedViewMode = JSON.parse(cached);
+        const now = Date.now();
+
+        // Vérifier si le cache est encore valide (1 semaine)
+        if (now - parsed.timestamp > VIEW_MODE_CACHE_DURATION_MS) {
+            localStorage.removeItem(VIEW_MODE_CACHE_KEY);
+            return null;
+        }
+
+        return parsed;
+    } catch {
+        return null;
+    }
+};
+
+const saveViewModeToCache = (view: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    try {
+        const cached: CachedViewMode = {
+            view,
+            timestamp: Date.now(),
+        };
+        localStorage.setItem(VIEW_MODE_CACHE_KEY, JSON.stringify(cached));
+    } catch {
+        // Ignorer les erreurs de localStorage (quota, etc.)
+    }
+};
+
+const breadcrumbs: BreadcrumbItemType[] = [
+    {
+        title: "Bibliothèque d'Exercices",
+        href: '/exercises',
+    },
+];
+
+const page = usePage();
+
+const flashMessage = computed(() => {
+    const flash = (page.props as any).flash;
+    if (!flash) {
+        return null;
+    }
+
+    return {
+        success: flash.success ?? null,
+        error: flash.error ?? null,
+    };
+});
+
+// Initialiser les filtres depuis le cache ou les props
+const cachedFilters = getCachedFilters();
+const cachedViewMode = getCachedViewMode();
+const initialSearch = cachedFilters?.search ?? props.filters?.search ?? '';
+const initialCategory = cachedFilters?.category_id ?? props.filters?.category_id ?? null;
+const initialSort = cachedFilters?.sort ?? props.filters?.sort ?? 'newest';
+// Le mode d'affichage utilise un cache séparé avec une durée plus longue (1 semaine)
+const initialView = cachedViewMode?.view ?? props.filters?.view ?? 'grid-4';
+
+const searchTerm = ref(initialSearch);
+const categoryFilter = ref<number | null>(initialCategory);
+const sortOrder = ref<'newest' | 'oldest'>(initialSort);
+const viewMode = ref<'grid-1' | 'grid-2' | 'grid-4' | 'list'>(initialView);
+const currentPage = ref(props.exercises?.current_page ?? 1);
+const isLoading = ref(false);
+
+watch(
+    () => props.filters.search,
+    (value) => {
+        searchTerm.value = value ?? '';
+    },
+);
+
+watch(
+    () => props.filters.category_id,
+    (value) => {
+        const newValue = value ?? null;
+        // Forcer la mise à jour même si la valeur semble identique
+        // Cela garantit que le composant enfant reçoit toujours la mise à jour
+        categoryFilter.value = newValue;
+    },
+    { immediate: true },
+);
+
+watch(
+    () => props.filters.sort,
+    (value) => {
+        sortOrder.value = value ?? 'newest';
+    },
+);
+
+// Ne synchroniser le mode d'affichage depuis les props qu'à l'initialisation
+// Après cela, le mode d'affichage est géré localement et ne doit pas être réinitialisé
+let isInitialViewModeSync = true;
+
+watch(
+    () => props.filters.view,
+    (value) => {
+        // Ne synchroniser que lors de l'initialisation
+        if (isInitialViewModeSync && value && value !== viewMode.value) {
+            viewMode.value = value;
+        }
+    },
+    { immediate: true },
+);
+
+// Sauvegarder automatiquement le mode d'affichage dans le cache quand l'utilisateur le change
+watch(
+    viewMode,
+    (newView) => {
+        // Ne pas sauvegarder lors de l'initialisation pour éviter de mettre à jour le timestamp inutilement
+        // Le cache est déjà valide si on vient de le restaurer
+        if (!isInitialViewModeSync) {
+            saveViewModeToCache(newView);
+        }
+    },
+);
+
+const allExercises = ref<Array<{ id: number; name: string; image_url: string; category_name: string; created_at: string }>>([]);
+const lastPageLoaded = ref(0);
+const loadingPage = ref<number | null>(null);
+
+// Initialiser avec les données de la première page
+watch(
+    () => [props.exercises?.data, props.exercises?.current_page],
+    ([newData, pageNumber]) => {
+        const currentPageNum = pageNumber ?? 1;
+        
+        // Ignorer si on a déjà traité cette page
+        if (currentPageNum <= lastPageLoaded.value && currentPageNum !== 1) {
+            return;
+        }
+        
+        if (newData && newData.length > 0) {
+            if (currentPageNum === 1) {
+                // Nouveau filtre ou première page, on remplace tout
+                allExercises.value = [...newData];
+                lastPageLoaded.value = 1;
+            } else if (currentPageNum > lastPageLoaded.value) {
+                // Chargement d'une nouvelle page, on ajoute uniquement les nouveaux exercices
+                // Éviter les doublons en vérifiant les IDs
+                const existingIds = new Set(allExercises.value.map((ex: { id: number }) => ex.id));
+                const newExercises = newData.filter((ex: { id: number }) => !existingIds.has(ex.id));
+                if (newExercises.length > 0) {
+                    allExercises.value = [...allExercises.value, ...newExercises];
+                }
+                lastPageLoaded.value = currentPageNum;
+            }
+        } else if (currentPageNum === 1) {
+            // Aucun résultat
+            allExercises.value = [];
+            lastPageLoaded.value = 0;
+        }
+        
+        // Mettre à jour currentPage et réinitialiser loadingPage
+        currentPage.value = currentPageNum;
+        loadingPage.value = null;
+    },
+    { immediate: true },
+);
+
+const applyFilters = (resetPage = true) => {
+    if (isLoading.value) {
+        return;
+    }
+
+    const trimmedSearch = searchTerm.value.trim();
+    const query: Record<string, string | number> = {};
+
+    if (trimmedSearch.length) {
+        query.search = trimmedSearch;
+    }
+
+    if (categoryFilter.value !== null) {
+        query.category_id = categoryFilter.value;
+    }
+
+    if (sortOrder.value) {
+        query.sort = sortOrder.value;
+    }
+
+    if (viewMode.value) {
+        query.view = viewMode.value;
+    }
+
+    if (resetPage) {
+        query.page = 1;
+        currentPage.value = 1;
+        lastPageLoaded.value = 0;
+        allExercises.value = [];
+        loadingPage.value = null;
+    } else {
+        // Vérifier qu'on n'a pas déjà chargé toutes les pages
+        if (!hasMore.value) {
+            return;
+        }
+        
+        const nextPage = currentPage.value + 1;
+        
+        // Vérifier qu'on n'est pas déjà en train de charger cette page
+        if (loadingPage.value === nextPage) {
+            return;
+        }
+        
+        // Vérifier qu'on n'a pas déjà chargé cette page
+        if (nextPage <= lastPageLoaded.value) {
+            return;
+        }
+        
+        query.page = nextPage;
+        loadingPage.value = nextPage;
+    }
+
+    isLoading.value = true;
+
+    router.get('/exercises', query, {
+        preserveScroll: !resetPage,
+        // Toujours true : on ne reset plus le composant pour garder l'état local des filtres
+        preserveState: true,
+        only: ['exercises'],
+        onSuccess: () => {
+            // Sauvegarder les filtres dans le cache après une application réussie (sans le mode d'affichage)
+            saveFiltersToCache({
+                search: trimmedSearch,
+                category_id: categoryFilter.value,
+                sort: sortOrder.value,
+            });
+            // La mise à jour se fait via le watch sur props.exercises?.data
+        },
+        onFinish: () => {
+            isLoading.value = false;
+        },
+    });
+};
+
+const exercises = computed(() => allExercises.value);
+const hasMore = computed(() => props.exercises?.has_more ?? false);
+
+let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+let isScrolling = false;
+
+const handleScroll = () => {
+    // Debounce pour éviter trop d'appels
+    if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+    }
+    
+    scrollTimeout = setTimeout(() => {
+        if (isLoading.value || !hasMore.value || isScrolling) {
+            return;
+        }
+
+        // Calculer la position du scroll
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop;
+        const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+        const documentHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+
+        // Charger plus quand on est à 500px du bas
+        const threshold = 500;
+        const distanceFromBottom = documentHeight - (scrollTop + windowHeight);
+        
+        if (distanceFromBottom <= threshold) {
+            isScrolling = true;
+            applyFilters(false);
+            // Réinitialiser le flag après un délai
+            setTimeout(() => {
+                isScrolling = false;
+            }, 1000);
+        }
+    }, 150);
+};
+
+onMounted(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Également écouter sur le body au cas où
+    document.body.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Si on a restauré des filtres depuis le cache et qu'ils diffèrent des props actuels, appliquer les filtres
+    // Note: le mode d'affichage est géré séparément avec un cache de 1 semaine
+    if (cachedFilters) {
+        const propsFilters = props.filters;
+        const filtersDiffer = 
+            cachedFilters.search !== (propsFilters?.search ?? '') ||
+            cachedFilters.category_id !== (propsFilters?.category_id ?? null) ||
+            cachedFilters.sort !== (propsFilters?.sort ?? 'newest');
+        
+        if (filtersDiffer) {
+            // Attendre un peu pour que le composant soit complètement monté
+            nextTick(() => {
+                applyFilters(true);
+            });
+        }
+    }
+    
+    // Désactiver la synchronisation du mode d'affichage depuis les props après l'initialisation
+    setTimeout(() => {
+        isInitialViewModeSync = false;
+    }, 100);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll);
+    document.body.removeEventListener('scroll', handleScroll);
+    if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+    }
+});
+
+const gridColsClass = computed(() => {
+    switch (viewMode.value) {
+        case 'grid-4':
+            return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+        case 'grid-2':
+            return 'grid-cols-1 sm:grid-cols-2';
+        case 'grid-1':
+        case 'list':
+            return 'grid-cols-1';
+        default:
+            return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+    }
+});
+</script>
+
+<template>
+    <Head title="Bibliothèque d'Exercices" />
+
+    <AppLayout :breadcrumbs="breadcrumbs">
+        <div class="mx-auto flex h-full w-full max-w-6xl flex-1 flex-col gap-6 rounded-xl px-6 py-5">
+            <div class="flex flex-col gap-2">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Bibliothèque d'Exercices</h1>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">
+                            Gérez vos exercices personnalisés en un clin d'œil.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Button variant="outline" size="sm" class="gap-2">
+                            <Upload class="size-4" />
+                            <span>Importer</span>
+                        </Button>
+                        <Button class="gap-2" size="sm">
+                            <Plus class="size-4" />
+                            <span>Ajouter un exercice</span>
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <ExerciseFilters
+                :categories="props.categories"
+                :search="searchTerm"
+                :category-id="categoryFilter"
+                :sort-order="sortOrder"
+                :view-mode="viewMode"
+                @update:search="(value: string) => { searchTerm = value; }"
+                @update:categoryId="(value: number | null) => { categoryFilter = value; }"
+                @update:sortOrder="(value: 'newest' | 'oldest') => { sortOrder = value; }"
+                @update:viewMode="(value: 'grid-1' | 'grid-2' | 'grid-4' | 'list') => { viewMode = value; }"
+                @apply="async () => {
+                    // Attendre que les valeurs soient synchronisées avant d'appliquer
+                    await nextTick();
+                    applyFilters(true);
+                }"
+            />
+
+            <div class="space-y-3">
+                <Alert
+                    v-if="flashMessage?.success"
+                    class="flex items-start gap-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-3 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200"
+                >
+                    <CheckCircle2 class="size-4 text-emerald-600 dark:text-emerald-300" />
+                    <div>
+                        <AlertTitle>Succès</AlertTitle>
+                        <AlertDescription>{{ flashMessage.success }}</AlertDescription>
+                    </div>
+                </Alert>
+                <Alert
+                    v-if="flashMessage?.error"
+                    variant="destructive"
+                    class="flex items-start gap-3 rounded-2xl border border-destructive-200/70 bg-destructive-50/80 px-4 py-3 text-destructive-600 dark:border-destructive-800/70 dark:bg-destructive-900/30 dark:text-destructive-200"
+                >
+                    <XCircle class="size-4 text-destructive-500 dark:text-destructive-300" />
+                    <div>
+                        <AlertTitle>Erreur</AlertTitle>
+                        <AlertDescription>{{ flashMessage.error }}</AlertDescription>
+                    </div>
+                </Alert>
+            </div>
+
+            <div
+                v-if="exercises.length"
+                class="grid auto-rows-min gap-4"
+                :class="gridColsClass"
+            >
+                <ExerciseListItem v-for="exercise in exercises" :key="exercise.id" :exercise="exercise" />
+            </div>
+
+            <p
+                v-else-if="!isLoading"
+                class="rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-6 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400"
+            >
+                Aucun exercice trouvé
+            </p>
+
+            <div
+                v-if="isLoading"
+                class="flex items-center justify-center py-8"
+            >
+                <div class="flex flex-col items-center gap-2">
+                    <div class="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400"></div>
+                    <div class="text-sm text-slate-500 dark:text-slate-400">Chargement des exercices...</div>
+                </div>
+            </div>
+            
+            <div
+                v-if="!hasMore && exercises.length > 0 && !isLoading"
+                class="flex items-center justify-center py-4"
+            >
+                <div class="text-sm text-slate-500 dark:text-slate-400">Tous les exercices ont été chargés</div>
+            </div>
+        </div>
+    </AppLayout>
+</template>
+
