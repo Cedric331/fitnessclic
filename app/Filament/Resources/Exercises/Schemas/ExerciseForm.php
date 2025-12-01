@@ -19,6 +19,7 @@ class ExerciseForm
                     ->label('Image')
                     ->collection(\App\Models\Exercise::MEDIA_IMAGE)
                     ->disk(\App\Models\Exercise::MEDIA_DISK)
+                    ->directory('exercises')
                     ->image()
                     ->preserveFilenames()
                     ->columnSpanFull()                    
