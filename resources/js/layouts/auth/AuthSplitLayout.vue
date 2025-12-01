@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
-import { home } from '@/routes';
+import { dashboard, home } from '@/routes';
 import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const page = usePage();
 const name = page.props.name;
 const quote = page.props.quote;
+const isAuthenticated = computed(() => !!page.props.auth?.user);
+const backUrl = computed(() => isAuthenticated.value ? dashboard.url() : home.url());
 
 defineProps<{
     title?: string;
@@ -22,7 +25,7 @@ defineProps<{
         >
             <div class="absolute inset-0 bg-zinc-900" />
             <Link
-                :href="home.url()"
+                :href="backUrl"
                 class="relative z-20 flex items-center text-lg font-medium"
             >
                 <AppLogoIcon class="mr-2 size-8 fill-current text-white" />

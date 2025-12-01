@@ -81,45 +81,19 @@ const handleLogout = () => {
         <SidebarHeader class="border-b border-slate-200 dark:border-slate-700">
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <div class="flex items-center gap-3 px-2 py-4">
-                        <!-- Logo FitnessClic avec deux personnages -->
+                    <Link
+                        :href="dashboard.url()"
+                        class="flex items-center gap-3 px-2 py-4"
+                    >
+                        <!-- Logo FitnessClic -->
                         <div
-                            class="flex size-10 items-center justify-center rounded-lg bg-blue-500"
+                            class="flex size-10 items-center justify-center rounded-lg"
                         >
-                            <svg
-                                width="28"
-                                height="28"
-                                viewBox="0 0 28 28"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <!-- Personnage masculin (rouge) à gauche -->
-                                <circle cx="9" cy="10" r="3.5" fill="#ef4444" />
-                                <path
-                                    d="M6 16.5C6 14.5 7.5 13 9.5 13C11.5 13 13 14.5 13 16.5V20H6V16.5Z"
-                                    fill="#ef4444"
-                                />
-                                <!-- Bras croisés pour le personnage masculin -->
-                                <path
-                                    d="M5 12L7 10M11 10L13 12"
-                                    stroke="#ef4444"
-                                    stroke-width="1.5"
-                                    stroke-linecap="round"
-                                />
-                                <!-- Personnage féminin (bleu clair) à droite -->
-                                <circle cx="19" cy="10" r="3.5" fill="#93c5fd" />
-                                <path
-                                    d="M16 16.5C16 14.5 17.5 13 19.5 13C21.5 13 23 14.5 23 16.5V20H16V16.5Z"
-                                    fill="#93c5fd"
-                                />
-                                <!-- Bras croisés pour le personnage féminin -->
-                                <path
-                                    d="M15 12L17 10M21 10L23 12"
-                                    stroke="#93c5fd"
-                                    stroke-width="1.5"
-                                    stroke-linecap="round"
-                                />
-                            </svg>
+                            <img
+                                src="/assets/logo_fitnessclic.png"
+                                alt="FitnessClic Logo"
+                                class="h-full w-full object-contain"
+                            />
                         </div>
                         <div class="flex flex-col">
                             <span class="text-lg font-bold text-slate-900 dark:text-white">FitnessClic</span>
@@ -127,7 +101,7 @@ const handleLogout = () => {
                                 >créateur de séances</span
                             >
                         </div>
-                    </div>
+                    </Link>
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarHeader>

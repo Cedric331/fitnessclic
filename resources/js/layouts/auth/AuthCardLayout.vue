@@ -7,8 +7,13 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { home } from '@/routes';
-import { Link } from '@inertiajs/vue3';
+import { dashboard, home } from '@/routes';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const page = usePage();
+const isAuthenticated = computed(() => !!page.props.auth?.user);
+const backUrl = computed(() => isAuthenticated.value ? dashboard.url() : home.url());
 
 defineProps<{
     title?: string;
@@ -22,7 +27,7 @@ defineProps<{
     >
         <div class="flex w-full max-w-md flex-col gap-6">
             <Link
-                :href="home.url()"
+                :href="backUrl"
                 class="flex items-center gap-2 self-center font-medium"
             >
                 <div class="flex h-9 w-9 items-center justify-center">
