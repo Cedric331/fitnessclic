@@ -119,10 +119,18 @@ const addExerciseToSession = (exercise: Exercise) => {
     const sessionExercise: SessionExercise = {
         exercise_id: exercise.id,
         exercise: exercise,
-        sets: 1,
-        repetitions: '',
-        rest_time: '',
-        duration: '',
+        sets: [{
+            set_number: 1,
+            repetitions: null,
+            weight: null,
+            rest_time: null,
+            duration: null,
+            order: 0
+        }],
+        repetitions: null,
+        weight: null,
+        rest_time: null,
+        duration: null,
         description: '',
         order: sessionExercises.value.length,
     };
@@ -341,7 +349,24 @@ const saveSession = () => {
     }
 
     isSaving.value = true;
-    form.exercises = sessionExercises.value;
+    // Formater les exercices pour l'envoi au backend
+    form.exercises = sessionExercises.value.map(ex => ({
+        exercise_id: ex.exercise_id,
+        sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
+            set_number: set.set_number || idx + 1,
+            repetitions: set.repetitions ?? null,
+            weight: set.weight ?? null,
+            rest_time: set.rest_time ?? null,
+            duration: set.duration ?? null,
+            order: set.order ?? idx
+        })) : null,
+        repetitions: ex.repetitions ?? null,
+        weight: ex.weight ?? null,
+        rest_time: ex.rest_time ?? null,
+        duration: ex.duration ?? null,
+        description: ex.description ?? null,
+        order: ex.order
+    }));
     
     form.post('/sessions', {
         onSuccess: () => {

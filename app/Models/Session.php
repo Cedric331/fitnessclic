@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Session extends Model
 {
@@ -61,12 +62,21 @@ class Session extends Model
 
     /**
      * Relation with exercises (many-to-many with details)
+     * @deprecated Use sessionExercises() instead for better control
      */
     public function exercises(): BelongsToMany
     {
         return $this->belongsToMany(Exercise::class, 'session_exercise', 'session_id', 'exercise_id')
-            ->withPivot(['repetitions', 'rest_time', 'duration', 'additional_description', 'order'])
+            ->withPivot(['repetitions', 'rest_time', 'duration', 'weight', 'additional_description', 'order'])
             ->withTimestamps()
             ->orderByPivot('order');
+    }
+
+    /**
+     * Relation with session exercises (direct relation with session_exercise table)
+     */
+    public function sessionExercises(): HasMany
+    {
+        return $this->hasMany(SessionExercise::class, 'session_id')->orderBy('order');
     }
 }

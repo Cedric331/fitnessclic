@@ -124,8 +124,16 @@ class SessionsController extends Controller
             'notes' => ['nullable', 'string'],
             'exercises' => ['required', 'array', 'min:1'],
             'exercises.*.exercise_id' => ['required', 'exists:exercises,id'],
-            'exercises.*.sets' => ['nullable', 'integer', 'min:1'],
-            'exercises.*.repetitions' => ['nullable', 'string'],
+            'exercises.*.sets' => ['nullable', 'array'], // Séries multiples
+            'exercises.*.sets.*.set_number' => ['required', 'integer', 'min:1'],
+            'exercises.*.sets.*.repetitions' => ['nullable', 'integer'],
+            'exercises.*.sets.*.weight' => ['nullable', 'numeric'],
+            'exercises.*.sets.*.rest_time' => ['nullable', 'string'],
+            'exercises.*.sets.*.duration' => ['nullable', 'string'],
+            'exercises.*.sets.*.order' => ['required', 'integer', 'min:0'],
+            // Champs pour compatibilité (si pas de séries multiples)
+            'exercises.*.repetitions' => ['nullable', 'integer'],
+            'exercises.*.weight' => ['nullable', 'numeric'],
             'exercises.*.rest_time' => ['nullable', 'string'],
             'exercises.*.duration' => ['nullable', 'string'],
             'exercises.*.description' => ['nullable', 'string'],
@@ -149,13 +157,31 @@ class SessionsController extends Controller
 
         // Attacher les exercices avec leurs détails
         foreach ($validated['exercises'] as $exerciseData) {
-            $session->exercises()->attach($exerciseData['exercise_id'], [
+            $sessionExercise = \App\Models\SessionExercise::create([
+                'session_id' => $session->id,
+                'exercise_id' => $exerciseData['exercise_id'],
                 'repetitions' => $exerciseData['repetitions'] ?? null,
+                'weight' => $exerciseData['weight'] ?? null,
                 'rest_time' => $exerciseData['rest_time'] ?? null,
                 'duration' => $exerciseData['duration'] ?? null,
                 'additional_description' => $exerciseData['description'] ?? null,
                 'order' => $exerciseData['order'],
             ]);
+
+            // Créer les séries multiples si elles existent
+            if (isset($exerciseData['sets']) && is_array($exerciseData['sets']) && count($exerciseData['sets']) > 0) {
+                foreach ($exerciseData['sets'] as $setData) {
+                    \App\Models\SessionExerciseSet::create([
+                        'session_exercise_id' => $sessionExercise->id,
+                        'set_number' => $setData['set_number'],
+                        'repetitions' => $setData['repetitions'] ?? null,
+                        'weight' => $setData['weight'] ?? null,
+                        'rest_time' => $setData['rest_time'] ?? null,
+                        'duration' => $setData['duration'] ?? null,
+                        'order' => $setData['order'],
+                    ]);
+                }
+            }
         }
 
         return redirect()->route('sessions.index')

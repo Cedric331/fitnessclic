@@ -11,14 +11,27 @@ export interface Exercise {
     }>;
 }
 
+export interface ExerciseSet {
+    id?: number;
+    set_number: number;
+    repetitions?: number | null;
+    weight?: number | null;
+    rest_time?: string | null;
+    duration?: string | null;
+    order: number;
+}
+
 export interface SessionExercise {
+    id?: number;
     exercise_id: number;
     exercise?: Exercise;
-    sets?: number;
-    repetitions?: string;
-    rest_time?: string;
-    duration?: string;
-    description?: string;
+    sets?: ExerciseSet[]; // Séries multiples
+    // Champs pour compatibilité avec l'ancien système (si pas de séries multiples)
+    repetitions?: number | null;
+    weight?: number | null;
+    rest_time?: string | null;
+    duration?: string | null;
+    description?: string | null; // Notes/commentaires
     order: number;
 }
 
