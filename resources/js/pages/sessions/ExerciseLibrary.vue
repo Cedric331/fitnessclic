@@ -237,16 +237,6 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                             <h3 class="font-semibold text-sm mb-2 line-clamp-2">
                                 {{ exercise.title }}
                             </h3>
-                            <div class="flex flex-wrap gap-1">
-                                <Badge
-                                    v-for="category in (exercise.categories || []).slice(0, 2)"
-                                    :key="category.id"
-                                    variant="outline"
-                                    class="text-xs"
-                                >
-                                    {{ category.name }}
-                                </Badge>
-                            </div>
                         </div>
                     </CardContent>
                 </Card>

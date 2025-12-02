@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends Model
@@ -47,11 +48,12 @@ class Customer extends Model
     }
 
     /**
-     * Relation with training sessions for this customer
+     * Relation with multiple training sessions (many-to-many)
      */
-    public function trainingSessions(): HasMany
+    public function sessions(): BelongsToMany
     {
-        return $this->hasMany(Session::class, 'customer_id');
+        return $this->belongsToMany(Session::class, 'session_customer', 'customer_id', 'session_id')
+            ->withTimestamps();
     }
 
     /**

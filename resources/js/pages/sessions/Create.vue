@@ -28,11 +28,54 @@ import type { CreateSessionProps, Exercise, SessionExercise, Customer, Category 
 import SessionExerciseItem from './SessionExerciseItem.vue';
 import ExerciseLibrary from './ExerciseLibrary.vue';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import InputError from '@/components/InputError.vue';
+import { 
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { User, Users, CheckSquare, Square } from 'lucide-vue-next';
+import { useNotifications } from '@/composables/useNotifications';
 
 const props = defineProps<CreateSessionProps>();
 const page = usePage();
 const currentUserId = computed(() => (page.props.auth as any)?.user?.id);
+const { success: notifySuccess, error: notifyError } = useNotifications();
+
+// Écouter les messages flash et les convertir en notifications
+// Utiliser un Set pour éviter les doublons
+const shownFlashMessages = ref(new Set<string>());
+
+watch(() => (page.props as any).flash, (flash) => {
+    if (!flash) return;
+    
+    // Créer une clé unique pour chaque message
+    const successKey = flash.success ? `success-${flash.success}` : null;
+    const errorKey = flash.error ? `error-${flash.error}` : null;
+    
+    // Afficher la notification seulement si on ne l'a pas déjà affichée
+    if (successKey && !shownFlashMessages.value.has(successKey)) {
+        shownFlashMessages.value.add(successKey);
+        notifySuccess(flash.success);
+        // Nettoyer après 2 secondes pour permettre de réafficher le même message plus tard si nécessaire
+        setTimeout(() => {
+            shownFlashMessages.value.delete(successKey);
+        }, 2000);
+    }
+    
+    if (errorKey && !shownFlashMessages.value.has(errorKey)) {
+        shownFlashMessages.value.add(errorKey);
+        notifyError(flash.error);
+        setTimeout(() => {
+            shownFlashMessages.value.delete(errorKey);
+        }, 2000);
+    }
+}, { immediate: true });
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -48,12 +91,108 @@ const breadcrumbs: BreadcrumbItem[] = [
 // État du formulaire
 const form = useForm({
     name: '',
-    customer_id: null as number | null,
-    person_name: '',
+    customer_ids: [] as number[],
     session_date: new Date().toISOString().split('T')[0],
     notes: '',
     exercises: [] as SessionExercise[],
 });
+
+// État pour la modal de sélection de clients
+const showCustomerModal = ref(false);
+const tempSelectedCustomerIds = ref<number[]>([]);
+const customerSearchTerm = ref('');
+
+// Clients sélectionnés (computed depuis form.customer_ids)
+const selectedCustomers = computed(() => {
+    if (!form.customer_ids || form.customer_ids.length === 0) {
+        return [];
+    }
+    return props.customers.filter(customer => 
+        form.customer_ids.includes(customer.id)
+    );
+});
+
+// Alias pour customers dans le template
+const customers = computed(() => props.customers);
+
+// Clients filtrés pour la recherche dans la modal
+const filteredCustomersForModal = computed(() => {
+    if (!customerSearchTerm.value.trim()) {
+        return customers.value;
+    }
+    const search = customerSearchTerm.value.toLowerCase();
+    return customers.value.filter(customer => {
+        const fullName = (customer.full_name || `${customer.first_name} ${customer.last_name}`).toLowerCase();
+        const email = (customer.email || '').toLowerCase();
+        return fullName.includes(search) || email.includes(search);
+    });
+});
+
+// Sélectionner/désélectionner tous les clients filtrés
+const toggleAllFilteredCustomers = () => {
+    const allFilteredSelected = filteredCustomersForModal.value.every(customer => 
+        tempSelectedCustomerIds.value.includes(customer.id)
+    );
+    
+    if (allFilteredSelected) {
+        // Désélectionner tous les clients filtrés
+        filteredCustomersForModal.value.forEach(customer => {
+            const index = tempSelectedCustomerIds.value.indexOf(customer.id);
+            if (index > -1) {
+                tempSelectedCustomerIds.value.splice(index, 1);
+            }
+        });
+    } else {
+        // Sélectionner tous les clients filtrés
+        filteredCustomersForModal.value.forEach(customer => {
+            if (!tempSelectedCustomerIds.value.includes(customer.id)) {
+                tempSelectedCustomerIds.value.push(customer.id);
+            }
+        });
+    }
+};
+
+// Vérifier si tous les clients filtrés sont sélectionnés
+const allFilteredSelected = computed(() => {
+    if (filteredCustomersForModal.value.length === 0) return false;
+    return filteredCustomersForModal.value.every(customer => 
+        tempSelectedCustomerIds.value.includes(customer.id)
+    );
+});
+
+// Ouvrir la modal avec les clients actuellement sélectionnés
+const openCustomerModal = () => {
+    tempSelectedCustomerIds.value = [...form.customer_ids];
+    customerSearchTerm.value = '';
+    showCustomerModal.value = true;
+};
+
+// Confirmer la sélection des clients
+const confirmCustomerSelection = () => {
+    form.customer_ids = [...tempSelectedCustomerIds.value];
+    showCustomerModal.value = false;
+};
+
+// Toggle la sélection d'un client dans la modal
+const toggleCustomer = (customerId: number, checked: boolean) => {
+    if (checked) {
+        // Ajouter le client s'il n'est pas déjà dans la liste
+        if (!tempSelectedCustomerIds.value.includes(customerId)) {
+            tempSelectedCustomerIds.value.push(customerId);
+        }
+    } else {
+        // Retirer le client
+        const index = tempSelectedCustomerIds.value.indexOf(customerId);
+        if (index > -1) {
+            tempSelectedCustomerIds.value.splice(index, 1);
+        }
+    }
+};
+
+// Retirer un client de la sélection
+const removeCustomer = (customerId: number) => {
+    form.customer_ids = form.customer_ids.filter(id => id !== customerId);
+};
 
 // État de l'interface
 const searchTerm = ref(props.filters.search || '');
@@ -341,14 +480,32 @@ const applyFilters = () => {
     // });
 };
 
+// Validation du formulaire
+const isFormValid = computed(() => {
+    const hasName = form.name.trim().length > 0;
+    const hasExercises = sessionExercises.value.length > 0;
+    return hasName && hasExercises;
+});
+
 // Sauvegarder la séance
 const saveSession = () => {
+    // Validation côté client
+    if (!form.name.trim()) {
+        notifyError('Le nom de la séance est obligatoire.', 'Validation');
+        return;
+    }
+
     if (sessionExercises.value.length === 0) {
-        alert('Veuillez ajouter au moins un exercice à la séance.');
+        notifyError('Veuillez ajouter au moins un exercice à la séance.', 'Validation');
         return;
     }
 
     isSaving.value = true;
+    // S'assurer que customer_ids est bien un tableau
+    if (!Array.isArray(form.customer_ids)) {
+        form.customer_ids = [];
+    }
+    
     // Formater les exercices pour l'envoi au backend
     form.exercises = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
@@ -359,7 +516,7 @@ const saveSession = () => {
             rest_time: set.rest_time ?? null,
             duration: set.duration ?? null,
             order: set.order ?? idx
-        })) : null,
+        })) : undefined,
         repetitions: ex.repetitions ?? null,
         weight: ex.weight ?? null,
         rest_time: ex.rest_time ?? null,
@@ -369,13 +526,25 @@ const saveSession = () => {
     }));
     
     form.post('/sessions', {
+        preserveScroll: false,
         onSuccess: () => {
             // Nettoyer le localStorage après sauvegarde réussie
             localStorage.removeItem(STORAGE_KEY);
-            router.visit('/sessions');
+            // Réinitialiser le formulaire et les exercices
+            form.reset();
+            sessionExercises.value = [];
+            // La notification sera affichée automatiquement via le message flash du backend
         },
-        onError: () => {
+        onError: (errors) => {
             isSaving.value = false;
+            // Afficher les erreurs de validation
+            if (errors.name) {
+                notifyError(errors.name);
+            } else if (errors.exercises) {
+                notifyError(errors.exercises);
+            } else {
+                notifyError('Une erreur est survenue lors de la création de la séance.');
+            }
         },
         onFinish: () => {
             isSaving.value = false;
@@ -404,24 +573,6 @@ const generatePDF = () => {
     alert('La génération PDF sera disponible après l\'installation du package dompdf.');
 };
 
-// Nom du client sélectionné
-const selectedCustomer = computed(() => {
-    if (!form.customer_id) return null;
-    return props.customers.find(c => c.id === form.customer_id) || null;
-});
-
-// Auto-remplir le champ nom/prénom quand un client est sélectionné
-watch(() => form.customer_id, (customerId) => {
-    if (customerId) {
-        const customer = props.customers.find(c => c.id === customerId);
-        if (customer) {
-            form.person_name = customer.full_name;
-        }
-    } else {
-        // Si aucun client n'est sélectionné, on peut vider le champ ou le laisser
-        // form.person_name = '';
-    }
-});
 
 // Détecter les exercices en double
 const duplicateExercises = computed(() => {
@@ -480,7 +631,7 @@ watch(sessionExercises, () => {
                     <Button
                         size="sm"
                         @click="saveSession"
-                        :disabled="isSaving || sessionExercises.length === 0"
+                        :disabled="isSaving || !isFormValid"
                     >
                         <Save class="h-4 w-4 mr-2" />
                         {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
@@ -498,32 +649,53 @@ watch(sessionExercises, () => {
                                 <CardTitle>Informations de la séance</CardTitle>
                             </CardHeader>
                             <CardContent class="space-y-4">
-                                <!-- Sélection du client -->
+                                <!-- Nom de la séance -->
                                 <div class="space-y-2">
-                                    <Label>Sélectionner un client (optionnel)</Label>
-                                    <select
-                                        :value="form.customer_id"
-                                        @change="form.customer_id = $event.target.value ? parseInt($event.target.value) : null"
-                                        class="flex h-9 w-full rounded-md border border-input bg-white dark:bg-neutral-900 px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-neutral-900 dark:text-neutral-100"
-                                    >
-                                        <option :value="null">Aucun client</option>
-                                        <option
-                                            v-for="customer in customers"
-                                            :key="customer.id"
-                                            :value="customer.id"
-                                        >
-                                            {{ customer.full_name || `${customer.first_name} ${customer.last_name}` }}
-                                        </option>
-                                    </select>
+                                    <Label for="session-name">Nom de la séance <span class="text-red-500">*</span></Label>
+                                    <Input
+                                        id="session-name"
+                                        v-model="form.name"
+                                        placeholder="Ex: Séance jambes, Entraînement haut du corps..."
+                                        class="w-full"
+                                        :class="{ 'border-red-500 focus-visible:ring-red-500': form.errors.name }"
+                                    />
+                                    <InputError :message="form.errors.name" />
                                 </div>
 
-                                <!-- Nom et prénom de la personne -->
+                                <!-- Sélection des clients -->
                                 <div class="space-y-2">
-                                    <Label>Nom et prénom de la personne</Label>
-                                    <Input
-                                        v-model="form.person_name"
-                                        placeholder="Ex: Jean Dupont"
-                                    />
+                                    <Label>Clients (optionnel)</Label>
+                                    <div class="space-y-2">
+                                        <!-- Bouton pour ouvrir la modal -->
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            class="w-full justify-start"
+                                            @click="openCustomerModal"
+                                        >
+                                            <Users class="h-4 w-4 mr-2" />
+                                            {{ selectedCustomers.length > 0 ? `${selectedCustomers.length} client(s) sélectionné(s)` : 'Sélectionner des clients' }}
+                                        </Button>
+                                        
+                                        <!-- Liste des clients sélectionnés -->
+                                        <div v-if="selectedCustomers.length > 0" class="flex flex-wrap gap-2 mt-2">
+                                            <div
+                                                v-for="customer in selectedCustomers"
+                                                :key="customer.id"
+                                                class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full text-sm"
+                                            >
+                                                <User class="h-3.5 w-3.5" />
+                                                <span>{{ customer.full_name || `${customer.first_name} ${customer.last_name}` }}</span>
+                                                <button
+                                                    type="button"
+                                                    @click="removeCustomer(customer.id)"
+                                                    class="ml-1 hover:text-blue-900 dark:hover:text-blue-100"
+                                                >
+                                                    <X class="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Notes -->
@@ -634,6 +806,119 @@ watch(sessionExercises, () => {
                 </div>
             </div>
         </div>
+
+        <!-- Modal de sélection des clients -->
+        <Dialog v-model:open="showCustomerModal">
+            <DialogContent class="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Sélectionner les clients</DialogTitle>
+                    <DialogDescription>
+                        Choisissez un ou plusieurs clients pour cette séance.
+                    </DialogDescription>
+                </DialogHeader>
+                
+                <div class="space-y-4 py-4">
+                    <!-- Barre de recherche -->
+                    <div class="relative">
+                        <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                        <Input
+                            v-model="customerSearchTerm"
+                            placeholder="Rechercher un client par nom ou email..."
+                            class="pl-9"
+                        />
+                    </div>
+
+                    <!-- Actions rapides -->
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-neutral-600 dark:text-neutral-400">
+                            <span v-if="customerSearchTerm.trim()">
+                                {{ filteredCustomersForModal.length }} résultat(s) sur {{ customers.length }} client(s)
+                            </span>
+                            <span v-else>
+                                {{ customers.length }} client(s) au total
+                            </span>
+                        </div>
+                        <Button
+                            v-if="filteredCustomersForModal.length > 0"
+                            variant="ghost"
+                            size="sm"
+                            @click="toggleAllFilteredCustomers"
+                            class="text-xs"
+                        >
+                            <CheckSquare v-if="allFilteredSelected" class="h-3.5 w-3.5 mr-1" />
+                            <Square v-else class="h-3.5 w-3.5 mr-1" />
+                            {{ allFilteredSelected ? 'Tout désélectionner' : 'Tout sélectionner' }}
+                        </Button>
+                    </div>
+
+                    <!-- Liste des clients avec checkboxes -->
+                    <div class="space-y-1 max-h-96 overflow-y-auto rounded-md border border-input bg-white dark:bg-neutral-900 p-2">
+                        <label
+                            v-for="customer in filteredCustomersForModal"
+                            :key="customer.id"
+                            class="flex items-center gap-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded px-3 py-2 transition"
+                        >
+                            <Checkbox
+                                :model-value="tempSelectedCustomerIds.includes(customer.id)"
+                                @update:model-value="(checked: boolean) => toggleCustomer(customer.id, checked)"
+                            />
+                            <div class="flex-1 min-w-0">
+                                <div class="font-medium text-sm truncate">
+                                    {{ customer.full_name || `${customer.first_name} ${customer.last_name}` }}
+                                </div>
+                                <div v-if="customer.email" class="text-xs text-neutral-500 truncate">
+                                    {{ customer.email }}
+                                </div>
+                            </div>
+                        </label>
+                        <p v-if="filteredCustomersForModal.length === 0" class="text-xs text-neutral-500 dark:text-neutral-400 text-center py-4">
+                            <span v-if="customerSearchTerm.trim()">
+                                Aucun client trouvé pour "{{ customerSearchTerm }}"
+                            </span>
+                            <span v-else>
+                                Aucun client disponible
+                            </span>
+                        </p>
+                    </div>
+
+                    <!-- Compteur de sélection -->
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-neutral-600 dark:text-neutral-400">
+                            <span v-if="tempSelectedCustomerIds.length > 0" class="font-medium text-blue-600 dark:text-blue-400">
+                                {{ tempSelectedCustomerIds.length }} client(s) sélectionné(s)
+                            </span>
+                            <span v-else class="text-neutral-500">
+                                Aucun client sélectionné
+                            </span>
+                        </span>
+                        <Button
+                            v-if="tempSelectedCustomerIds.length > 0"
+                            variant="ghost"
+                            size="sm"
+                            @click="tempSelectedCustomerIds = []"
+                            class="text-xs text-red-600 hover:text-red-700"
+                        >
+                            <X class="h-3.5 w-3.5 mr-1" />
+                            Tout effacer
+                        </Button>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        @click="showCustomerModal = false"
+                    >
+                        Annuler
+                    </Button>
+                    <Button
+                        @click="confirmCustomerSelection"
+                    >
+                        Confirmer ({{ tempSelectedCustomerIds.length }})
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>
 

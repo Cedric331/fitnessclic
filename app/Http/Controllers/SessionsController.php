@@ -19,7 +19,7 @@ class SessionsController extends Controller
     public function index(Request $request): Response
     {
         $query = Session::where('user_id', Auth::id())
-            ->with(['customer', 'exercises'])
+            ->with(['customers', 'exercises'])
             ->withCount('exercises');
 
         if ($request->has('search') && $request->search) {
@@ -30,8 +30,11 @@ class SessionsController extends Controller
             });
         }
 
+        // Filtrer par clients via la relation many-to-many
         if ($request->has('customer_id') && $request->customer_id) {
-            $query->where('customer_id', $request->customer_id);
+            $query->whereHas('customers', function ($q) use ($request) {
+                $q->where('customers.id', $request->customer_id);
+            });
         }
 
         $sessions = $query->latest('session_date')->latest('created_at')->paginate(12);
@@ -117,9 +120,9 @@ class SessionsController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['nullable', 'string', 'max:255'],
-            'customer_id' => ['nullable', 'exists:customers,id'],
-            'person_name' => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'customer_ids' => ['nullable', 'array'], // Tableau de clients
+            'customer_ids.*' => ['required', 'integer', 'exists:customers,id'],
             'session_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'exercises' => ['required', 'array', 'min:1'],
@@ -140,20 +143,31 @@ class SessionsController extends Controller
             'exercises.*.order' => ['required', 'integer', 'min:0'],
         ]);
 
-        // Vérifier que le client appartient à l'utilisateur si fourni
-        if (isset($validated['customer_id'])) {
-            $customer = Customer::where('id', $validated['customer_id'])
+        // Récupérer les IDs des clients
+        $customerIds = $validated['customer_ids'] ?? [];
+
+        // Vérifier que tous les clients appartiennent à l'utilisateur
+        if (!empty($customerIds)) {
+            $customers = Customer::whereIn('id', $customerIds)
                 ->where('user_id', Auth::id())
-                ->firstOrFail();
+                ->get();
+            
+            if ($customers->count() !== count($customerIds)) {
+                abort(403, 'Un ou plusieurs clients ne vous appartiennent pas.');
+            }
         }
 
         $session = Session::create([
             'user_id' => Auth::id(),
-            'customer_id' => $validated['customer_id'] ?? null,
             'name' => $validated['name'] ?? 'Nouvelle Séance',
             'notes' => $validated['notes'] ?? null,
             'session_date' => $validated['session_date'] ?? now(),
         ]);
+
+        // Attacher les clients via la relation many-to-many
+        if (!empty($customerIds)) {
+            $session->customers()->attach($customerIds);
+        }
 
         // Attacher les exercices avec leurs détails
         foreach ($validated['exercises'] as $exerciseData) {
@@ -184,8 +198,8 @@ class SessionsController extends Controller
             }
         }
 
-        return redirect()->route('sessions.index')
-            ->with('success', 'Séance créée avec succès.');
+        return redirect()->route('sessions.create')
+            ->with('success', 'Séance créée avec succès !');
     }
 
     /**
@@ -275,33 +289,52 @@ class SessionsController extends Controller
 
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
-            'customer_id' => ['nullable', 'exists:customers,id'],
-            'person_name' => ['nullable', 'string', 'max:255'],
+            'customer_ids' => ['nullable', 'array'], // Tableau de clients
+            'customer_ids.*' => ['required', 'integer', 'exists:customers,id'],
             'session_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
             'exercises' => ['required', 'array', 'min:1'],
             'exercises.*.exercise_id' => ['required', 'exists:exercises,id'],
-            'exercises.*.sets' => ['nullable', 'integer', 'min:1'],
-            'exercises.*.repetitions' => ['nullable', 'string'],
+            'exercises.*.sets' => ['nullable', 'array'], // Séries multiples
+            'exercises.*.sets.*.set_number' => ['required', 'integer', 'min:1'],
+            'exercises.*.sets.*.repetitions' => ['nullable', 'integer'],
+            'exercises.*.sets.*.weight' => ['nullable', 'numeric'],
+            'exercises.*.sets.*.rest_time' => ['nullable', 'string'],
+            'exercises.*.sets.*.duration' => ['nullable', 'string'],
+            'exercises.*.sets.*.order' => ['required', 'integer', 'min:0'],
+            // Champs pour compatibilité (si pas de séries multiples)
+            'exercises.*.repetitions' => ['nullable', 'integer'],
+            'exercises.*.weight' => ['nullable', 'numeric'],
             'exercises.*.rest_time' => ['nullable', 'string'],
             'exercises.*.duration' => ['nullable', 'string'],
             'exercises.*.description' => ['nullable', 'string'],
             'exercises.*.order' => ['required', 'integer', 'min:0'],
         ]);
 
-        // Vérifier que le client appartient à l'utilisateur si fourni
-        if (isset($validated['customer_id'])) {
-            $customer = Customer::where('id', $validated['customer_id'])
+        // Récupérer les IDs des clients
+        $customerIds = $validated['customer_ids'] ?? [];
+
+        // Vérifier que tous les clients appartiennent à l'utilisateur
+        if (!empty($customerIds)) {
+            $customers = Customer::whereIn('id', $customerIds)
                 ->where('user_id', Auth::id())
-                ->firstOrFail();
+                ->get();
+            
+            if ($customers->count() !== count($customerIds)) {
+                abort(403, 'Un ou plusieurs clients ne vous appartiennent pas.');
+            }
         }
 
         $session->update([
-            'customer_id' => $validated['customer_id'] ?? null,
-            'name' => $validated['name'] ?? 'Nouvelle Séance',
-            'notes' => $validated['notes'] ?? null,
+            'name' => $validated['name'] ?? $session->name,
+            'notes' => $validated['notes'] ?? $session->notes,
             'session_date' => $validated['session_date'] ?? $session->session_date,
         ]);
+
+        // Synchroniser les clients via la relation many-to-many
+        if (isset($validated['customer_ids'])) {
+            $session->customers()->sync($customerIds);
+        }
 
         // Synchroniser les exercices
         $session->exercises()->detach();

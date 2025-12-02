@@ -184,4 +184,14 @@
     body.dragging [draggable="true"] {
         will-change: transform;
     }
+    
+    /* Styles pour les notifications vue3-notification */
+    .vue-notification-wrapper {
+        padding: 1rem !important;
+        margin: 0 !important;
+    }
+    
+    .vue-notification-wrapper .vue-notification {
+        margin: 0 0 0.75rem 0 !important;
+    }
 }

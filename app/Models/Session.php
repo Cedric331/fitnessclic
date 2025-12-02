@@ -26,7 +26,6 @@ class Session extends Model
      */
     protected $fillable = [
         'user_id',
-        'customer_id',
         'name',
         'notes',
         'session_date',
@@ -53,11 +52,12 @@ class Session extends Model
     }
 
     /**
-     * Relation with the customer
+     * Relation with multiple customers (many-to-many)
      */
-    public function customer(): BelongsTo
+    public function customers(): BelongsToMany
     {
-        return $this->belongsTo(Customer::class, 'customer_id');
+        return $this->belongsToMany(Customer::class, 'session_customer', 'session_id', 'customer_id')
+            ->withTimestamps();
     }
 
     /**
