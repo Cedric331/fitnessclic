@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
     Search, 
-    Grid3x3, 
+    Grid3x3,
+    LayoutGrid,
+    Grid2x2,
     List, 
     Plus,
     Filter
@@ -18,13 +20,16 @@ const props = defineProps<{
     categories: Category[];
     searchTerm: string;
     selectedCategoryId: number | null;
-    viewMode: 'grid-2' | 'grid-4' | 'list';
+    viewMode: 'grid-2' | 'grid-4' | 'grid-6' | 'list';
+    showOnlyMine?: boolean;
+    currentUserId?: number;
 }>();
 
 const emit = defineEmits<{
     search: [term: string];
     categoryChange: [categoryId: number | null];
-    viewModeChange: [mode: 'grid-2' | 'grid-4' | 'list'];
+    viewModeChange: [mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list'];
+    filterChange: [showOnlyMine: boolean];
     addExercise: [exercise: Exercise];
 }>();
 
@@ -35,6 +40,8 @@ const gridColsClass = computed(() => {
             return 'grid-cols-2';
         case 'grid-4':
             return 'grid-cols-2 md:grid-cols-4';
+        case 'grid-6':
+            return 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6';
         case 'list':
             return '';
         default:
@@ -106,6 +113,30 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                     </select>
                 </div>
 
+                <!-- Filtre utilisateur -->
+                <div class="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :class="!showOnlyMine ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                        @click="emit('filterChange', false)"
+                        title="Tous les exercices"
+                    >
+                        <Filter class="h-4 w-4 mr-1" />
+                        <span class="text-xs">Tous</span>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :class="showOnlyMine ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                        @click="emit('filterChange', true)"
+                        title="Mes exercices uniquement"
+                    >
+                        <Filter class="h-4 w-4 mr-1" />
+                        <span class="text-xs">Mes exercices</span>
+                    </Button>
+                </div>
+
                 <!-- Mode d'affichage -->
                 <div class="flex items-center gap-1 border rounded-md p-0.5">
                     <Button
@@ -115,7 +146,7 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                         @click="emit('viewModeChange', 'grid-2')"
                         title="2 par ligne"
                     >
-                        <Grid3x3 class="h-4 w-4" />
+                        <Grid2x2 class="h-4 w-4" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -125,7 +156,15 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                         title="4 par ligne"
                     >
                         <Grid3x3 class="h-4 w-4" />
-                        <span class="ml-1 text-xs">4</span>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        :class="viewMode === 'grid-6' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                        @click="emit('viewModeChange', 'grid-6')"
+                        title="6 par ligne"
+                    >
+                        <LayoutGrid class="h-4 w-4" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -149,7 +188,7 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
 
             <!-- Vue en grille -->
             <div
-                v-else-if="viewMode === 'grid-2' || viewMode === 'grid-4'"
+                v-else-if="viewMode === 'grid-2' || viewMode === 'grid-4' || viewMode === 'grid-6'"
                 :class="['grid gap-4', gridColsClass]"
             >
                 <Card
@@ -245,19 +284,9 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
 
                             <!-- Informations -->
                             <div class="flex-1 min-w-0">
-                                <h3 class="font-semibold text-sm mb-1 line-clamp-1">
+                                <h3 class="font-semibold text-sm line-clamp-1">
                                     {{ exercise.title }}
                                 </h3>
-                                <div class="flex flex-wrap gap-1">
-                                    <Badge
-                                        v-for="category in (exercise.categories || []).slice(0, 3)"
-                                        :key="category.id"
-                                        variant="outline"
-                                        class="text-xs"
-                                    >
-                                        {{ category.name }}
-                                    </Badge>
-                                </div>
                             </div>
 
                             <!-- Bouton ajouter -->

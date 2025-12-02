@@ -6,13 +6,22 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { 
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { 
     GripVertical, 
     X, 
     RotateCcw, 
     Clock, 
     Pause,
     ChevronUp,
-    ChevronDown
+    ChevronDown,
+    AlertTriangle
 } from 'lucide-vue-next';
 import type { SessionExercise } from './types';
 
@@ -37,6 +46,7 @@ const emit = defineEmits<{
 }>();
 
 const isExpanded = ref(true);
+const showRemoveDialog = ref(false);
 
 const exercise = computed(() => props.sessionExercise.exercise);
 
@@ -44,10 +54,13 @@ const updateField = (field: keyof SessionExercise, value: any) => {
     emit('update', { [field]: value });
 };
 
-const handleRemove = () => {
-    if (confirm('Êtes-vous sûr de vouloir retirer cet exercice de la séance ?')) {
-        emit('remove');
-    }
+const handleRemoveClick = () => {
+    showRemoveDialog.value = true;
+};
+
+const confirmRemove = () => {
+    emit('remove');
+    showRemoveDialog.value = false;
 };
 
 // Log pour déboguer
@@ -185,7 +198,7 @@ watch(() => props.sessionExercise, () => {
                     variant="ghost"
                     size="sm"
                     class="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-                    @click.stop="handleRemove"
+                    @click.stop="handleRemoveClick"
                     @mousedown.stop
                     @dragstart.stop
                 >
@@ -209,5 +222,35 @@ watch(() => props.sessionExercise, () => {
         </CardContent>
         </Card>
     </div>
+
+    <!-- Modal de confirmation de suppression -->
+    <Dialog v-model:open="showRemoveDialog">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle class="flex items-center gap-2">
+                    <AlertTriangle class="h-5 w-5 text-red-600" />
+                    Retirer l'exercice
+                </DialogTitle>
+                <DialogDescription>
+                    Êtes-vous sûr de vouloir retirer <strong>{{ exercise?.title || 'cet exercice' }}</strong> de la séance ?
+                    Cette action peut être annulée en ajoutant à nouveau l'exercice.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+                <Button
+                    variant="outline"
+                    @click="showRemoveDialog = false"
+                >
+                    Annuler
+                </Button>
+                <Button
+                    variant="destructive"
+                    @click="confirmRemove"
+                >
+                    Retirer
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>
 

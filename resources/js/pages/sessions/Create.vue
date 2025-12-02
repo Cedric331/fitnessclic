@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const props = defineProps<CreateSessionProps>();
+const page = usePage();
+const currentUserId = computed(() => (page.props.auth as any)?.user?.id);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -57,7 +59,8 @@ const form = useForm({
 const searchTerm = ref(props.filters.search || '');
 const localSearchTerm = ref(props.filters.search || ''); // Pour la recherche locale avec debounce
 const selectedCategoryId = ref<number | null>(props.filters.category_id || null);
-const viewMode = ref<'grid-2' | 'grid-4' | 'list'>('grid-4');
+const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>('grid-4');
+const showOnlyMine = ref(false);
 const isSaving = ref(false);
 
 // Liste des exercices dans la séance (avec drag and drop)
@@ -282,6 +285,11 @@ watch(() => sessionExercises.value.length, () => {
 // Filtrer les exercices disponibles (recherche locale avec debounce)
 const filteredExercises = computed(() => {
     let exercises = props.exercises;
+
+    // Filtre par utilisateur (tous ou seulement les miens)
+    if (showOnlyMine.value && currentUserId.value) {
+        exercises = exercises.filter(ex => ex.user_id === currentUserId.value);
+    }
 
     // Recherche locale (instantanée)
     if (localSearchTerm.value.trim()) {
@@ -590,9 +598,12 @@ watch(sessionExercises, () => {
                         :search-term="localSearchTerm"
                         :selected-category-id="selectedCategoryId"
                         :view-mode="viewMode"
+                        :show-only-mine="showOnlyMine"
+                        :current-user-id="currentUserId"
                         @search="(term: string) => { localSearchTerm = term; }"
                         @category-change="(id: number | null) => { selectedCategoryId = id; }"
-                        @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'list') => viewMode = mode"
+                        @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
+                        @filter-change="(showOnly: boolean) => { showOnlyMine = showOnly; }"
                         @add-exercise="addExerciseToSession"
                     />
                 </div>
