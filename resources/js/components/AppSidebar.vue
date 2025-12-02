@@ -38,7 +38,7 @@ const { getInitials } = useInitials();
 const mainNavItems: NavItem[] = [
     {
         title: 'Mes Séances',
-        href: '/client/sessions',
+        href: '/sessions',
         icon: Dumbbell,
     },
     {
@@ -118,7 +118,7 @@ const handleLogout = () => {
                             as-child
                             class="w-full bg-blue-600 hover:bg-blue-700 text-white justify-start gap-2 h-10"
                         >
-                            <Link href="/client/sessions/create">
+                            <Link href="/sessions/create">
                                 <Plus class="size-4" />
                                 <span>Créer une Séance</span>
                             </Link>

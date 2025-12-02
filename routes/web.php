@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\ExercisesController;
+use App\Http\Controllers\SessionsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -27,10 +28,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Exercises routes
     Route::get('/exercises', [ExercisesController::class, 'index'])->name('exercises.index');
-    Route::get('/exercises/available', [ExercisesController::class, 'available'])->name('exercises.available');
     Route::get('/exercises/{exercise}', [ExercisesController::class, 'show'])->name('exercises.show');
     Route::post('/exercises', [ExercisesController::class, 'store'])->name('exercises.store');
-    Route::post('/exercises/{exercise}/import', [ExercisesController::class, 'import'])->name('exercises.import');
+    Route::post('/exercises/upload-files', [ExercisesController::class, 'uploadFiles'])->name('exercises.upload-files');
     Route::put('/exercises/{exercise}', [ExercisesController::class, 'update'])->name('exercises.update');
     Route::delete('/exercises/{exercise}', [ExercisesController::class, 'destroy'])->name('exercises.destroy');
 
@@ -39,6 +39,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/categories', [CategoriesController::class, 'store'])->name('categories.store');
     Route::patch('/categories/{category}', [CategoriesController::class, 'update'])->name('categories.update');
     Route::delete('/categories/{category}', [CategoriesController::class, 'destroy'])->name('categories.destroy');
+
+    // Sessions routes
+    Route::get('/sessions', [SessionsController::class, 'index'])->name('sessions.index');
+    Route::get('/sessions/create', [SessionsController::class, 'create'])->name('sessions.create');
+    Route::post('/sessions', [SessionsController::class, 'store'])->name('sessions.store');
+    Route::get('/sessions/{session}', [SessionsController::class, 'show'])->name('sessions.show');
+    Route::get('/sessions/{session}/edit', [SessionsController::class, 'edit'])->name('sessions.edit');
+    Route::put('/sessions/{session}', [SessionsController::class, 'update'])->name('sessions.update');
+    Route::delete('/sessions/{session}', [SessionsController::class, 'destroy'])->name('sessions.destroy');
+    Route::get('/sessions/{session}/pdf', [SessionsController::class, 'pdf'])->name('sessions.pdf');
 });
 
 // Pages légales

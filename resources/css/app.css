@@ -169,4 +169,19 @@
     body {
         @apply bg-background text-foreground;
     }
+    
+    /* Désactiver les transitions pendant le drag pour éviter les tremblements */
+    body.dragging * {
+        transition: none !important;
+    }
+    
+    /* Améliorer la performance du drag and drop */
+    [draggable="true"] {
+        -webkit-user-drag: element;
+        user-select: none;
+    }
+    
+    body.dragging [draggable="true"] {
+        will-change: transform;
+    }
 }

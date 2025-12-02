@@ -11,7 +11,7 @@ import ExerciseListItem from './ExerciseListItem.vue';
 import ExerciseFormDialog from './ExerciseFormDialog.vue';
 import ExerciseImportDialog from './ExerciseImportDialog.vue';
 import ExerciseDeleteDialog from './ExerciseDeleteDialog.vue';
-import type { ExercisesProps } from './types';
+import type { Exercise, ExercisesProps } from './types';
 
 const props = defineProps<ExercisesProps>();
 
@@ -153,7 +153,7 @@ const initialSearch = cachedFilters?.search ?? props.filters?.search ?? '';
 const initialCategory = cachedFilters?.category_id ?? props.filters?.category_id ?? null;
 const initialSort = cachedFilters?.sort ?? props.filters?.sort ?? 'newest';
 // Le mode d'affichage utilise un cache séparé avec une durée plus longue (1 semaine)
-const initialView = cachedViewMode?.view ?? props.filters?.view ?? 'grid-4';
+const initialView = cachedViewMode?.view ?? props.filters?.view ?? 'grid-6';
 
 const searchTerm = ref(initialSearch);
 const categoryFilter = ref<number | null>(initialCategory);
@@ -214,14 +214,16 @@ watch(
     },
 );
 
-const allExercises = ref<Array<{ id: number; name: string; image_url: string; category_name: string; created_at: string }>>([]);
-const lastPageLoaded = ref(0);
+const allExercises = ref<Exercise[]>([]);
+const lastPageLoaded = ref<number>(0);
 const loadingPage = ref<number | null>(null);
 
 // Initialiser avec les données de la première page
 watch(
     () => [props.exercises?.data, props.exercises?.current_page],
-    ([newData, pageNumber]) => {
+    (values) => {
+        const newData = values[0] as Exercise[] | undefined;
+        const pageNumber = values[1] as number | undefined;
         const currentPageNum = pageNumber ?? 1;
         
         // Ignorer si on a déjà traité cette page
@@ -429,7 +431,6 @@ const editingExercise = ref<{
     description?: string | null;
     suggested_duration?: string | null;
     image_url: string;
-    is_shared?: boolean;
     category_ids?: number[];
     created_at: string;
 } | null>(null);
@@ -466,7 +467,6 @@ const handleEditExercise = async (exercise: { id: number; name: string; image_ur
                 description: exerciseData.description || null,
                 suggested_duration: exerciseData.suggested_duration || null,
                 image_url: exerciseData.image_url || '',
-                is_shared: exerciseData.is_shared || false,
                 category_ids: categories.map((cat: { id: number }) => cat.id),
                 created_at: exerciseData.created_at,
             };
@@ -612,7 +612,7 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
 
         <ExerciseImportDialog
             v-model:open="isImportDialogOpen"
-            :user-exercise-ids="props.imported_public_exercise_ids || []"
+            :categories="props.categories"
             @imported="() => {
                 isImportDialogOpen = false;
                 applyFilters(true);

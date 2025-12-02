@@ -18,7 +18,6 @@ interface Exercise {
     description: string | null;
     suggested_duration: string | null;
     image_url: string | null;
-    is_shared: boolean;
     created_at: string;
     user_id: number;
     user_name: string | null;
@@ -87,8 +86,8 @@ const canEdit = computed(() => {
 });
 const canDelete = computed(() => {
     const user = (page.props as any).auth?.user;
-    // L'utilisateur peut supprimer ses propres exercices (y compris ceux importés)
-    return user && user.id === props.exercise.user_id;
+    // Seul le créateur ou un admin peut supprimer
+    return user && (user.id === props.exercise.user_id || user.role === 'admin');
 });
 
 const formatDate = (value?: string | null) => {
@@ -150,13 +149,6 @@ const formatSessionDate = (date: string | null) => {
                         <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">
                             {{ exercise.title }}
                         </h1>
-                        <Badge
-                            v-if="exercise.is_shared"
-                            variant="outline"
-                            class="text-xs"
-                        >
-                            Partagé
-                        </Badge>
                     </div>
                     <p class="text-sm text-slate-500 dark:text-slate-400">
                         Créé le {{ formatDate(exercise.created_at) }}
@@ -281,17 +273,6 @@ const formatSessionDate = (date: string | null) => {
                                 </p>
                             </div>
                             <Separator v-if="exercise.suggested_duration" />
-                            <div>
-                                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                    Statut
-                                </p>
-                                <Badge
-                                    :variant="exercise.is_shared ? 'default' : 'outline'"
-                                    class="mt-1"
-                                >
-                                    {{ exercise.is_shared ? 'Partagé' : 'Privé' }}
-                                </Badge>
-                            </div>
                         </CardContent>
                     </Card>
 
@@ -331,7 +312,6 @@ const formatSessionDate = (date: string | null) => {
                 description: exercise.description,
                 suggested_duration: exercise.suggested_duration,
                 image_url: exercise.image_url,
-                is_shared: exercise.is_shared,
                 category_id: categories.length > 0 ? categories[0].id : null,
                 created_at: exercise.created_at,
             }"

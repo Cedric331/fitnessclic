@@ -2,7 +2,7 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { CheckCircle2, Search, XCircle } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import type { BreadcrumbItemType } from '@/types';
@@ -39,9 +39,7 @@ const flashMessage = computed(() => {
     };
 });
 
-const searchForm = useForm({
-    search: props.filters?.search ?? '',
-});
+const searchTerm = ref(props.filters?.search ?? '');
 
 const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
@@ -49,13 +47,10 @@ const editingCategory = ref<Category | null>(null);
 const isDeleteDialogOpen = ref(false);
 const deletingCategory = ref<Category | null>(null);
 
-watch(
-    () => props.filters,
-    (filters) => {
-        searchForm.search = filters?.search ?? '';
-    },
-    { immediate: true, deep: true },
-);
+// Synchroniser searchTerm avec les props
+watch(() => props.filters?.search, (value) => {
+    searchTerm.value = value ?? '';
+});
 
 watch(isEditDialogOpen, (open) => {
     if (!open) {
@@ -70,7 +65,7 @@ watch(isDeleteDialogOpen, (open) => {
 });
 
 const applyFilters = () => {
-    const trimmedSearch = searchForm.search?.trim() ?? '';
+    const trimmedSearch = searchTerm.value?.trim() ?? '';
     const query: Record<string, string> = {};
 
     if (trimmedSearch.length) {
@@ -82,6 +77,31 @@ const applyFilters = () => {
         preserveState: true,
     });
 };
+
+// Recherche en temps réel avec debounce
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+let isInitialMount = true;
+
+watch(searchTerm, (newValue, oldValue) => {
+    // Ignorer la première synchronisation lors du montage
+    if (isInitialMount) {
+        isInitialMount = false;
+        return;
+    }
+    
+    // Si la valeur n'a pas changé, ne pas rechercher
+    if (newValue === oldValue) {
+        return;
+    }
+    
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    
+    searchTimeout = setTimeout(() => {
+        applyFilters();
+    }, 300); // 300ms de délai
+});
 
 const startEditCategory = (category: Category) => {
     editingCategory.value = category;
@@ -137,17 +157,16 @@ const startDeleteCategory = (category: Category) => {
                 </Alert>
             </div>
 
-            <form @submit.prevent="applyFilters" class="relative">
+            <div class="relative">
                 <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-300" />
                 <Input
-                    v-model="searchForm.search"
+                    v-model="searchTerm"
                     id="category-search"
                     type="text"
                     placeholder="Rechercher une catégorie..."
                     class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-slate-900 shadow-sm transition focus:border-blue-500 focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
-                    @keyup.enter="applyFilters"
                 />
-            </form>
+            </div>
 
             <div class="grid gap-4 lg:grid-cols-2">
                 <CategorySection

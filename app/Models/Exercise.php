@@ -23,14 +23,9 @@ class Exercise extends Model implements HasMedia
      */
     protected static function booted(): void
     {
-        // If an admin creates an exercise, it is automatically shared
+        // All exercises are public by default
         static::creating(function (Exercise $exercise) {
-            if ($exercise->user_id) {
-                $user = \App\Models\User::find($exercise->user_id);
-                if ($user && $user->isAdmin()) {
-                    $exercise->is_shared = true;
-                }
-            }
+            $exercise->is_shared = true;
         });
     }
 
@@ -86,24 +81,6 @@ class Exercise extends Model implements HasMedia
             ->orderByPivot('order');
     }
 
-    /**
-     * Scope for shared exercises
-     */
-    public function scopeShared($query)
-    {
-        return $query->where('is_shared', true);
-    }
-
-    /**
-     * Scope for exercises available to a user (owned or shared)
-     */
-    public function scopeAvailableForUser($query, int $userId)
-    {
-        return $query->where(function ($q) use ($userId) {
-            $q->where('user_id', $userId)
-                ->orWhere('is_shared', true);
-        });
-    }
 
     /**
      * Get the URL of the image of the exercise

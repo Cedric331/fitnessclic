@@ -42,9 +42,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const searchForm = useForm({
-    search: props.filters.search || '',
-});
+const searchTerm = ref(props.filters.search || '');
 
 const searchInput = ref<HTMLInputElement | null>(null);
 const isCreateDialogOpen = ref(false);
@@ -54,12 +52,47 @@ const isDeleteDialogOpen = ref(false);
 const customerToDelete = ref<Customer | null>(null);
 const isDeleteProcessing = ref(false);
 
+// Synchroniser searchTerm avec les props
+watch(() => props.filters.search, (value) => {
+    searchTerm.value = value || '';
+});
+
 const handleSearch = () => {
-    searchForm.get('/customers', {
+    const query: Record<string, string> = {};
+    if (searchTerm.value.trim()) {
+        query.search = searchTerm.value.trim();
+    }
+    
+    router.get('/customers', query, {
         preserveState: true,
         preserveScroll: true,
     });
 };
+
+// Recherche en temps réel avec debounce
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+let isInitialMount = true;
+
+watch(searchTerm, (newValue, oldValue) => {
+    // Ignorer la première synchronisation lors du montage
+    if (isInitialMount) {
+        isInitialMount = false;
+        return;
+    }
+    
+    // Si la valeur n'a pas changé, ne pas rechercher
+    if (newValue === oldValue) {
+        return;
+    }
+    
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    
+    searchTimeout = setTimeout(() => {
+        handleSearch();
+    }, 300); // 300ms de délai
+});
 
 const handleEditCustomer = (customer: Customer) => {
     editingCustomer.value = customer;
@@ -145,16 +178,13 @@ watch(isDeleteDialogOpen, (open) => {
                 <Search
                     class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
                 />
-                <form @submit.prevent="handleSearch">
-                    <Input
-                        ref="searchInput"
-                        v-model="searchForm.search"
-                        type="text"
-                        placeholder="Rechercher un client..."
-                        class="w-full pl-10"
-                        @keyup.enter="handleSearch"
-                    />
-                </form>
+                <Input
+                    ref="searchInput"
+                    v-model="searchTerm"
+                    type="text"
+                    placeholder="Rechercher un client..."
+                    class="w-full pl-10"
+                />
             </div>
 
             <!-- Customer List -->

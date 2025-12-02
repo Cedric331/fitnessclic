@@ -2,6 +2,7 @@ export interface Exercise {
     id: number;
     name: string;
     image_url: string;
+    user_id?: number;
     category_name: string;
     categories?: Array<{
         id: number;

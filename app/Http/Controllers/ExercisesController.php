@@ -19,9 +19,10 @@ class ExercisesController extends Controller
         $searchTerm = trim((string) $request->input('search', ''));
         $categoryId = $request->input('category_id');
         $sortOrder = $request->input('sort', 'newest');
-        $viewMode = $request->input('view', 'grid-4');
+        $viewMode = $request->input('view', 'grid-6');
 
-        $exercisesQuery = Exercise::availableForUser(Auth::id())
+        $exercisesQuery = Exercise::query()
+            ->where('is_shared', true) // Seulement les exercices visibles (non cachés par l'admin)
             ->with('categories')
             ->when($searchTerm !== '', fn ($query) => $query->where('title', 'like', "%{$searchTerm}%"))
             ->when($categoryId, fn ($query, $value) => $query->whereHas('categories', fn ($query) => $query->where('categories.id', $value)));
@@ -35,34 +36,13 @@ class ExercisesController extends Controller
         $perPage = 24;
         $exercises = $exercisesQuery->paginate($perPage);
 
-        // Récupérer les IDs des exercices publics que l'utilisateur a déjà importés
-        // (même titre et description)
-        $userOwnedExercises = Exercise::where('user_id', Auth::id())
-            ->get(['title', 'description']);
-        
-        $importedPublicExerciseIds = [];
-        if ($userOwnedExercises->isNotEmpty()) {
-            $publicExercises = Exercise::shared()
-                ->where('user_id', '!=', Auth::id())
-                ->get(['id', 'title', 'description']);
-            
-            foreach ($publicExercises as $publicExercise) {
-                foreach ($userOwnedExercises as $userExercise) {
-                    if ($publicExercise->title === $userExercise->title 
-                        && $publicExercise->description === $userExercise->description) {
-                        $importedPublicExerciseIds[] = $publicExercise->id;
-                        break;
-                    }
-                }
-            }
-        }
-
         return Inertia::render('exercises/Index', [
             'exercises' => [
                 'data' => $exercises->map(fn (Exercise $exercise) => [
                     'id' => $exercise->id,
                     'name' => $exercise->title,
                     'image_url' => $exercise->image_url,
+                    'user_id' => $exercise->user_id,
                     'category_name' => $exercise->categories->isNotEmpty() 
                         ? $exercise->categories->pluck('name')->join(', ') 
                         : 'Sans catégorie',
@@ -82,10 +62,9 @@ class ExercisesController extends Controller
                 'search' => $searchTerm ?: null,
                 'category_id' => $categoryId ? (int) $categoryId : null,
                 'sort' => in_array($sortOrder, ['newest', 'oldest'], true) ? $sortOrder : 'newest',
-                'view' => in_array($viewMode, ['grid-2', 'grid-4', 'grid-6', 'grid-8'], true) ? $viewMode : 'grid-4',
+                'view' => in_array($viewMode, ['grid-2', 'grid-4', 'grid-6', 'grid-8'], true) ? $viewMode : 'grid-6',
             ],
             'categories' => Category::orderBy('name')->get(['id', 'name']),
-            'imported_public_exercise_ids' => $importedPublicExerciseIds,
         ]);
     }
 
@@ -101,7 +80,6 @@ class ExercisesController extends Controller
             'category_ids' => ['required', 'array', 'min:1'],
             'category_ids.*' => ['required', 'exists:categories,id'],
             'image' => ['required', 'image', 'max:5120'], // 5MB max
-            'is_shared' => ['boolean'],
         ]);
 
         $exercise = Exercise::create([
@@ -109,7 +87,7 @@ class ExercisesController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'suggested_duration' => $validated['suggested_duration'] ?? null,
-            'is_shared' => $validated['is_shared'] ?? false,
+            'is_shared' => true, // All exercises are public by default
         ]);
 
         // Attacher les catégories
@@ -146,14 +124,13 @@ class ExercisesController extends Controller
             'category_ids' => ['required', 'array', 'min:1'],
             'category_ids.*' => ['required', 'exists:categories,id'],
             'image' => ['nullable', 'image', 'max:5120'], // 5MB max, nullable pour l'édition
-            'is_shared' => ['boolean'],
         ]);
 
         $exercise->update([
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'suggested_duration' => $validated['suggested_duration'] ?? null,
-            'is_shared' => $validated['is_shared'] ?? false,
+            'is_shared' => true, // All exercises are public
         ]);
 
         // Mettre à jour les catégories
@@ -178,20 +155,22 @@ class ExercisesController extends Controller
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
         
-        // Vérifier que l'utilisateur peut voir cet exercice
-        if ($exercise->user_id !== Auth::id() && (!$user || !$user->isAdmin()) && !$exercise->is_shared) {
-            // Si c'est une requête AJAX avec le paramètre json=true (mais pas Inertia), retourner du JSON
-            $isInertiaRequest = $request->header('X-Inertia') !== null;
-            $wantsJson = $request->has('json') || ($request->wantsJson() && !$isInertiaRequest);
-            
-            if ($wantsJson && !$isInertiaRequest) {
-                return response()->json(['error' => 'Vous n\'avez pas les permissions pour voir cet exercice.'], 403);
-            }
+        // Vérifier que l'exercice est visible (non caché par l'admin)
+        if (!$exercise->is_shared) {
             return redirect()->route('exercises.index')
-                ->with('error', 'Vous n\'avez pas les permissions pour voir cet exercice.');
+                ->with('error', 'Cet exercice n\'est pas disponible.');
         }
 
-        $exercise->load(['categories', 'sessions.customer', 'user']);
+        $userId = Auth::id();
+        
+        // Charger les catégories et l'utilisateur créateur
+        $exercise->load(['categories', 'user']);
+
+        // Charger uniquement les séances de l'utilisateur connecté
+        $userSessions = $exercise->sessions()
+            ->where('user_id', $userId)
+            ->with('customer')
+            ->get();
 
         $data = [
             'exercise' => [
@@ -200,7 +179,6 @@ class ExercisesController extends Controller
                 'description' => $exercise->description,
                 'suggested_duration' => $exercise->suggested_duration,
                 'image_url' => $exercise->image_url,
-                'is_shared' => $exercise->is_shared,
                 'created_at' => optional($exercise->created_at)->toDateTimeString(),
                 'user_id' => $exercise->user_id,
                 'user_name' => $exercise->user?->name,
@@ -221,8 +199,8 @@ class ExercisesController extends Controller
             return response()->json($data);
         }
 
-        // Sinon, retourner la page Inertia complète
-        $data['sessions'] = $exercise->sessions->map(fn ($session) => [
+        // Sinon, retourner la page Inertia complète avec seulement les séances de l'utilisateur
+        $data['sessions'] = $userSessions->map(fn ($session) => [
             'id' => $session->id,
             'name' => $session->name,
             'session_date' => optional($session->session_date)->format('Y-m-d'),
@@ -243,109 +221,70 @@ class ExercisesController extends Controller
         return Inertia::render('exercises/Show', $data);
     }
 
-    /**
-     * Get available public exercises for import (excluding user's own exercises and already imported ones).
-     */
-    public function available(Request $request)
-    {
-        $userId = Auth::id();
-        
-        // Récupérer les exercices publics qui ne sont pas déjà possédés par l'utilisateur
-        $availableExercises = Exercise::shared()
-            ->where('user_id', '!=', $userId)
-            ->with(['categories', 'user'])
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // Récupérer les exercices que l'utilisateur possède déjà
-        $userExercises = Exercise::where('user_id', $userId)->get(['title', 'description']);
-        
-        // Filtrer les exercices publics pour exclure ceux que l'utilisateur a déjà importés
-        // (même titre et description)
-        $filteredExercises = $availableExercises->filter(function ($exercise) use ($userExercises) {
-            return !$userExercises->contains(function ($userExercise) use ($exercise) {
-                return $userExercise->title === $exercise->title 
-                    && $userExercise->description === $exercise->description;
-            });
-        });
-
-        $data = [
-            'exercises' => $filteredExercises->map(fn (Exercise $exercise) => [
-                'id' => $exercise->id,
-                'title' => $exercise->title,
-                'description' => $exercise->description,
-                'image_url' => $exercise->image_url,
-                'category_name' => $exercise->categories->first()?->name ?? 'Sans catégorie',
-                'user_name' => $exercise->user?->name,
-                'created_at' => optional($exercise->created_at)->toDateTimeString(),
-            ])->values(),
-        ];
-
-        // Si c'est une requête AJAX (mais pas Inertia), retourner du JSON
-        $isInertiaRequest = $request->header('X-Inertia') !== null;
-        $wantsJson = $request->has('json') || ($request->wantsJson() && !$isInertiaRequest);
-        
-        if ($wantsJson && !$isInertiaRequest) {
-            return response()->json($data);
-        }
-
-        return response()->json($data);
-    }
 
     /**
-     * Import a shared exercise (create a copy for the current user).
+     * Upload multiple files to create exercises.
+     * Each file will create an exercise with the filename (without extension) as the title.
      */
-    public function import(Exercise $exercise)
+    public function uploadFiles(Request $request)
     {
-        $userId = Auth::id();
-        
-        // Vérifier que l'exercice est public
-        if (!$exercise->is_shared) {
-            return redirect()->route('exercises.index')
-                ->with('error', 'Cet exercice n\'est pas public et ne peut pas être importé.');
-        }
-
-        // Vérifier que l'utilisateur ne possède pas déjà cet exercice
-        if ($exercise->user_id === $userId) {
-            return redirect()->route('exercises.index')
-                ->with('error', 'Vous possédez déjà cet exercice.');
-        }
-
-        // Vérifier qu'on n'a pas déjà importé cet exercice
-        $existingExercise = Exercise::where('user_id', $userId)
-            ->where('title', $exercise->title)
-            ->where('description', $exercise->description)
-            ->first();
-
-        if ($existingExercise) {
-            return redirect()->route('exercises.index')
-                ->with('error', 'Vous avez déjà importé cet exercice.');
-        }
-
-        // Créer une copie de l'exercice pour l'utilisateur
-        $newExercise = Exercise::create([
-            'user_id' => $userId,
-            'title' => $exercise->title,
-            'description' => $exercise->description,
-            'suggested_duration' => $exercise->suggested_duration,
-            'is_shared' => false, // L'exercice importé est privé par défaut
+        $validated = $request->validate([
+            'files' => ['required', 'array', 'min:1'],
+            'files.*' => ['required', 'image', 'max:5120'], // 5MB max per file
+            'category_ids' => ['required', 'array', 'min:1'],
+            'category_ids.*' => ['required', 'exists:categories,id'],
         ]);
 
-        // Copier les catégories
-        $categoryIds = $exercise->categories->pluck('id')->toArray();
-        if (!empty($categoryIds)) {
-            $newExercise->categories()->attach($categoryIds);
+        $userId = Auth::id();
+        $createdCount = 0;
+        $errors = [];
+        $files = $request->file('files');
+        $categoryIds = $validated['category_ids'];
+
+        foreach ($files as $file) {
+            try {
+                // Get filename without extension
+                $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                
+                // Create exercise with filename as title
+                $exercise = Exercise::create([
+                    'user_id' => $userId,
+                    'title' => $filename,
+                    'description' => null,
+                    'suggested_duration' => null,
+                    'is_shared' => true, // All exercises are public by default
+                ]);
+
+                // Attach categories
+                $exercise->categories()->attach($categoryIds);
+
+                // Add the image
+                $exercise->addMedia($file)
+                    ->usingName($filename)
+                    ->toMediaCollection(Exercise::MEDIA_IMAGE, Exercise::MEDIA_DISK);
+
+                $createdCount++;
+            } catch (\Exception $e) {
+                $errors[] = 'Erreur lors de la création de l\'exercice pour ' . $file->getClientOriginalName() . ': ' . $e->getMessage();
+            }
         }
 
-        // Copier l'image si elle existe
-        $originalMedia = $exercise->getFirstMedia(Exercise::MEDIA_IMAGE);
-        if ($originalMedia) {
-            $newExercise->addMediaFromUrl($originalMedia->getUrl())
-                ->toMediaCollection(Exercise::MEDIA_IMAGE, Exercise::MEDIA_DISK);
+        if ($createdCount > 0) {
+            $message = $createdCount . ' exercice(s) créé(s) avec succès.';
+            if (!empty($errors)) {
+                $message .= ' ' . count($errors) . ' erreur(s) rencontrée(s) : ' . implode(', ', $errors);
+            }
+            return redirect()->route('exercises.index')
+                ->with('success', $message);
         }
 
+        $errorMessage = 'Aucun exercice n\'a pu être créé.';
+        if (!empty($errors)) {
+            $errorMessage .= ' ' . implode(', ', $errors);
+        }
+        
         return redirect()->route('exercises.index')
-            ->with('success', 'Exercice importé avec succès.');
+            ->with('error', $errorMessage);
     }
 
     /**
@@ -353,11 +292,12 @@ class ExercisesController extends Controller
      */
     public function destroy(Exercise $exercise)
     {
-        $userId = Auth::id();
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
         
         // Vérifier que l'utilisateur peut supprimer cet exercice
-        // Seul le propriétaire peut supprimer (y compris les exercices importés)
-        if ($exercise->user_id !== $userId) {
+        // Seul le créateur ou un admin peut supprimer
+        if ($exercise->user_id !== Auth::id() && (!$user || !$user->isAdmin())) {
             return redirect()->route('exercises.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour supprimer cet exercice.');
         }

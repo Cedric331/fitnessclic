@@ -3,7 +3,6 @@ import { useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import {
     Dialog,
@@ -54,7 +53,6 @@ const exerciseForm = useForm({
     suggested_duration: '',
     category_ids: [] as number[],
     image: null as File | null,
-    is_shared: false,
 });
 
 // Initialiser le formulaire avec les données de l'exercice en mode édition
@@ -65,7 +63,6 @@ watch(
             exerciseForm.title = exercise.name || (exercise as any).title || '';
             exerciseForm.description = (exercise as any).description || '';
             exerciseForm.suggested_duration = (exercise as any).suggested_duration || '';
-            exerciseForm.is_shared = (exercise as any).is_shared || false;
             exerciseForm.category_ids = (exercise as any).category_ids || [];
             imagePreview.value = exercise.image_url || null;
             imageFile.value = null;
@@ -82,20 +79,17 @@ watch(isOpen, (open) => {
             exerciseForm.title = props.exercise.name || (props.exercise as any).title || '';
             exerciseForm.description = (props.exercise as any).description || '';
             exerciseForm.suggested_duration = (props.exercise as any).suggested_duration || '';
-            exerciseForm.is_shared = (props.exercise as any).is_shared || false;
             exerciseForm.category_id = (props.exercise as any).category_id || null;
             imagePreview.value = props.exercise.image_url || null;
             imageFile.value = null;
         } else {
             // Mode création
             exerciseForm.reset();
-            exerciseForm.is_shared = false;
             imagePreview.value = null;
             imageFile.value = null;
         }
     } else {
         exerciseForm.reset();
-        exerciseForm.is_shared = false;
         imagePreview.value = null;
         imageFile.value = null;
     }
@@ -107,7 +101,6 @@ watch(() => props.exercise, (exercise) => {
         exerciseForm.title = exercise.name || (exercise as any).title || '';
         exerciseForm.description = (exercise as any).description || '';
         exerciseForm.suggested_duration = (exercise as any).suggested_duration || '';
-        exerciseForm.is_shared = (exercise as any).is_shared || false;
         exerciseForm.category_id = (exercise as any).category_id || null;
         imagePreview.value = exercise.image_url || null;
         imageFile.value = null;
@@ -150,7 +143,6 @@ const handleSubmit = () => {
             onSuccess: () => {
                 isOpen.value = false;
                 exerciseForm.reset();
-                exerciseForm.is_shared = false;
                 imagePreview.value = null;
                 imageFile.value = null;
             },
@@ -163,7 +155,6 @@ const handleSubmit = () => {
             onSuccess: () => {
                 isOpen.value = false;
                 exerciseForm.reset();
-                exerciseForm.is_shared = false;
                 imagePreview.value = null;
                 imageFile.value = null;
             },
@@ -304,20 +295,6 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
                     </p>
                 </div>
 
-                <!-- Partagé -->
-                <div class="flex items-center space-x-2 pt-2">
-                    <Checkbox
-                        :id="`is_shared_${formId}`"
-                        :model-value="exerciseForm.is_shared"
-                        @update:model-value="(checked: boolean) => exerciseForm.is_shared = checked"
-                    />
-                    <Label
-                        :for="`is_shared_${formId}`"
-                        class="text-sm font-normal cursor-pointer text-slate-700 dark:text-slate-300"
-                    >
-                        Partager cet exercice avec les autres membres
-                    </Label>
-                </div>
             </form>
             <Separator />
             <DialogFooter class="px-6 py-4 bg-slate-50 dark:bg-slate-900/50">

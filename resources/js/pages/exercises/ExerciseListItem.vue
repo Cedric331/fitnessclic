@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Exercise } from './types';
 import { computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { Edit, Eye, Trash2 } from 'lucide-vue-next';
 
 const props = defineProps<{
@@ -15,6 +15,17 @@ const emit = defineEmits<{
     edit: [exercise: Exercise];
     delete: [exercise: Exercise];
 }>();
+
+const page = usePage();
+const canEdit = computed(() => {
+    const user = (page.props as any).auth?.user;
+    return user && (user.id === props.exercise.user_id || user.role === 'admin');
+});
+
+const canDelete = computed(() => {
+    const user = (page.props as any).auth?.user;
+    return user && (user.id === props.exercise.user_id || user.role === 'admin');
+});
 
 const formattedDate = computed(() => {
     if (!props.exercise.created_at) {
@@ -102,28 +113,27 @@ const handleDelete = (event: Event) => {
                         class="h-7 px-2 text-xs"
                         @click="handleView"
                     >
-                        <Eye class="size-3 mr-1" />
-                        Voir
+                        <Eye class="size-4 mr-1" />
                     </Button>
                     <Button
+                        v-if="canEdit"
                         type="button"
                         variant="ghost"
                         size="sm"
                         class="h-7 px-2 text-xs"
                         @click="handleEdit"
                     >
-                        <Edit class="size-3 mr-1" />
-                        Modifier
+                        <Edit class="size-4 mr-1" />
                     </Button>
                     <Button
+                        v-if="canDelete"
                         type="button"
                         variant="ghost"
                         size="sm"
                         class="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
                         @click="handleDelete"
                     >
-                        <Trash2 class="size-3 mr-1" />
-                        Supprimer
+                        <Trash2 class="size-4 mr-1" />
                     </Button>
                 </div>
             </div>
