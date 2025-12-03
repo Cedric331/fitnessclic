@@ -15,6 +15,7 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
     delete: [session: Session];
+    sendEmail: [session: Session];
 }>();
 
 const formatDate = (dateString?: string | null) => {
@@ -39,9 +40,8 @@ const handleView = () => {
     router.visit(`/sessions/${props.session.id}`);
 };
 
-const handleShare = () => {
-    // TODO: Implémenter le partage
-    console.log('Partager la séance', props.session.id);
+const handleSendEmail = () => {
+    emit('sendEmail', props.session);
 };
 
 // Obtenir les premières images d'exercices
@@ -134,8 +134,8 @@ const remainingExercises = computed(() => {
                         variant="ghost"
                         size="icon"
                         class="h-7 w-7"
-                        :title="'Partager'"
-                        @click="handleShare"
+                        :title="'Envoyer par email'"
+                        @click="handleSendEmail"
                     >
                         <Send class="size-3.5 text-slate-600 dark:text-slate-400" />
                     </Button>

@@ -34,18 +34,20 @@ const emit = defineEmits<{
 }>();
 
 // Classes CSS pour les différents modes d'affichage
+// Sur mobile/tablette (< lg), imposer un affichage responsive (grid-cols-2 sm:grid-cols-3)
+// Sur desktop (>= lg), utiliser le mode sélectionné
 const gridColsClass = computed(() => {
     switch (props.viewMode) {
         case 'grid-2':
-            return 'grid-cols-2';
+            return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-2';
         case 'grid-4':
-            return 'grid-cols-2 md:grid-cols-4';
+            return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
         case 'grid-6':
-            return 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6';
+            return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6';
         case 'list':
             return '';
         default:
-            return 'grid-cols-2 md:grid-cols-4';
+            return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
     }
 });
 
@@ -137,8 +139,8 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                     </Button>
                 </div>
 
-                <!-- Mode d'affichage -->
-                <div class="flex items-center gap-1 border rounded-md p-0.5">
+                <!-- Mode d'affichage - uniquement sur desktop -->
+                <div class="hidden lg:flex items-center gap-1 border rounded-md p-0.5">
                     <Button
                         variant="ghost"
                         size="sm"

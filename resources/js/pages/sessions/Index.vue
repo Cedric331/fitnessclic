@@ -5,35 +5,55 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import type { BreadcrumbItem } from '@/types';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle2, XCircle } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
+import { useNotifications } from '@/composables/useNotifications';
 import { Plus } from 'lucide-vue-next';
 import SessionList from './SessionList.vue';
 import SessionDeleteDialog from './SessionDeleteDialog.vue';
-import type { Session, SessionsProps } from './types';
+import type { Session, SessionsProps, Customer } from './types';
+import { 
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 const props = defineProps<SessionsProps>();
 const page = usePage();
+const { success: notifySuccess, error: notifyError } = useNotifications();
 
-// Messages flash
-const flashMessage = computed(() => {
-    const flash = (page.props as any).flash;
-    if (!flash) return null;
-    return {
-        success: flash.success || null,
-        error: flash.error || null,
-    };
-});
+// Écouter les messages flash et les convertir en notifications
+// Utiliser un Set pour éviter les doublons
+const shownFlashMessages = ref(new Set<string>());
 
-// Fermer automatiquement les messages après 5 secondes
-watch(flashMessage, (newValue) => {
-    if (newValue?.success || newValue?.error) {
+watch(() => (page.props as any).flash, (flash) => {
+    if (!flash) return;
+    
+    // Créer une clé unique pour chaque message
+    const successKey = flash.success ? `success-${flash.success}` : null;
+    const errorKey = flash.error ? `error-${flash.error}` : null;
+    
+    // Afficher la notification seulement si on ne l'a pas déjà affichée
+    if (successKey && !shownFlashMessages.value.has(successKey)) {
+        shownFlashMessages.value.add(successKey);
+        notifySuccess(flash.success);
+        // Nettoyer après 2 secondes pour permettre de réafficher le même message plus tard si nécessaire
         setTimeout(() => {
-            // Les messages flash sont automatiquement supprimés par Inertia
-        }, 5000);
+            shownFlashMessages.value.delete(successKey);
+        }, 2000);
     }
-});
+    
+    if (errorKey && !shownFlashMessages.value.has(errorKey)) {
+        shownFlashMessages.value.add(errorKey);
+        notifyError(flash.error);
+        setTimeout(() => {
+            shownFlashMessages.value.delete(errorKey);
+        }, 2000);
+    }
+}, { immediate: true });
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -50,6 +70,23 @@ const searchInput = ref<HTMLInputElement | null>(null);
 const isDeleteDialogOpen = ref(false);
 const sessionToDelete = ref<Session | null>(null);
 const isDeleteProcessing = ref(false);
+
+// Modal d'envoi par email
+const isSendEmailDialogOpen = ref(false);
+const sessionToSend = ref<Session | null>(null);
+const selectedCustomerId = ref<number | null>(null);
+const isSendingEmail = ref(false);
+
+// Clients disponibles pour l'envoi (clients associés à la séance et actifs)
+const availableCustomers = computed(() => {
+    if (!sessionToSend.value || !sessionToSend.value.customers) {
+        return [];
+    }
+    return sessionToSend.value.customers.filter((customer: Customer) => {
+        // Vérifier que le client est actif et a un email
+        return customer.is_active !== false && customer.email;
+    });
+});
 
 // Synchroniser searchTerm avec les props
 watch(() => props.filters.search, (value) => {
@@ -127,6 +164,42 @@ const handleDelete = (session: Session) => {
     isDeleteDialogOpen.value = true;
 };
 
+const handleSendEmail = (session: Session) => {
+    sessionToSend.value = session;
+    selectedCustomerId.value = null;
+    isSendEmailDialogOpen.value = true;
+};
+
+const confirmSendEmail = () => {
+    if (!sessionToSend.value || !selectedCustomerId.value || isSendingEmail.value) {
+        return;
+    }
+
+    isSendingEmail.value = true;
+
+    router.post(`/sessions/${sessionToSend.value.id}/send-email`, {
+        customer_id: selectedCustomerId.value,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            isSendEmailDialogOpen.value = false;
+            sessionToSend.value = null;
+            selectedCustomerId.value = null;
+        },
+        onFinish: () => {
+            isSendingEmail.value = false;
+        },
+    });
+};
+
+watch(isSendEmailDialogOpen, (open) => {
+    if (!open) {
+        sessionToSend.value = null;
+        selectedCustomerId.value = null;
+        isSendingEmail.value = false;
+    }
+});
+
 const confirmDelete = () => {
     if (!sessionToDelete.value || isDeleteProcessing.value) {
         return;
@@ -159,24 +232,6 @@ watch(isDeleteDialogOpen, (open) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 mx-auto w-full px-6">
-            <!-- Messages Flash -->
-            <Alert
-                v-if="flashMessage?.success"
-                class="bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200"
-            >
-                <CheckCircle2 class="size-4 text-green-600 dark:text-green-400" />
-                <AlertTitle>Succès</AlertTitle>
-                <AlertDescription>{{ flashMessage.success }}</AlertDescription>
-            </Alert>
-            <Alert
-                v-if="flashMessage?.error"
-                variant="destructive"
-            >
-                <XCircle class="size-4" />
-                <AlertTitle>Erreur</AlertTitle>
-                <AlertDescription>{{ flashMessage.error }}</AlertDescription>
-            </Alert>
-
             <!-- Header -->
             <div class="flex items-start justify-between">
                 <div class="flex flex-col gap-0.5">
@@ -261,6 +316,7 @@ watch(isDeleteDialogOpen, (open) => {
                 :sessions="sessions.data"
                 :has-search="!!props.filters.search"
                 @delete="handleDelete"
+                @send-email="handleSendEmail"
             />
 
             <!-- Modal de suppression -->
@@ -270,6 +326,57 @@ watch(isDeleteDialogOpen, (open) => {
                 :loading="isDeleteProcessing"
                 @confirm="confirmDelete"
             />
+
+            <!-- Modal d'envoi par email -->
+            <Dialog v-model:open="isSendEmailDialogOpen">
+                <DialogContent class="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Envoyer la séance par email</DialogTitle>
+                        <DialogDescription>
+                            Sélectionnez le client à qui envoyer la séance "{{ sessionToSend?.name || 'Sans titre' }}".
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div class="space-y-4 py-4">
+                        <div v-if="availableCustomers.length === 0" class="text-sm text-slate-600 dark:text-slate-400 text-center py-4">
+                            <p>Aucun client actif avec une adresse email n'est associé à cette séance.</p>
+                        </div>
+                        <div v-else class="space-y-2">
+                            <Label for="customer-select">Client</Label>
+                            <select
+                                id="customer-select"
+                                v-model="selectedCustomerId"
+                                class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                            >
+                                <option :value="null">Sélectionner un client</option>
+                                <option
+                                    v-for="customer in availableCustomers"
+                                    :key="customer.id"
+                                    :value="customer.id"
+                                >
+                                    {{ customer.full_name }} {{ customer.email ? `(${customer.email})` : '' }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            @click="isSendEmailDialogOpen = false"
+                            :disabled="isSendingEmail"
+                        >
+                            Annuler
+                        </Button>
+                        <Button
+                            @click="confirmSendEmail"
+                            :disabled="!selectedCustomerId || isSendingEmail"
+                        >
+                            {{ isSendingEmail ? 'Envoi en cours...' : 'Envoyer' }}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     </AppLayout>
 </template>

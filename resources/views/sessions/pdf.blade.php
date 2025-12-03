@@ -259,7 +259,10 @@
                     $sets = $sets->sortBy('order');
 
                     $imagePath = null;
-                    if ($exercise && isset($exercise->media) && $exercise->media->count() > 0) {
+                    // Utiliser l'image optimisée si disponible (pour les emails)
+                    if (isset($use_optimized_images) && $use_optimized_images && isset($exercise->optimized_image_path)) {
+                        $imagePath = $exercise->optimized_image_path;
+                    } elseif ($exercise && isset($exercise->media) && $exercise->media->count() > 0) {
                         $firstMedia = $exercise->media->first();
                         if ($firstMedia) {
                             try {

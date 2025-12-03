@@ -9,10 +9,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Mail\SessionEmail;
 
 class SessionsController extends Controller
 {
@@ -50,6 +52,22 @@ class SessionsController extends Controller
 
         $sessions = $query->paginate(12);
 
+        // Mapper les sessions pour inclure les clients avec is_active
+        $sessions->getCollection()->transform(function ($session) {
+            $session->customers = $session->customers->map(function ($customer) {
+                return [
+                    'id' => $customer->id,
+                    'first_name' => $customer->first_name,
+                    'last_name' => $customer->last_name,
+                    'email' => $customer->email,
+                    'phone' => $customer->phone,
+                    'full_name' => $customer->full_name,
+                    'is_active' => $customer->is_active,
+                ];
+            });
+            return $session;
+        });
+
         $customers = Customer::where('user_id', Auth::id())
             ->where('is_active', true)
             ->orderBy('first_name')
@@ -85,6 +103,7 @@ class SessionsController extends Controller
                 'description' => $exercise->description,
                 'image_url' => $exercise->image_url,
                 'suggested_duration' => $exercise->suggested_duration,
+                'user_id' => $exercise->user_id,
                 'categories' => $exercise->categories->map(fn ($cat) => [
                     'id' => $cat->id,
                     'name' => $cat->name,
@@ -626,6 +645,65 @@ class SessionsController extends Controller
             return response()->json([
                 'error' => 'Erreur lors de la génération du PDF: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Send session by email to a customer.
+     */
+    public function sendEmail(Request $request, Session $session): RedirectResponse
+    {
+        // Vérifier que la séance appartient à l'utilisateur
+        if ($session->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'customer_id' => ['required', 'integer', 'exists:customers,id'],
+        ]);
+
+        // Charger la session avec les relations nécessaires
+        $session->load(['customers', 'user']);
+
+        // Vérifier que le client est associé à la séance
+        $customer = Customer::where('id', $validated['customer_id'])
+            ->where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->first();
+
+        if (!$customer) {
+            return redirect()->route('sessions.index')
+                ->with('error', 'Client non trouvé ou inactif.');
+        }
+
+        // Vérifier que le client est bien associé à cette séance
+        if (!$session->customers->contains($customer->id)) {
+            return redirect()->route('sessions.index')
+                ->with('error', 'Ce client n\'est pas associé à cette séance.');
+        }
+
+        // Vérifier que le client a une adresse email
+        if (!$customer->email) {
+            return redirect()->route('sessions.index')
+                ->with('error', 'Ce client n\'a pas d\'adresse email.');
+        }
+
+        try {
+            // Envoyer l'email
+            Mail::to($customer->email)->send(new SessionEmail($session, $customer));
+
+            return redirect()->route('sessions.index')
+                ->with('success', "La séance a été envoyée par email à {$customer->full_name}.");
+        } catch (\Exception $e) {
+            Log::error('Erreur envoi email séance:', [
+                'session_id' => $session->id,
+                'customer_id' => $customer->id,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('sessions.index')
+                ->with('error', 'Une erreur est survenue lors de l\'envoi de l\'email.');
         }
     }
 }

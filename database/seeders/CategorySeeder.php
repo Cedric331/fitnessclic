@@ -23,29 +23,34 @@ class CategorySeeder extends Seeder
             $adminUsers = collect([$admin]);
         }
 
-        // Create 5-10 public categories
+        $listOfCategories = [
+            'Pompes',
+            'Abdos',
+            'Jambes',
+            'Bras',
+            'Dos',
+            'Epaules',
+            'Fessiers',
+            'Cuisses',
+            'Triceps',
+            'Biceps',
+            'Epaules',
+            'Fessiers',
+            'Cuisses',
+            'Triceps',
+            'Biceps',
+            'Epaules',
+            'Fessiers',
+        ];
+
+        // Create public categories
         $admin = $adminUsers->first();
-        Category::factory()
-            ->count(fake()->numberBetween(5, 10))
-            ->public()
-            ->create([
-                'user_id' => $admin->id, // Can be null or admin ID for public categories
+        foreach ($listOfCategories as $category) {
+            Category::create([
+                'name' => $category,
+                'type' => 'public',
+                'user_id' => $admin->id,
             ]);
-
-        // Create private categories for customer users
-        $clientUsers = User::where('role', UserRole::CUSTOMER->value)->get();
-
-        if ($clientUsers->isEmpty()) {
-            $clientUsers = User::factory()->count(5)->customer()->create();
-        }
-
-        // Create 2-4 private categories for each client
-        foreach ($clientUsers as $user) {
-            Category::factory()
-                ->count(fake()->numberBetween(2, 4))
-                ->private()
-                ->for($user)
-                ->create();
         }
     }
 }

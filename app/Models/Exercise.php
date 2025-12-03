@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class Exercise extends Model implements HasMedia
 {
@@ -96,5 +97,22 @@ class Exercise extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection(self::MEDIA_IMAGE)->singleFile()->useDisk(self::MEDIA_DISK);
+    }
+
+    /**
+     * Register media conversions to optimize images
+     */
+    public function registerMediaConversions(Media $media = null): void
+    {
+        // Conversion pour optimiser l'image principale
+        // Redimensionne à une taille maximale de 1920x1080 et compresse à 85% de qualité
+        $this->addMediaConversion('optimized')
+            ->performOnCollections(self::MEDIA_IMAGE)
+            ->width(1920)
+            ->height(1080)
+            ->sharpen(10)
+            ->quality(85)
+            ->optimize()
+            ->nonQueued(); // Traitement immédiat pour éviter les délais
     }
 }

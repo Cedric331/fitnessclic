@@ -42,6 +42,7 @@ export interface Customer {
     email?: string;
     phone?: string;
     full_name: string;
+    is_active?: boolean;
 }
 
 export interface Category {

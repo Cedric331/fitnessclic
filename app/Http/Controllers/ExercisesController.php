@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Exercise;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -93,9 +94,13 @@ class ExercisesController extends Controller
         // Attacher les catégories
         $exercise->categories()->attach($validated['category_ids']);
 
-        // Ajouter l'image
+        // Ajouter l'image avec optimisation
         if ($request->hasFile('image')) {
-            $exercise->addMediaFromRequest('image')
+            $file = $request->file('image');
+            $optimizedFile = $this->optimizeImage($file);
+            
+            $exercise->addMedia($optimizedFile)
+                ->usingName(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
                 ->toMediaCollection(Exercise::MEDIA_IMAGE, Exercise::MEDIA_DISK);
         }
 
@@ -139,7 +144,11 @@ class ExercisesController extends Controller
         // Mettre à jour l'image si une nouvelle image est fournie
         if ($request->hasFile('image')) {
             $exercise->clearMediaCollection(Exercise::MEDIA_IMAGE);
-            $exercise->addMediaFromRequest('image')
+            $file = $request->file('image');
+            $optimizedFile = $this->optimizeImage($file);
+            
+            $exercise->addMedia($optimizedFile)
+                ->usingName(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
                 ->toMediaCollection(Exercise::MEDIA_IMAGE, Exercise::MEDIA_DISK);
         }
 
@@ -258,8 +267,9 @@ class ExercisesController extends Controller
                 // Attach categories
                 $exercise->categories()->attach($categoryIds);
 
-                // Add the image
-                $exercise->addMedia($file)
+                // Add the image with optimization
+                $optimizedFile = $this->optimizeImage($file);
+                $exercise->addMedia($optimizedFile)
                     ->usingName($filename)
                     ->toMediaCollection(Exercise::MEDIA_IMAGE, Exercise::MEDIA_DISK);
 
@@ -307,6 +317,138 @@ class ExercisesController extends Controller
 
         return redirect()->route('exercises.index')
             ->with('success', 'Exercice supprimé avec succès.');
+    }
+
+    /**
+     * Optimize an uploaded image by resizing and compressing it
+     * 
+     * @param UploadedFile $file
+     * @return UploadedFile
+     */
+    private function optimizeImage(UploadedFile $file): UploadedFile
+    {
+        $maxWidth = 1920;
+        $maxHeight = 1080;
+        $quality = 85;
+
+        // Get image info
+        $imageInfo = getimagesize($file->getRealPath());
+        if (!$imageInfo) {
+            return $file; // Return original if not an image
+        }
+
+        [$originalWidth, $originalHeight, $imageType] = $imageInfo;
+
+        // Calculate new dimensions while maintaining aspect ratio
+        $ratio = min($maxWidth / $originalWidth, $maxHeight / $originalHeight);
+        $newWidth = (int) ($originalWidth * $ratio);
+        $newHeight = (int) ($originalHeight * $ratio);
+
+        // If image is already smaller than max dimensions, return original
+        if ($originalWidth <= $maxWidth && $originalHeight <= $maxHeight) {
+            // Still compress if it's a JPEG
+            if ($imageType === IMAGETYPE_JPEG) {
+                return $this->compressJpeg($file, $quality);
+            }
+            return $file;
+        }
+
+        // Create image resource based on type
+        $sourceImage = match ($imageType) {
+            IMAGETYPE_JPEG => imagecreatefromjpeg($file->getRealPath()),
+            IMAGETYPE_PNG => imagecreatefrompng($file->getRealPath()),
+            IMAGETYPE_GIF => imagecreatefromgif($file->getRealPath()),
+            IMAGETYPE_WEBP => imagecreatefromwebp($file->getRealPath()),
+            default => null,
+        };
+
+        if (!$sourceImage) {
+            return $file; // Return original if we can't process it
+        }
+
+        // Create new image with new dimensions
+        $newImage = imagecreatetruecolor($newWidth, $newHeight);
+
+        // Preserve transparency for PNG and GIF
+        if ($imageType === IMAGETYPE_PNG || $imageType === IMAGETYPE_GIF) {
+            imagealphablending($newImage, false);
+            imagesavealpha($newImage, true);
+            $transparent = imagecolorallocatealpha($newImage, 255, 255, 255, 127);
+            imagefilledrectangle($newImage, 0, 0, $newWidth, $newHeight, $transparent);
+        }
+
+        // Resize image
+        imagecopyresampled(
+            $newImage,
+            $sourceImage,
+            0, 0, 0, 0,
+            $newWidth,
+            $newHeight,
+            $originalWidth,
+            $originalHeight
+        );
+
+        // Save optimized image to temporary file
+        $tempPath = tempnam(sys_get_temp_dir(), 'optimized_');
+        $success = match ($imageType) {
+            IMAGETYPE_JPEG => imagejpeg($newImage, $tempPath, $quality),
+            IMAGETYPE_PNG => imagepng($newImage, $tempPath, 9), // PNG compression level 0-9
+            IMAGETYPE_GIF => imagegif($newImage, $tempPath),
+            IMAGETYPE_WEBP => imagewebp($newImage, $tempPath, $quality),
+            default => false,
+        };
+
+        // Clean up
+        imagedestroy($sourceImage);
+        imagedestroy($newImage);
+
+        if (!$success) {
+            unlink($tempPath);
+            return $file; // Return original if save failed
+        }
+
+        // Create new UploadedFile from optimized image
+        $optimizedFile = new UploadedFile(
+            $tempPath,
+            $file->getClientOriginalName(),
+            $file->getMimeType(),
+            null,
+            true // Mark as test file so it gets cleaned up
+        );
+
+        return $optimizedFile;
+    }
+
+    /**
+     * Compress a JPEG image without resizing
+     * 
+     * @param UploadedFile $file
+     * @param int $quality
+     * @return UploadedFile
+     */
+    private function compressJpeg(UploadedFile $file, int $quality = 85): UploadedFile
+    {
+        $imageInfo = getimagesize($file->getRealPath());
+        if (!$imageInfo || $imageInfo[2] !== IMAGETYPE_JPEG) {
+            return $file;
+        }
+
+        $sourceImage = imagecreatefromjpeg($file->getRealPath());
+        if (!$sourceImage) {
+            return $file;
+        }
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'compressed_');
+        imagejpeg($sourceImage, $tempPath, $quality);
+        imagedestroy($sourceImage);
+
+        return new UploadedFile(
+            $tempPath,
+            $file->getClientOriginalName(),
+            $file->getMimeType(),
+            null,
+            true
+        );
     }
 }
 

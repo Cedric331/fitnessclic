@@ -12,10 +12,15 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
     delete: [session: Session];
+    sendEmail: [session: Session];
 }>();
 
 const handleDelete = (session: Session) => {
     emit('delete', session);
+};
+
+const handleSendEmail = (session: Session) => {
+    emit('sendEmail', session);
 };
 </script>
 
@@ -30,6 +35,7 @@ const handleDelete = (session: Session) => {
             :key="session.id"
             :session="session"
             @delete="handleDelete"
+            @send-email="handleSendEmail"
         />
     </div>
 

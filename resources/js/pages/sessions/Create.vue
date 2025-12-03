@@ -435,7 +435,8 @@ const filteredExercises = computed(() => {
 
     // Filtre par utilisateur (tous ou seulement les miens)
     if (showOnlyMine.value && currentUserId.value) {
-        exercises = exercises.filter(ex => ex.user_id === currentUserId.value);
+        const userId = Number(currentUserId.value);
+        exercises = exercises.filter(ex => Number(ex.user_id) === userId);
     }
 
     // Recherche locale (instantanée)
@@ -708,11 +709,11 @@ watch(sessionExercises, () => {
 
         <div class="flex flex-col h-full">
             <!-- En-tête avec actions -->
-            <div class="flex items-center justify-between border-b bg-white dark:bg-neutral-900 px-6 py-4">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b bg-white dark:bg-neutral-900 px-4 sm:px-6 py-4">
                 <div class="flex items-center gap-4">
-                    <h1 class="text-2xl font-semibold">Nouvelle Séance</h1>
+                    <h1 class="text-xl sm:text-2xl font-semibold">Nouvelle Séance</h1>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                     <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
                         <Calendar class="h-4 w-4" />
                         <input
@@ -749,10 +750,10 @@ watch(sessionExercises, () => {
                 </div>
             </div>
 
-            <!-- Contenu principal -->
-            <div class="flex-1 flex overflow-hidden">
-                <!-- Panneau gauche : Formulaire de séance -->
-                <div class="w-1/2 border-r overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
+                    <!-- Contenu principal -->
+                    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                        <!-- Panneau gauche : Formulaire de séance -->
+                        <div class="w-full lg:w-1/2 lg:border-r overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
                     <div class="p-6 space-y-6">
                         <Card>
                             <CardHeader>
@@ -898,7 +899,7 @@ watch(sessionExercises, () => {
                 </div>
 
                 <!-- Panneau droit : Bibliothèque d'exercices -->
-                <div class="w-1/2 overflow-y-auto bg-white dark:bg-neutral-900">
+                <div class="w-full lg:w-1/2 overflow-y-auto bg-white dark:bg-neutral-900">
                     <ExerciseLibrary
                         :exercises="filteredExercises"
                         :categories="categories"

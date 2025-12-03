@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         // Create admin user
         User::firstOrCreate(
-            ['email' => 'test@test.fr'],
+            ['email' => 'admin@test.fr'],
             [
                 'name' => 'Admin User',
                 'password' => Hash::make('password'),
@@ -26,12 +26,23 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // Create customer user
+        User::firstOrCreate(
+            ['email' => 'test@test.fr'],
+            [
+                'name' => 'Customer User',
+                'password' => Hash::make('password'),
+                'role' => UserRole::CUSTOMER->value,
+                'email_verified_at' => now(),
+            ]
+        );
+
         // Run other seeders
         $this->call([
             CustomerSeeder::class,
             CategorySeeder::class,
-            ExerciseSeeder::class,
-            SessionSeeder::class,
+            // ExerciseSeeder::class,
+            // SessionSeeder::class,
         ]);
     }
 }
