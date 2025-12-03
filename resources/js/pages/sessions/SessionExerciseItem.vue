@@ -127,6 +127,10 @@ const getSetLabel = (setNumber: number) => {
         @drop.prevent="emit('drop', $event, index)"
     >
         <Card>
+            <!-- Numéro d'exercice en haut à gauche -->
+            <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
+                {{ index + 1 }}
+            </div>
             <CardContent class="p-4">
                 <!-- En-tête : Image, nom, commentaires, bouton supprimer -->
                 <div class="flex items-start gap-4 mb-4">
