@@ -116,17 +116,31 @@ const getSetLabel = (setNumber: number) => {
 </script>
 
 <template>
+    <!-- Ligne d'insertion avant l'élément si c'est une zone de drop -->
     <div
+        v-if="isDragOver && !isDragging"
+        class="h-1.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 rounded-full mb-2 animate-pulse shadow-lg"
+        style="box-shadow: 0 0 15px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.3); animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;"
+    ></div>
+    
+    <div
+        data-drag-item
         :class="{
-            'relative group hover:shadow-md transition-shadow': true,
-            'opacity-50': isDragging,
-            'ring-2 ring-blue-400': isDragOver
+            'relative group transition-all duration-300 ease-out': true,
+            'opacity-30 scale-[0.98] transform rotate-1': isDragging,
+            'ring-4 ring-blue-500 ring-offset-2 scale-[1.02] shadow-xl border-blue-500': isDragOver && !isDragging,
+            'hover:shadow-lg': !isDragging && !isDragOver
         }"
         @dragover.prevent="emit('dragover', $event, index)"
         @dragleave="emit('dragleave')"
         @drop.prevent="emit('drop', $event, index)"
     >
-        <Card>
+        <Card
+            :class="{
+                'border-blue-500 border-2': isDragOver && !isDragging,
+                'transform transition-transform': true
+            }"
+        >
             <!-- Numéro d'exercice en haut à gauche -->
             <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
                 {{ index + 1 }}
@@ -136,12 +150,12 @@ const getSetLabel = (setNumber: number) => {
                 <div class="flex items-start gap-3 mb-3">
                     <!-- Poignée de drag -->
                     <div 
-                        class="flex flex-col items-center gap-1 pt-1 cursor-move text-neutral-400 hover:text-neutral-600"
+                        class="flex flex-col items-center gap-1 pt-1 cursor-move"
                     >
                         <button
                             type="button"
                             @click.stop.prevent="emit('moveUp')"
-                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded"
+                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600"
                             :disabled="index === 0"
                             title="Déplacer vers le haut"
                         >
@@ -150,9 +164,10 @@ const getSetLabel = (setNumber: number) => {
                         <div 
                             v-if="draggable"
                             :draggable="true"
-                            class="drag-handle select-none cursor-move text-neutral-400 hover:text-neutral-600"
+                            class="drag-handle select-none cursor-grab active:cursor-grabbing text-neutral-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
                             @dragstart="emit('dragstart', $event, index)"
                             @dragend="emit('dragend')"
+                            :class="{ 'text-blue-600 scale-110': isDragging }"
                         >
                             <GripVertical class="h-5 w-5" title="Glisser pour réorganiser" />
                         </div>
@@ -165,7 +180,7 @@ const getSetLabel = (setNumber: number) => {
                         <button
                             type="button"
                             @click.stop.prevent="emit('moveDown')"
-                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded"
+                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600"
                             title="Déplacer vers le bas"
                         >
                             <ChevronDown class="h-3 w-3" />

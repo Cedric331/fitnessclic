@@ -62,7 +62,7 @@ class SessionsController extends Controller
                     'email' => $customer->email,
                     'phone' => $customer->phone,
                     'full_name' => $customer->full_name,
-                    'is_active' => $customer->is_active,
+                    'is_active' => (bool) $customer->is_active, // S'assurer que c'est un booléen
                 ];
             });
             return $session;

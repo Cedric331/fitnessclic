@@ -329,6 +329,29 @@ const handleDragStart = (event: DragEvent, index: number) => {
     if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', index.toString());
+        // Créer une image personnalisée pour le drag avec meilleur visuel
+        const dragElement = (event.target as HTMLElement).closest('[data-drag-item]') as HTMLElement;
+        if (dragElement) {
+            const rect = dragElement.getBoundingClientRect();
+            const dragImage = dragElement.cloneNode(true) as HTMLElement;
+            dragImage.style.width = `${rect.width}px`;
+            dragImage.style.opacity = '0.9';
+            dragImage.style.transform = 'rotate(2deg) scale(1.05)';
+            dragImage.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.4)';
+            dragImage.style.border = '2px solid #3b82f6';
+            dragImage.style.borderRadius = '8px';
+            dragImage.style.backgroundColor = 'white';
+            document.body.appendChild(dragImage);
+            dragImage.style.position = 'absolute';
+            dragImage.style.top = '-1000px';
+            dragImage.style.pointerEvents = 'none';
+            event.dataTransfer.setDragImage(dragImage, event.offsetX, event.offsetY);
+            setTimeout(() => {
+                if (document.body.contains(dragImage)) {
+                    document.body.removeChild(dragImage);
+                }
+            }, 0);
+        }
     }
 };
 
@@ -348,8 +371,20 @@ const handleDragOver = (event: DragEvent, index: number) => {
     }
 };
 
-const handleDragLeave = () => {
-    // Ne pas réinitialiser immédiatement pour éviter les tremblements
+let dragLeaveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const handleDragLeave = (event: DragEvent) => {
+    // Utiliser un délai pour éviter les tremblements lors du passage sur les enfants
+    if (dragLeaveTimeout) {
+        clearTimeout(dragLeaveTimeout);
+    }
+    dragLeaveTimeout = setTimeout(() => {
+        // Vérifier que le curseur est vraiment sorti de l'élément
+        const relatedTarget = event.relatedTarget as HTMLElement;
+        if (!relatedTarget || !document.body.contains(relatedTarget)) {
+            dragOverIndex.value = null;
+        }
+    }, 100);
 };
 
 const handleDrop = (event: DragEvent, dropIndex: number) => {
@@ -400,6 +435,10 @@ const handleDrop = (event: DragEvent, dropIndex: number) => {
 };
 
 const handleDragEnd = () => {
+    if (dragLeaveTimeout) {
+        clearTimeout(dragLeaveTimeout);
+        dragLeaveTimeout = null;
+    }
     draggedIndex.value = null;
     dragOverIndex.value = null;
 };
@@ -872,8 +911,11 @@ watch(sessionExercises, () => {
                                     }
                                 }"
                                 @drop.prevent="handleDropFromLibrary"
-                                :class="{ 'border-2 border-dashed border-blue-400 bg-blue-50/50 dark:bg-blue-900/20': isDraggingOver }"
-                                class="min-h-[200px] transition-colors"
+                                :class="{ 
+                                    'border-4 border-dashed border-blue-500 bg-blue-50/70 dark:bg-blue-900/30 scale-[1.01]': isDraggingOver,
+                                    'ring-4 ring-blue-400 ring-offset-2 animate-pulse': isDraggingOver
+                                }"
+                                class="min-h-[200px] transition-all duration-300 ease-out"
                             >
                                 <div v-if="sessionExercises.length === 0" class="text-center py-12 text-neutral-500">
                                     <p class="mb-2">Aucun exercice ajouté</p>

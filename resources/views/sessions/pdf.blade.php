@@ -84,11 +84,14 @@
         .exercise-image {
             float: left;
             width: 60px;         /* largeur fixe */
-            height: auto;        /* respecte le ratio */
+            height: 60px;        /* hauteur fixe pour un carré */
+            object-fit: contain; /* l'image s'adapte sans être coupée */
+            object-position: top; /* aligne l'image en haut */
             border-radius: 4px;
             border: 1px solid #d1d5db;
             margin-right: 4mm;
             display: block;
+            background: #f9fafb; /* fond pour les espaces vides */
         }
 
         .exercise-header {

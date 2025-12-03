@@ -79,12 +79,22 @@ const isSendingEmail = ref(false);
 
 // Clients disponibles pour l'envoi (clients associés à la séance et actifs)
 const availableCustomers = computed(() => {
-    if (!sessionToSend.value || !sessionToSend.value.customers) {
+    if (!sessionToSend.value) {
         return [];
     }
-    return sessionToSend.value.customers.filter((customer: Customer) => {
-        // Vérifier que le client est actif et a un email
-        return customer.is_active !== false && customer.email;
+    // S'assurer que customers est un tableau
+    const customers = sessionToSend.value.customers;
+    if (!customers || !Array.isArray(customers) || customers.length === 0) {
+        return [];
+    }
+    return customers.filter((customer: Customer) => {
+        // Vérifier que le client est actif
+        // Si is_active n'est pas défini, on considère qu'il est actif (valeur par défaut dans la DB)
+        // Si is_active est explicitement false, le client est inactif
+        const isActive = customer.is_active !== false;
+        // Vérifier que l'email existe et n'est pas vide (null, undefined, ou chaîne vide)
+        const hasEmail = customer.email && typeof customer.email === 'string' && customer.email.trim().length > 0;
+        return isActive && hasEmail;
     });
 });
 

@@ -72,6 +72,29 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
         event.dataTransfer.effectAllowed = 'copy';
         event.dataTransfer.setData('application/json', JSON.stringify(exercise));
         event.dataTransfer.setData('text/plain', exercise.id.toString());
+        // Créer une image personnalisée pour le drag depuis la bibliothèque
+        const dragElement = (event.target as HTMLElement).closest('[data-exercise-card]') as HTMLElement;
+        if (dragElement) {
+            const rect = dragElement.getBoundingClientRect();
+            const dragImage = dragElement.cloneNode(true) as HTMLElement;
+            dragImage.style.width = `${rect.width}px`;
+            dragImage.style.opacity = '0.9';
+            dragImage.style.transform = 'rotate(-2deg) scale(1.05)';
+            dragImage.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.4)';
+            dragImage.style.border = '2px solid #10b981';
+            dragImage.style.borderRadius = '8px';
+            dragImage.style.backgroundColor = 'white';
+            document.body.appendChild(dragImage);
+            dragImage.style.position = 'absolute';
+            dragImage.style.top = '-1000px';
+            dragImage.style.pointerEvents = 'none';
+            event.dataTransfer.setDragImage(dragImage, event.offsetX, event.offsetY);
+            setTimeout(() => {
+                if (document.body.contains(dragImage)) {
+                    document.body.removeChild(dragImage);
+                }
+            }, 0);
+        }
     }
 };
 </script>
@@ -200,6 +223,7 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                 <Card
                     v-for="exercise in exercises"
                     :key="exercise.id"
+                    data-exercise-card
                     class="group cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] p-0"
                     :draggable="true"
                     @dragstart="handleDragStart($event, exercise)"
@@ -256,6 +280,7 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                 <Card
                     v-for="exercise in exercises"
                     :key="exercise.id"
+                    data-exercise-card
                     class="group cursor-pointer hover:shadow-md transition-all"
                     :draggable="true"
                     @dragstart="handleDragStart($event, exercise)"
