@@ -180,7 +180,7 @@ const getSetLabel = (setNumber: number) => {
                             v-if="exercise?.image_url"
                             :src="exercise.image_url"
                             :alt="exercise?.title"
-                            class="w-full h-full object-cover"
+                            class="w-full h-full object-contain"
                             draggable="false"
                         />
                         <div

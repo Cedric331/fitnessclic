@@ -30,6 +30,10 @@ class ExercisesController extends Controller
 
         if ($sortOrder === 'oldest') {
             $exercisesQuery->orderBy('created_at', 'asc');
+        } elseif ($sortOrder === 'alphabetical') {
+            $exercisesQuery->orderBy('title', 'asc');
+        } elseif ($sortOrder === 'alphabetical-desc') {
+            $exercisesQuery->orderBy('title', 'desc');
         } else {
             $exercisesQuery->orderBy('created_at', 'desc');
         }
@@ -62,7 +66,7 @@ class ExercisesController extends Controller
             'filters' => [
                 'search' => $searchTerm ?: null,
                 'category_id' => $categoryId ? (int) $categoryId : null,
-                'sort' => in_array($sortOrder, ['newest', 'oldest'], true) ? $sortOrder : 'newest',
+                'sort' => in_array($sortOrder, ['newest', 'oldest', 'alphabetical', 'alphabetical-desc'], true) ? $sortOrder : 'newest',
                 'view' => in_array($viewMode, ['grid-2', 'grid-4', 'grid-6', 'grid-8'], true) ? $viewMode : 'grid-6',
             ],
             'categories' => Category::forUser(Auth::id())->orderBy('name')->get(['id', 'name']),

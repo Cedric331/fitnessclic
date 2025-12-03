@@ -14,7 +14,7 @@ export interface Exercise {
 export interface ExercisesFilters {
     search?: string | null;
     category_id?: number | null;
-    sort?: 'newest' | 'oldest';
+    sort?: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc';
     view?: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8';
 }
 

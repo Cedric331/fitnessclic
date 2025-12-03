@@ -62,17 +62,82 @@ const handleDelete = (event: Event) => {
     <article
         class="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700"
     >
-        <!-- Image -->
-        <div class="relative aspect-video w-full overflow-hidden">
+        <!-- Image qui remplit tout le cadre -->
+        <div class="relative aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
             <img
                 :src="exercise.image_url"
                 :alt="exercise.name"
-                class="h-full w-full object-cover transition-transform group-hover:scale-105"
+                class="h-full w-full object-contain object-top"
             />
+            
+            <!-- Overlay au survol avec titre et catégories -->
+            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-4">
+                <div class="flex flex-col items-center gap-3">
+                    <h3 class="font-semibold text-base text-white text-center line-clamp-2">
+                        {{ exercise.name }}
+                    </h3>
+                    <!-- Catégories -->
+                    <div class="flex flex-wrap gap-2 justify-center">
+                        <Badge
+                            v-for="category in (exercise.categories || [])"
+                            :key="category.id"
+                            variant="secondary"
+                            class="text-xs bg-white/20 text-white border-white/30"
+                        >
+                            {{ category.name }}
+                        </Badge>
+                        <Badge
+                            v-if="!exercise.categories || exercise.categories.length === 0"
+                            variant="secondary"
+                            class="text-xs bg-white/20 text-white border-white/30"
+                        >
+                            {{ exercise.category_name || 'Sans catégorie' }}
+                        </Badge>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Boutons d'action en bas au survol -->
+            <div class="absolute bottom-0 left-0 right-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex items-center justify-between p-3">
+                <p class="text-xs text-white">
+                    {{ formattedDate }}
+                </p>
+                <div class="flex items-center gap-1">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 px-2 text-xs text-white hover:bg-white/20"
+                        @click.stop="handleView"
+                    >
+                        <Eye class="size-4" />
+                    </Button>
+                    <Button
+                        v-if="canEdit"
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 px-2 text-xs text-white hover:bg-white/20"
+                        @click.stop="handleEdit"
+                    >
+                        <Edit class="size-4" />
+                    </Button>
+                    <Button
+                        v-if="canDelete"
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 px-2 text-xs text-red-300 hover:text-red-200 hover:bg-red-500/30"
+                        @click.stop="handleDelete"
+                    >
+                        <Trash2 class="size-4" />
+                    </Button>
+                </div>
+            </div>
         </div>
 
-        <!-- Contenu principal -->
-        <div class="flex flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-4">
+        <!-- Contenu visible uniquement sur mobile -->
+        <div class="flex flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-4 md:hidden">
             <!-- Titre et badge -->
             <div class="flex flex-col gap-1.5">
                 <h3

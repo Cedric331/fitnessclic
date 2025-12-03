@@ -92,7 +92,7 @@ const handleLogout = () => {
                     >
                         <!-- Logo FitnessClic -->
                         <div
-                            class="flex size-10 items-center justify-center rounded-lg"
+                            class="flex size-10 items-center justify-center rounded-lg group-data-[collapsible=icon]:size-12"
                         >
                             <img
                                 src="/assets/logo_fitnessclic.png"
@@ -100,7 +100,7 @@ const handleLogout = () => {
                                 class="h-full w-full object-contain"
                             />
                         </div>
-                        <div class="flex flex-col">
+                        <div class="flex flex-col group-data-[collapsible=icon]:hidden">
                             <span class="text-lg font-bold text-slate-900 dark:text-white">FitnessClic</span>
                             <span class="text-xs text-slate-600 dark:text-slate-400"
                                 >créateur de séances</span
@@ -142,9 +142,9 @@ const handleLogout = () => {
                             :tooltip="item.title"
                             class="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 dark:data-[active=true]:bg-blue-600 h-10 px-3"
                         >
-                            <Link :href="item.href" class="flex items-center gap-3">
+                            <Link :href="item.href" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
                                 <component :is="item.icon" :class="['size-4', isCurrentRoute(item.href) ? 'text-white dark:text-white' : 'text-slate-700 dark:text-white']" />
-                                <span :class="isCurrentRoute(item.href) ? 'text-white dark:text-white' : 'text-slate-900 dark:text-white'">{{ item.title }}</span>
+                                <span :class="['group-data-[collapsible=icon]:hidden', isCurrentRoute(item.href) ? 'text-white dark:text-white' : 'text-slate-900 dark:text-white']">{{ item.title }}</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -162,7 +162,7 @@ const handleLogout = () => {
                                 {{ getInitials(user.name) }}
                             </AvatarFallback>
                         </Avatar>
-                        <div class="flex flex-col">
+                        <div class="flex flex-col group-data-[collapsible=icon]:hidden">
                             <span class="text-sm font-medium text-slate-900 dark:text-white">{{
                                 user.email
                             }}</span>
@@ -177,9 +177,9 @@ const handleLogout = () => {
                         :is-active="urlIsActive(edit.url(), page.url)"
                         class="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 h-10 px-3"
                     >
-                    <Link :href="edit.url()" class="flex items-center gap-3">
+                    <Link :href="edit.url()" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
                             <Settings class="size-4 text-slate-700 dark:text-white" />
-                            <span class="text-slate-900 dark:text-white">Paramètres</span>
+                            <span class="text-slate-900 dark:text-white group-data-[collapsible=icon]:hidden">Paramètres</span>
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -191,9 +191,9 @@ const handleLogout = () => {
                         @click="handleLogout"
                         class="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 w-full h-10 px-3"
                     >
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
                             <LogOut class="size-4 text-slate-700 dark:text-white" />
-                            <span class="text-slate-900 dark:text-white">Déconnexion</span>
+                            <span class="text-slate-900 dark:text-white group-data-[collapsible=icon]:hidden">Déconnexion</span>
                         </div>
                     </SidebarMenuButton>
                 </SidebarMenuItem>

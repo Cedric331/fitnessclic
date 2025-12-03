@@ -25,7 +25,7 @@ const VIEW_MODE_CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 1 semaine
 interface CachedFilters {
     search: string;
     category_id: number | null;
-    sort: 'newest' | 'oldest';
+    sort: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc';
     timestamp: number;
 }
 
@@ -65,7 +65,7 @@ const getCachedFilters = (): CachedFilters | null => {
 const saveFiltersToCache = (filters: {
     search: string;
     category_id: number | null;
-    sort: 'newest' | 'oldest';
+    sort: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc';
 }) => {
     if (typeof window === 'undefined') {
         return;
@@ -180,7 +180,7 @@ const initialView = cachedViewMode?.view ?? props.filters?.view ?? 'grid-6';
 
 const searchTerm = ref(initialSearch);
 const categoryFilter = ref<number | null>(initialCategory);
-const sortOrder = ref<'newest' | 'oldest'>(initialSort);
+const sortOrder = ref<'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc'>(initialSort as 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc');
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'grid-8'>(initialView as 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8');
 const currentPage = ref(props.exercises?.current_page ?? 1);
 const isLoading = ref(false);
@@ -555,7 +555,7 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
                 :view-mode="viewMode"
                 @update:search="(value: string) => { searchTerm = value; }"
                 @update:categoryId="(value: number | null) => { categoryFilter = value; }"
-                @update:sortOrder="(value: 'newest' | 'oldest') => { sortOrder = value; }"
+                @update:sortOrder="(value: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc') => { sortOrder = value; }"
                 @update:viewMode="(value: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8') => { viewMode = value; }"
                 @apply="async () => {
                     // Attendre que les valeurs soient synchronisées avant d'appliquer

@@ -206,8 +206,8 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                     @click="handleAddExercise(exercise)"
                 >
                     <CardContent class="p-0">
-                        <!-- Image -->
-                        <div class="relative aspect-video w-full overflow-hidden rounded-t-lg bg-neutral-100 dark:bg-neutral-800">
+                        <!-- Image qui remplit tout le cadre -->
+                        <div class="relative aspect-square w-full overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800">
                             <img
                                 v-if="exercise.image_url"
                                 :src="exercise.image_url"
@@ -222,27 +222,30 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                             >
                                 <span class="text-xs">Aucune image</span>
                             </div>
-                            <div
-                                v-else
-                                class="h-full w-full flex items-center justify-center text-neutral-400 hidden"
-                                :class="{ '!flex': !exercise.image_url }"
-                            >
-                                <span class="text-xs">Aucune image</span>
-                            </div>
-                            <!-- Overlay au survol -->
-                            <div class="absolute inset-0 bg-primary/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <!-- Overlay au survol avec titre, catégories et bouton -->
+                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-4">
+                                <div class="flex flex-col items-center gap-3">
+                                    <h3 class="font-semibold text-base text-white text-center line-clamp-2">
+                                        {{ exercise.title }}
+                                    </h3>
+                                    <!-- Catégories -->
+                                    <div v-if="exercise.categories && exercise.categories.length > 0" class="flex flex-wrap gap-2 justify-center">
+                                        <Badge
+                                            v-for="category in exercise.categories"
+                                            :key="category.id"
+                                            variant="secondary"
+                                            class="text-xs bg-white/20 text-white border-white/30"
+                                        >
+                                            {{ category.name }}
+                                        </Badge>
+                                    </div>
+                                </div>
+                                <!-- Bouton Ajouter -->
                                 <Button size="sm" variant="secondary">
                                     <Plus class="h-4 w-4 mr-2" />
                                     Ajouter
                                 </Button>
                             </div>
-                        </div>
-
-                        <!-- Contenu -->
-                        <div class="p-3">
-                            <h3 class="font-semibold text-sm mb-2 line-clamp-2">
-                                {{ exercise.title }}
-                            </h3>
                         </div>
                     </CardContent>
                 </Card>

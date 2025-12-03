@@ -6,7 +6,7 @@ import { computed, ref, watch, watchEffect } from 'vue';
 const props = defineProps<{
     search?: string | null;
     categoryId?: number | null;
-    sortOrder?: 'newest' | 'oldest';
+    sortOrder?: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc';
     viewMode?: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8';
     categories: Array<{
         id: number;
@@ -17,7 +17,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     (e: 'update:search', value: string): void;
     (e: 'update:categoryId', value: number | null): void;
-    (e: 'update:sortOrder', value: 'newest' | 'oldest'): void;
+    (e: 'update:sortOrder', value: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc'): void;
     (e: 'update:viewMode', value: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8'): void;
     (e: 'apply'): void;
 }>();
@@ -86,7 +86,7 @@ const handleCategoryChange = (event: Event) => {
 
 const handleSortChange = (event: Event) => {
     const target = event.target as HTMLSelectElement;
-    localSort.value = target.value as 'newest' | 'oldest';
+    localSort.value = target.value as 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc';
     emit('update:sortOrder', localSort.value);
     emit('apply');
 };
@@ -149,6 +149,8 @@ const handleViewChange = (mode: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8') => {
                 >
                     <option value="newest">Plus récents</option>
                     <option value="oldest">Plus anciens</option>
+                    <option value="alphabetical">A-Z</option>
+                    <option value="alphabetical-desc">Z-A</option>
                 </select>
             </div>
 
