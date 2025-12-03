@@ -131,9 +131,9 @@ const getSetLabel = (setNumber: number) => {
             <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
                 {{ index + 1 }}
             </div>
-            <CardContent class="p-4">
+            <CardContent class="p-2">
                 <!-- En-tête : Image, nom, commentaires, bouton supprimer -->
-                <div class="flex items-start gap-4 mb-4">
+                <div class="flex items-start gap-3 mb-3">
                     <!-- Poignée de drag -->
                     <div 
                         class="flex flex-col items-center gap-1 pt-1 cursor-move text-neutral-400 hover:text-neutral-600"

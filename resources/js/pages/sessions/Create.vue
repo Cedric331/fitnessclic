@@ -709,7 +709,7 @@ watch(sessionExercises, () => {
 
         <div class="flex flex-col h-full">
             <!-- En-tête avec actions -->
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b bg-white dark:bg-neutral-900 px-4 sm:px-6 py-4">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b bg-white dark:bg-neutral-900 px-6 py-4">
                 <div class="flex items-center gap-4">
                     <h1 class="text-xl sm:text-2xl font-semibold">Nouvelle Séance</h1>
                 </div>
@@ -750,10 +750,10 @@ watch(sessionExercises, () => {
                 </div>
             </div>
 
-                    <!-- Contenu principal -->
-                    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                        <!-- Panneau gauche : Formulaire de séance -->
-                        <div class="w-full lg:w-1/2 lg:border-r overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
+            <!-- Contenu principal -->
+            <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                <!-- Panneau gauche : Formulaire de séance -->
+                <div class="w-full lg:w-3/5 lg:border-r overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
                     <div class="p-6 space-y-6">
                         <Card>
                             <CardHeader>
@@ -899,7 +899,7 @@ watch(sessionExercises, () => {
                 </div>
 
                 <!-- Panneau droit : Bibliothèque d'exercices -->
-                <div class="w-full lg:w-1/2 overflow-y-auto bg-white dark:bg-neutral-900">
+                <div class="w-full lg:w-2/5 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
                     <ExerciseLibrary
                         :exercises="filteredExercises"
                         :categories="categories"

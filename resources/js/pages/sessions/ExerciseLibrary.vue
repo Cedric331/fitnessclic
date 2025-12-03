@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,20 +34,21 @@ const emit = defineEmits<{
 }>();
 
 // Classes CSS pour les différents modes d'affichage
-// Sur mobile/tablette (< lg), imposer un affichage responsive (grid-cols-2 sm:grid-cols-3)
-// Sur desktop (>= lg), utiliser le mode sélectionné
+// Sur mobile (< md) : 1 colonne
+// Sur tablette/écran moyen (md à 2xl) : 2 colonnes forcées
+// Sur très grand écran (>= 2xl, 1536px) : utiliser le mode sélectionné
 const gridColsClass = computed(() => {
     switch (props.viewMode) {
         case 'grid-2':
-            return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-2';
+            return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-2';
         case 'grid-4':
-            return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
+            return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-4';
         case 'grid-6':
-            return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6';
+            return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-6';
         case 'list':
             return '';
         default:
-            return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
+            return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-4';
     }
 });
 
@@ -76,113 +77,116 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
 </script>
 
 <template>
-    <div class="flex flex-col h-full">
-        <!-- En-tête de la bibliothèque -->
-        <div class="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b p-4 space-y-4">
-            <div>
-                <h2 class="text-xl font-semibold mb-1">Bibliothèque</h2>
-                <p class="text-sm text-neutral-500">Glissez ou cliquez pour ajouter des exercices</p>
-            </div>
+    <div class="flex flex-col h-full p-6">
+        <Card class="flex flex-col h-full flex-1 overflow-hidden">
+            <CardHeader class="sticky top-6 z-10 bg-white dark:bg-neutral-900 border-b pb-4 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <CardTitle class="text-xl font-semibold">Bibliothèque</CardTitle>
+                            <!-- Mode d'affichage - à côté du titre, visible uniquement sur très grand écran -->
+                            <div class="hidden 2xl:flex items-center gap-1 border rounded-md p-0.5">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    :class="viewMode === 'list' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                                    @click="emit('viewModeChange', 'list')"
+                                    title="Liste"
+                                >
+                                    <List class="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    :class="viewMode === 'grid-2' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                                    @click="emit('viewModeChange', 'grid-2')"
+                                    title="2 par ligne"
+                                >
+                                    <Grid2x2 class="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    :class="viewMode === 'grid-4' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                                    @click="emit('viewModeChange', 'grid-4')"
+                                    title="4 par ligne"
+                                >
+                                    <LayoutGrid class="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    :class="viewMode === 'grid-6' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                                    @click="emit('viewModeChange', 'grid-6')"
+                                    title="6 par ligne"
+                                >
+                                    <Grid3x3 class="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                        <p class="text-sm text-neutral-500">Glissez ou cliquez pour ajouter des exercices</p>
+                    </div>
+                </div>
 
-            <!-- Barre de recherche -->
-            <div class="relative">
-                <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
-                <Input
-                    :value="searchTerm"
-                    @input="handleSearch"
-                    placeholder="Rechercher un exercice..."
-                    class="pl-9"
-                />
-            </div>
+                <!-- Barre de recherche -->
+                <div class="relative">
+                    <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                    <Input
+                        :value="searchTerm"
+                        @input="handleSearch"
+                        placeholder="Rechercher un exercice..."
+                        class="pl-9"
+                    />
+                </div>
 
-            <!-- Filtres -->
-            <div class="flex items-center gap-3">
-                <!-- Filtre par catégorie -->
-                <div class="flex-1">
-                    <select
-                        :value="selectedCategoryId || ''"
-                        @change="handleCategoryChange"
-                        class="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-                    >
-                        <option value="">Toutes les catégories</option>
-                        <option
-                            v-for="category in categories"
-                            :key="category.id"
-                            :value="category.id"
+                <!-- Filtres -->
+                <div class="flex items-center gap-3">
+                    <!-- Filtre par catégorie -->
+                    <div class="flex-1">
+                        <select
+                            :value="selectedCategoryId || ''"
+                            @change="handleCategoryChange"
+                            class="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                         >
-                            {{ category.name }}
-                        </option>
-                    </select>
-                </div>
+                            <option value="">Toutes les catégories</option>
+                            <option
+                                v-for="category in categories"
+                                :key="category.id"
+                                :value="category.id"
+                            >
+                                {{ category.name }}
+                            </option>
+                        </select>
+                    </div>
 
-                <!-- Filtre utilisateur -->
-                <div class="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        :class="!showOnlyMine ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                        @click="emit('filterChange', false)"
-                        title="Tous les exercices"
-                    >
-                        <Filter class="h-4 w-4 mr-1" />
-                        <span class="text-xs">Tous</span>
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        :class="showOnlyMine ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                        @click="emit('filterChange', true)"
-                        title="Mes exercices uniquement"
-                    >
-                        <Filter class="h-4 w-4 mr-1" />
-                        <span class="text-xs">Mes exercices</span>
-                    </Button>
+                    <!-- Filtre utilisateur -->
+                    <div class="flex items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            :class="!showOnlyMine ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                            @click="emit('filterChange', false)"
+                            title="Tous les exercices"
+                        >
+                            <Filter class="h-4 w-4 mr-1" />
+                            <span class="text-xs">Tous</span>
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            :class="showOnlyMine ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                            @click="emit('filterChange', true)"
+                            title="Mes exercices uniquement"
+                        >
+                            <Filter class="h-4 w-4 mr-1" />
+                            <span class="text-xs">Mes exercices</span>
+                        </Button>
+                    </div>
                 </div>
+            </CardHeader>
 
-                <!-- Mode d'affichage - uniquement sur desktop -->
-                <div class="hidden lg:flex items-center gap-1 border rounded-md p-0.5">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        :class="viewMode === 'list' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                        @click="emit('viewModeChange', 'list')"
-                        title="Liste"
-                    >
-                        <List class="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        :class="viewMode === 'grid-2' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                        @click="emit('viewModeChange', 'grid-2')"
-                        title="2 par ligne"
-                    >
-                        <Grid2x2 class="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        :class="viewMode === 'grid-4' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                        @click="emit('viewModeChange', 'grid-4')"
-                        title="4 par ligne"
-                    >
-                        <LayoutGrid class="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        :class="viewMode === 'grid-6' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                        @click="emit('viewModeChange', 'grid-6')"
-                        title="6 par ligne"
-                    >
-                    <Grid3x3 class="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Liste des exercices -->
-        <div class="flex-1 overflow-y-auto p-4">
+            <!-- Liste des exercices -->
+            <CardContent class="flex-1 overflow-y-auto p-6">
             <div v-if="exercises.length === 0" class="text-center py-12 text-neutral-500">
                 <p>Aucun exercice trouvé</p>
                 <p class="text-sm mt-1">Essayez de modifier vos filtres de recherche</p>
@@ -196,7 +200,7 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                 <Card
                     v-for="exercise in exercises"
                     :key="exercise.id"
-                    class="group cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
+                    class="group cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] p-0"
                     :draggable="true"
                     @dragstart="handleDragStart($event, exercise)"
                     @click="handleAddExercise(exercise)"
@@ -208,7 +212,7 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                                 v-if="exercise.image_url"
                                 :src="exercise.image_url"
                                 :alt="exercise.title"
-                                class="h-full w-full object-cover"
+                                class="h-full w-full object-contain object-top"
                                 draggable="false"
                                 @error="($event.target as HTMLImageElement).style.display = 'none'"
                             />
@@ -257,12 +261,12 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                     <CardContent class="p-3">
                         <div class="flex items-center gap-3">
                             <!-- Image miniature -->
-                            <div class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                            <div class="flex-shrink-0 w-16 h-16 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                                 <img
                                     v-if="exercise.image_url"
                                     :src="exercise.image_url"
                                     :alt="exercise.title"
-                                    class="h-full w-full object-cover"
+                                    class="h-full w-full object-contain"
                                     draggable="false"
                                     @error="($event.target as HTMLImageElement).style.display = 'none'"
                                 />
@@ -293,7 +297,8 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+            </CardContent>
+        </Card>
     </div>
 </template>
 

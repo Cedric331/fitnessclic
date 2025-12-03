@@ -58,7 +58,7 @@ const mainNavItems: NavItem[] = [
     },
     {
         title: 'Abonnement',
-        href: '/client/subscription',
+        href: '/subscription',
         icon: Star,
     },
 ];
