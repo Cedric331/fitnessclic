@@ -318,17 +318,6 @@ const sortedExercises = computed(() => {
                                         <h3 class="font-semibold text-slate-900 dark:text-white">
                                             {{ index + 1 }}. {{ sessionExercise.exercise?.title || 'Exercice inconnu' }}
                                         </h3>
-                                        <!-- Catégories -->
-                                        <div v-if="sessionExercise.exercise?.categories && sessionExercise.exercise.categories.length > 0" class="flex flex-wrap gap-1 mt-1">
-                                            <Badge
-                                                v-for="category in sessionExercise.exercise.categories"
-                                                :key="category.id"
-                                                variant="secondary"
-                                                class="text-xs"
-                                            >
-                                                {{ category.name }}
-                                            </Badge>
-                                        </div>
                                     </div>
 
                                     <!-- Détails des sets -->

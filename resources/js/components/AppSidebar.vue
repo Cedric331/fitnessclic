@@ -37,6 +37,11 @@ const { getInitials } = useInitials();
 
 const mainNavItems: NavItem[] = [
     {
+        title: 'Créer une Séance',
+        href: '/sessions/create',
+        icon: Plus,
+    },
+    {
         title: 'Mes Séances',
         href: '/sessions',
         icon: Dumbbell,
@@ -113,7 +118,7 @@ const handleLogout = () => {
                 </SidebarGroupLabel>
                 <SidebarMenu class="space-y-1.5">
                     <!-- Bouton Créer une Séance -->
-                    <SidebarMenuItem class="mb-2">
+                    <!-- <SidebarMenuItem class="mb-2">
                         <Button
                             as-child
                             class="w-full bg-blue-600 hover:bg-blue-700 text-white justify-start gap-2 h-10"
@@ -123,7 +128,7 @@ const handleLogout = () => {
                                 <span>Créer une Séance</span>
                             </Link>
                         </Button>
-                    </SidebarMenuItem>
+                    </SidebarMenuItem> -->
 
                     <!-- Items de navigation -->
                     <SidebarMenuItem
@@ -135,11 +140,11 @@ const handleLogout = () => {
                             as-child
                             :is-active="isCurrentRoute(item.href)"
                             :tooltip="item.title"
-                            class="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 data-[active=true]:bg-slate-100 dark:data-[active=true]:bg-slate-800 h-10 px-3"
+                            class="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 dark:data-[active=true]:bg-blue-600 h-10 px-3"
                         >
                             <Link :href="item.href" class="flex items-center gap-3">
-                                <component :is="item.icon" class="size-4 text-slate-700 dark:text-white" />
-                                <span class="text-slate-900 dark:text-white">{{ item.title }}</span>
+                                <component :is="item.icon" :class="['size-4', isCurrentRoute(item.href) ? 'text-white dark:text-white' : 'text-slate-700 dark:text-white']" />
+                                <span :class="isCurrentRoute(item.href) ? 'text-white dark:text-white' : 'text-slate-900 dark:text-white'">{{ item.title }}</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
