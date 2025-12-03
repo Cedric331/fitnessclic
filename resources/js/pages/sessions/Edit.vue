@@ -22,7 +22,8 @@ import {
     Clock,
     RotateCcw,
     Pause,
-    AlertTriangle
+    AlertTriangle,
+    Library
 } from 'lucide-vue-next';
 import type { EditSessionProps, Exercise, SessionExercise, Customer, Category, ExerciseSet } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
@@ -38,6 +39,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    Sheet,
+    SheetContent,
+} from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { User, Users, CheckSquare, Square } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
@@ -221,6 +226,7 @@ const selectedCategoryId = ref<number | null>(props.filters.category_id || null)
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>('grid-4');
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
+const isLibraryOpen = ref(false); // Pour le drawer mobile
 
 // Liste des exercices dans la séance
 const sessionExercises = ref<SessionExercise[]>([]);
@@ -913,8 +919,8 @@ watch(sessionExercises, () => {
                     </div>
                 </div>
 
-                <!-- Panneau droit : Bibliothèque d'exercices -->
-                <div class="w-full lg:w-2/5 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
+                <!-- Panneau droit : Bibliothèque d'exercices (caché sur mobile) -->
+                <div class="hidden lg:block w-full lg:w-2/5 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
                     <ExerciseLibrary
                         :exercises="filteredExercises"
                         :categories="categories"
@@ -1041,6 +1047,36 @@ watch(sessionExercises, () => {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <!-- Bouton flottant pour ouvrir la bibliothèque sur mobile -->
+        <Button
+            class="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg lg:hidden"
+            @click="isLibraryOpen = true"
+        >
+            <Library class="h-6 w-6" />
+        </Button>
+
+        <!-- Sheet pour la bibliothèque sur mobile -->
+        <Sheet v-model:open="isLibraryOpen">
+            <SheetContent side="right" class="w-full sm:max-w-lg p-0">
+                <div class="h-full">
+                    <ExerciseLibrary
+                        :exercises="filteredExercises"
+                        :categories="categories"
+                        :search-term="localSearchTerm"
+                        :selected-category-id="selectedCategoryId"
+                        :view-mode="viewMode"
+                        :show-only-mine="showOnlyMine"
+                        :current-user-id="currentUserId"
+                        @search="(term: string) => { localSearchTerm = term; }"
+                        @category-change="(id: number | null) => { selectedCategoryId = id; }"
+                        @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
+                        @filter-change="(showOnly: boolean) => { showOnlyMine = showOnly; }"
+                        @add-exercise="(exercise) => { addExerciseToSession(exercise); isLibraryOpen = false; }"
+                    />
+                </div>
+            </SheetContent>
+        </Sheet>
     </AppLayout>
 </template>
 
