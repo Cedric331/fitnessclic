@@ -246,6 +246,7 @@ watch(isDeleteDialogOpen, (open) => {
                 <Button
                     variant="default"
                     size="sm"
+                    class="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
                     @click="router.visit('/sessions/create')"
                 >
                     <Plus class="size-4 mr-2" />

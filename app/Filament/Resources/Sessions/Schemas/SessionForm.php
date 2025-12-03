@@ -6,6 +6,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Schemas\Schema;
 
 class SessionForm
@@ -18,12 +19,12 @@ class SessionForm
                     ->label('Utilisateur')
                     ->relationship('user', 'name')
                     ->required(),
-                Select::make('customer_id')
-                    ->label('Client')
-                    ->relationship('customer', 'first_name')
+                CheckboxList::make('customers')
+                    ->label('Clients')
+                    ->relationship('customers', 'first_name')
                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_name} {$record->last_name}")
-                    ->searchable(['first_name', 'last_name'])
-                    ->required(),
+                    ->searchable()
+                    ->columns(2),
                 TextInput::make('name')
                     ->label('Nom'),
                 Textarea::make('notes')

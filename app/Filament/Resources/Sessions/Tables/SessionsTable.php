@@ -20,8 +20,10 @@ class SessionsTable
                 TextColumn::make('user.name')
                     ->label('Utilisateur')
                     ->searchable(),
-                TextColumn::make('customer.full_name')
-                    ->label('Client')
+                TextColumn::make('customers.full_name')
+                    ->label('Clients')
+                    ->badge()
+                    ->separator(',')
                     ->searchable(['first_name', 'last_name']),
                 TextColumn::make('name')
                     ->label('Nom')
@@ -47,11 +49,11 @@ class SessionsTable
                     ->relationship('user', 'name')
                     ->searchable()
                     ->preload(),
-                SelectFilter::make('customer_id')
+                SelectFilter::make('customers')
                     ->label('Client')
-                    ->relationship('customer', 'first_name')
+                    ->relationship('customers', 'first_name')
                     ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->first_name} {$record->last_name}")
-                    ->searchable(['first_name', 'last_name'])
+                    ->searchable()
                     ->preload(),
                 Filter::make('session_date')
                     ->label('Date de la séance')

@@ -13,8 +13,9 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+// dashboard redirect to create a session
 Route::get('dashboard', function () {
-    return Inertia::render('Dashboard');
+    return redirect()->route('sessions.create');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Routes clients
