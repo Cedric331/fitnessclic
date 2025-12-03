@@ -93,7 +93,7 @@ class SessionsController extends Controller
         });
 
         // Récupérer toutes les catégories pour le filtre
-        $categories = \App\Models\Category::public()
+        $categories = \App\Models\Category::forUser(Auth::id())
             ->orderBy('name')
             ->get();
 
@@ -320,7 +320,7 @@ class SessionsController extends Controller
         });
 
         // Récupérer toutes les catégories pour le filtre
-        $categories = \App\Models\Category::public()
+        $categories = \App\Models\Category::forUser(Auth::id())
             ->orderBy('name')
             ->get();
 

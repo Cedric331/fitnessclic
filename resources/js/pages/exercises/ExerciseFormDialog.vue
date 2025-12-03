@@ -14,6 +14,9 @@ import {
 } from '@/components/ui/dialog';
 import { ref, watch, computed } from 'vue';
 import type { Exercise } from './types';
+import { useNotifications } from '@/composables/useNotifications';
+
+const { error: notifyError } = useNotifications();
 
 interface Props {
     open?: boolean;
@@ -146,6 +149,15 @@ const handleSubmit = () => {
                 imagePreview.value = null;
                 imageFile.value = null;
             },
+            onError: (errors) => {
+                // Afficher la première erreur via notification
+                const firstError = Object.values(errors)[0];
+                if (firstError && typeof firstError === 'string') {
+                    notifyError(firstError);
+                } else if (Object.keys(errors).length > 0) {
+                    notifyError('Une erreur est survenue lors de la modification de l\'exercice.');
+                }
+            },
         });
     } else {
         // Mode création
@@ -158,6 +170,15 @@ const handleSubmit = () => {
                 imagePreview.value = null;
                 imageFile.value = null;
             },
+            onError: (errors) => {
+                // Afficher la première erreur via notification
+                const firstError = Object.values(errors)[0];
+                if (firstError && typeof firstError === 'string') {
+                    notifyError(firstError);
+                } else if (Object.keys(errors).length > 0) {
+                    notifyError('Une erreur est survenue lors de la création de l\'exercice.');
+                }
+            },
         });
     }
 };
@@ -168,9 +189,9 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
 <template>
     <Dialog v-model:open="isOpen">
         <DialogContent 
-            class="sm:max-w-[600px] !z-[60] p-0 overflow-hidden max-h-[90vh] overflow-y-auto"
+            class="sm:max-w-[700px] !z-[60] p-0 overflow-hidden flex flex-col max-h-[90vh]"
         >
-            <DialogHeader class="px-6 pt-6 pb-4">
+            <DialogHeader class="px-6 pt-6 pb-4 flex-shrink-0">
                 <DialogTitle class="text-xl font-semibold">
                     {{ isEditMode ? 'Modifier l\'exercice' : 'Nouvel exercice' }}
                 </DialogTitle>
@@ -179,35 +200,37 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
                 </DialogDescription>
             </DialogHeader>
             <Separator />
-            <form :id="formId" @submit.prevent="handleSubmit" class="px-6 py-4 space-y-5">
-                <!-- Image -->
+            <form :id="formId" @submit.prevent="handleSubmit" class="px-6 py-4 space-y-5 overflow-y-auto flex-1">
+                <!-- Image - Layout horizontal pour économiser l'espace -->
                 <div class="space-y-2">
                     <Label :for="`image_${formId}`" class="text-sm font-medium text-slate-700 dark:text-slate-300">
                         Image <span v-if="!isEditMode" class="text-red-500">*</span>
                     </Label>
-                    <div class="space-y-3">
-                        <div v-if="imagePreview" class="relative w-full aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+                    <div class="flex gap-4 items-start">
+                        <div v-if="imagePreview" class="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
                             <img
                                 :src="imagePreview"
                                 alt="Aperçu de l'image"
                                 class="w-full h-full object-cover"
                             />
                         </div>
-                        <Input
-                            :id="`image_${formId}`"
-                            type="file"
-                            accept="image/*"
-                            :required="!isEditMode"
-                            class="h-10 cursor-pointer"
-                            :class="{ 'border-red-500 focus-visible:ring-red-500': exerciseForm.errors.image }"
-                            @change="handleImageChange"
-                        />
-                        <p v-if="exerciseForm.errors.image" class="text-xs text-red-500 mt-1">
-                            {{ exerciseForm.errors.image }}
-                        </p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">
-                            Formats acceptés : JPG, PNG, GIF. Taille maximale : 5MB
-                        </p>
+                        <div class="flex-1 space-y-2">
+                            <Input
+                                :id="`image_${formId}`"
+                                type="file"
+                                accept="image/*"
+                                :required="!isEditMode"
+                                class="h-10 cursor-pointer"
+                                :class="{ 'border-red-500 focus-visible:ring-red-500': exerciseForm.errors.image }"
+                                @change="handleImageChange"
+                            />
+                            <p v-if="exerciseForm.errors.image" class="text-xs text-red-500 mt-1">
+                                {{ exerciseForm.errors.image }}
+                            </p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                Formats acceptés : JPG, PNG, GIF. Taille maximale : 5MB
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -296,8 +319,8 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
                 </div>
 
             </form>
-            <Separator />
-            <DialogFooter class="px-6 py-4 bg-slate-50 dark:bg-slate-900/50">
+            <Separator class="flex-shrink-0" />
+            <DialogFooter class="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 flex-shrink-0">
                 <Button
                     type="button"
                     variant="outline"

@@ -11,6 +11,9 @@ import {
 import { useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import type { Category } from './types';
+import { useNotifications } from '@/composables/useNotifications';
+
+const { error: notifyError } = useNotifications();
 
 const props = withDefaults(
     defineProps<{
@@ -69,6 +72,15 @@ const handleUpdateCategory = () => {
         onSuccess: () => {
             isOpen.value = false;
             editForm.reset();
+        },
+        onError: (errors) => {
+            // Afficher la première erreur via notification
+            const firstError = Object.values(errors)[0];
+            if (firstError && typeof firstError === 'string') {
+                notifyError(firstError);
+            } else if (Object.keys(errors).length > 0) {
+                notifyError('Une erreur est survenue lors de la modification de la catégorie.');
+            }
         },
     });
 };

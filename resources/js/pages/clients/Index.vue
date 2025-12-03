@@ -3,37 +3,52 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import type { BreadcrumbItem } from '@/types';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle2, XCircle } from 'lucide-vue-next';
 import CustomerCreateDialog from './CustomerCreateDialog.vue';
 import CustomerEditDialog from './CustomerEditDialog.vue';
 import CustomerList from './CustomerList.vue';
 import CustomerDeleteDialog from './CustomerDeleteDialog.vue';
 import type { Customer, CustomersProps } from './types';
+import { useNotifications } from '@/composables/useNotifications';
 
 const props = defineProps<CustomersProps>();
 const page = usePage();
+const { success: notifySuccess, error: notifyError } = useNotifications();
 
-// Messages flash
-const flashMessage = computed(() => {
-    const flash = (page.props as any).flash;
-    if (!flash) return null;
-    return {
-        success: flash.success || null,
-        error: flash.error || null,
-    };
-});
+// Écouter les messages flash et les convertir en notifications
+const shownFlashMessages = ref(new Set<string>());
 
-// Fermer automatiquement les messages après 5 secondes
-watch(flashMessage, (newValue) => {
-    if (newValue?.success || newValue?.error) {
+watch(() => (page.props as any).flash, (flash) => {
+    if (!flash) return;
+    
+    const successKey = flash.success ? `success-${flash.success}` : null;
+    const errorKey = flash.error ? `error-${flash.error}` : null;
+    
+    if (successKey && !shownFlashMessages.value.has(successKey)) {
+        shownFlashMessages.value.add(successKey);
+        nextTick(() => {
+            setTimeout(() => {
+                notifySuccess(flash.success);
+            }, 100);
+        });
         setTimeout(() => {
-            // Les messages flash sont automatiquement supprimés par Inertia
-        }, 5000);
+            shownFlashMessages.value.delete(successKey);
+        }, 4500);
     }
-});
+    
+    if (errorKey && !shownFlashMessages.value.has(errorKey)) {
+        shownFlashMessages.value.add(errorKey);
+        nextTick(() => {
+            setTimeout(() => {
+                notifyError(flash.error);
+            }, 100);
+        });
+        setTimeout(() => {
+            shownFlashMessages.value.delete(errorKey);
+        }, 6500);
+    }
+}, { immediate: true });
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -136,24 +151,6 @@ watch(isDeleteDialogOpen, (open) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 mx-auto w-full px-6">
-            <!-- Messages Flash -->
-            <Alert
-                v-if="flashMessage?.success"
-                class="bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200"
-            >
-                <CheckCircle2 class="size-4 text-green-600 dark:text-green-400" />
-                <AlertTitle>Succès</AlertTitle>
-                <AlertDescription>{{ flashMessage.success }}</AlertDescription>
-            </Alert>
-            <Alert
-                v-if="flashMessage?.error"
-                variant="destructive"
-            >
-                <XCircle class="size-4" />
-                <AlertTitle>Erreur</AlertTitle>
-                <AlertDescription>{{ flashMessage.error }}</AlertDescription>
-            </Alert>
-
             <!-- Header -->
             <div class="flex items-start justify-between">
                 <div class="flex flex-col gap-0.5">

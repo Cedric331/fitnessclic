@@ -13,6 +13,9 @@ import {
 import { Plus } from 'lucide-vue-next';
 import { useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
+import { useNotifications } from '@/composables/useNotifications';
+
+const { error: notifyError } = useNotifications();
 
 const props = withDefaults(
     defineProps<{
@@ -60,6 +63,15 @@ const handleCreateCategory = () => {
         onSuccess: () => {
             isOpen.value = false;
             createForm.reset();
+        },
+        onError: (errors) => {
+            // Afficher la première erreur via notification
+            const firstError = Object.values(errors)[0];
+            if (firstError && typeof firstError === 'string') {
+                notifyError(firstError);
+            } else if (Object.keys(errors).length > 0) {
+                notifyError('Une erreur est survenue lors de la création de la catégorie.');
+            }
         },
     });
 };

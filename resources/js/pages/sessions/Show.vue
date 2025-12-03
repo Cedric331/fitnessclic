@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ArrowLeft, Edit, Trash2, CheckCircle2, XCircle, Download, Calendar, Users, FileText } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { ArrowLeft, Edit, Trash2, Download, Calendar, Users, FileText } from 'lucide-vue-next';
+import { computed, ref, watch, nextTick } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import SessionDeleteDialog from './SessionDeleteDialog.vue';
 import type { Session } from './types';
+import { useNotifications } from '@/composables/useNotifications';
 
 interface Props {
     session: Session;
@@ -19,16 +19,41 @@ interface Props {
 const props = defineProps<Props>();
 
 const page = usePage();
-const flashMessage = computed(() => {
-    const flash = (page.props as any).flash;
-    if (!flash) {
-        return null;
+const { success: notifySuccess, error: notifyError } = useNotifications();
+
+// Écouter les messages flash et les convertir en notifications
+const shownFlashMessages = ref(new Set<string>());
+
+watch(() => (page.props as any).flash, (flash) => {
+    if (!flash) return;
+    
+    const successKey = flash.success ? `success-${flash.success}` : null;
+    const errorKey = flash.error ? `error-${flash.error}` : null;
+    
+    if (successKey && !shownFlashMessages.value.has(successKey)) {
+        shownFlashMessages.value.add(successKey);
+        nextTick(() => {
+            setTimeout(() => {
+                notifySuccess(flash.success);
+            }, 100);
+        });
+        setTimeout(() => {
+            shownFlashMessages.value.delete(successKey);
+        }, 4500);
     }
-    return {
-        success: flash.success ?? null,
-        error: flash.error ?? null,
-    };
-});
+    
+    if (errorKey && !shownFlashMessages.value.has(errorKey)) {
+        shownFlashMessages.value.add(errorKey);
+        nextTick(() => {
+            setTimeout(() => {
+                notifyError(flash.error);
+            }, 100);
+        });
+        setTimeout(() => {
+            shownFlashMessages.value.delete(errorKey);
+        }, 6500);
+    }
+}, { immediate: true });
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -122,24 +147,6 @@ const sortedExercises = computed(() => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 pt-6 pb-6 px-4 sm:px-6 lg:px-8">
-            <!-- Messages Flash -->
-            <Alert
-                v-if="flashMessage?.success"
-                class="bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200"
-            >
-                <CheckCircle2 class="size-4 text-green-600 dark:text-green-400" />
-                <AlertTitle>Succès</AlertTitle>
-                <AlertDescription>{{ flashMessage.success }}</AlertDescription>
-            </Alert>
-            <Alert
-                v-if="flashMessage?.error"
-                variant="destructive"
-            >
-                <XCircle class="size-4" />
-                <AlertTitle>Erreur</AlertTitle>
-                <AlertDescription>{{ flashMessage.error }}</AlertDescription>
-            </Alert>
-
             <!-- Header -->
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="space-y-1">

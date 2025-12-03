@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { CheckCircle2, Plus, Upload, XCircle } from 'lucide-vue-next';
+import { Plus, Upload } from 'lucide-vue-next';
+import { useNotifications } from '@/composables/useNotifications';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { BreadcrumbItemType } from '@/types';
 import ExerciseFilters from './ExerciseFilters.vue';
@@ -133,18 +133,41 @@ const breadcrumbs: BreadcrumbItemType[] = [
 ];
 
 const page = usePage();
+const { success: notifySuccess, error: notifyError } = useNotifications();
 
-const flashMessage = computed(() => {
-    const flash = (page.props as any).flash;
-    if (!flash) {
-        return null;
+// Écouter les messages flash et les convertir en notifications
+const shownFlashMessages = ref(new Set<string>());
+
+watch(() => (page.props as any).flash, (flash) => {
+    if (!flash) return;
+    
+    const successKey = flash.success ? `success-${flash.success}` : null;
+    const errorKey = flash.error ? `error-${flash.error}` : null;
+    
+    if (successKey && !shownFlashMessages.value.has(successKey)) {
+        shownFlashMessages.value.add(successKey);
+        nextTick(() => {
+            setTimeout(() => {
+                notifySuccess(flash.success);
+            }, 100);
+        });
+        setTimeout(() => {
+            shownFlashMessages.value.delete(successKey);
+        }, 4500);
     }
-
-    return {
-        success: flash.success ?? null,
-        error: flash.error ?? null,
-    };
-});
+    
+    if (errorKey && !shownFlashMessages.value.has(errorKey)) {
+        shownFlashMessages.value.add(errorKey);
+        nextTick(() => {
+            setTimeout(() => {
+                notifyError(flash.error);
+            }, 100);
+        });
+        setTimeout(() => {
+            shownFlashMessages.value.delete(errorKey);
+        }, 6500);
+    }
+}, { immediate: true });
 
 // Initialiser les filtres depuis le cache ou les props
 const cachedFilters = getCachedFilters();
@@ -540,30 +563,6 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
                     applyFilters(true);
                 }"
             />
-
-            <div class="space-y-3">
-                <Alert
-                    v-if="flashMessage?.success"
-                    class="flex items-start gap-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-3 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200"
-                >
-                    <CheckCircle2 class="size-4 text-emerald-600 dark:text-emerald-300" />
-                    <div>
-                        <AlertTitle>Succès</AlertTitle>
-                        <AlertDescription>{{ flashMessage.success }}</AlertDescription>
-                    </div>
-                </Alert>
-                <Alert
-                    v-if="flashMessage?.error"
-                    variant="destructive"
-                    class="flex items-start gap-3 rounded-2xl border border-destructive-200/70 bg-destructive-50/80 px-4 py-3 text-destructive-600 dark:border-destructive-800/70 dark:bg-destructive-900/30 dark:text-destructive-200"
-                >
-                    <XCircle class="size-4 text-destructive-500 dark:text-destructive-300" />
-                    <div>
-                        <AlertTitle>Erreur</AlertTitle>
-                        <AlertDescription>{{ flashMessage.error }}</AlertDescription>
-                    </div>
-                </Alert>
-            </div>
 
             <div
                 v-if="exercises.length"
