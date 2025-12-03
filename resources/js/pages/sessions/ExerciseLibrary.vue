@@ -142,6 +142,15 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                     <Button
                         variant="ghost"
                         size="sm"
+                        :class="viewMode === 'list' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                        @click="emit('viewModeChange', 'list')"
+                        title="Liste"
+                    >
+                        <List class="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         :class="viewMode === 'grid-2' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
                         @click="emit('viewModeChange', 'grid-2')"
                         title="2 par ligne"
@@ -155,7 +164,7 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                         @click="emit('viewModeChange', 'grid-4')"
                         title="4 par ligne"
                     >
-                        <Grid3x3 class="h-4 w-4" />
+                        <LayoutGrid class="h-4 w-4" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -164,16 +173,7 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                         @click="emit('viewModeChange', 'grid-6')"
                         title="6 par ligne"
                     >
-                        <LayoutGrid class="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        :class="viewMode === 'list' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                        @click="emit('viewModeChange', 'list')"
-                        title="Liste"
-                    >
-                        <List class="h-4 w-4" />
+                    <Grid3x3 class="h-4 w-4" />
                     </Button>
                 </div>
             </div>

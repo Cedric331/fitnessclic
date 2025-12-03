@@ -8,8 +8,11 @@ use App\Models\Session;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SessionsController extends Controller
 {
@@ -19,7 +22,7 @@ class SessionsController extends Controller
     public function index(Request $request): Response
     {
         $query = Session::where('user_id', Auth::id())
-            ->with(['customers', 'exercises'])
+            ->with(['customers', 'exercises.media'])
             ->withCount('exercises');
 
         if ($request->has('search') && $request->search) {
@@ -37,7 +40,15 @@ class SessionsController extends Controller
             });
         }
 
-        $sessions = $query->latest('session_date')->latest('created_at')->paginate(12);
+        // Gérer le tri par date
+        $sortOrder = $request->input('sort', 'newest');
+        if ($sortOrder === 'oldest') {
+            $query->oldest('session_date')->oldest('created_at');
+        } else {
+            $query->latest('session_date')->latest('created_at');
+        }
+
+        $sessions = $query->paginate(12);
 
         $customers = Customer::where('user_id', Auth::id())
             ->where('is_active', true)
@@ -48,7 +59,7 @@ class SessionsController extends Controller
         return Inertia::render('sessions/Index', [
             'sessions' => $sessions,
             'customers' => $customers,
-            'filters' => $request->only(['search', 'customer_id']),
+            'filters' => $request->only(['search', 'customer_id', 'sort']),
         ]);
     }
 
@@ -212,10 +223,62 @@ class SessionsController extends Controller
             abort(403);
         }
 
-        $session->load(['customer', 'exercises.categories', 'exercises.media']);
+        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets'])
+            ->loadCount('exercises');
+
+        // Mapper la session avec les données nécessaires pour l'affichage
+        $sessionData = [
+            'id' => $session->id,
+            'name' => $session->name,
+            'session_date' => $session->session_date?->format('Y-m-d'),
+            'notes' => $session->notes,
+            'created_at' => $session->created_at,
+            'exercises_count' => $session->exercises_count,
+            'customers' => $session->customers->map(fn ($customer) => [
+                'id' => $customer->id,
+                'first_name' => $customer->first_name,
+                'last_name' => $customer->last_name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'full_name' => $customer->full_name,
+            ]),
+            'sessionExercises' => $session->sessionExercises->map(function ($se) {
+                return [
+                    'id' => $se->id,
+                    'exercise_id' => $se->exercise_id,
+                    'exercise' => $se->exercise ? [
+                        'id' => $se->exercise->id,
+                        'title' => $se->exercise->title,
+                        'description' => $se->exercise->description,
+                        'image_url' => $se->exercise->image_url,
+                        'suggested_duration' => $se->exercise->suggested_duration,
+                        'user_id' => $se->exercise->user_id,
+                        'categories' => $se->exercise->categories->map(fn ($cat) => [
+                            'id' => $cat->id,
+                            'name' => $cat->name,
+                        ]),
+                    ] : null,
+                    'repetitions' => $se->repetitions,
+                    'weight' => $se->weight,
+                    'rest_time' => $se->rest_time,
+                    'duration' => $se->duration,
+                    'additional_description' => $se->additional_description,
+                    'order' => $se->order,
+                    'sets' => $se->sets->map(fn ($set) => [
+                        'id' => $set->id,
+                        'set_number' => $set->set_number,
+                        'repetitions' => $set->repetitions,
+                        'weight' => $set->weight,
+                        'rest_time' => $set->rest_time,
+                        'duration' => $set->duration,
+                        'order' => $set->order,
+                    ]),
+                ];
+            }),
+        ];
 
         return Inertia::render('sessions/Show', [
-            'session' => $session,
+            'session' => $sessionData,
         ]);
     }
 
@@ -229,7 +292,7 @@ class SessionsController extends Controller
             abort(403);
         }
 
-        $session->load(['customer', 'exercises.categories', 'exercises.media']);
+        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets']);
 
         $searchTerm = trim((string) $request->input('search', ''));
         $categoryId = $request->input('category_id');
@@ -241,7 +304,20 @@ class SessionsController extends Controller
             ->when($searchTerm !== '', fn ($query) => $query->where('title', 'like', "%{$searchTerm}%"))
             ->when($categoryId, fn ($query, $value) => $query->whereHas('categories', fn ($query) => $query->where('categories.id', $value)));
 
-        $exercises = $exercisesQuery->orderBy('title')->get();
+        $exercises = $exercisesQuery->orderBy('title')->get()->map(function ($exercise) {
+            return [
+                'id' => $exercise->id,
+                'title' => $exercise->title,
+                'description' => $exercise->description,
+                'image_url' => $exercise->image_url,
+                'suggested_duration' => $exercise->suggested_duration,
+                'user_id' => $exercise->user_id,
+                'categories' => $exercise->categories->map(fn ($cat) => [
+                    'id' => $cat->id,
+                    'name' => $cat->name,
+                ]),
+            ];
+        });
 
         // Récupérer toutes les catégories pour le filtre
         $categories = \App\Models\Category::public()
@@ -265,8 +341,59 @@ class SessionsController extends Controller
                 ];
             });
 
+        // Mapper la session avec les données nécessaires
+        $sessionData = [
+            'id' => $session->id,
+            'name' => $session->name,
+            'session_date' => $session->session_date?->format('Y-m-d'),
+            'notes' => $session->notes,
+            'customers' => $session->customers->map(fn ($customer) => [
+                'id' => $customer->id,
+                'first_name' => $customer->first_name,
+                'last_name' => $customer->last_name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'full_name' => $customer->full_name,
+            ]),
+            'sessionExercises' => $session->sessionExercises->map(function ($se) {
+                return [
+                    'id' => $se->id,
+                    'exercise_id' => $se->exercise_id,
+                    'exercise' => $se->exercise ? [
+                        'id' => $se->exercise->id,
+                        'title' => $se->exercise->title,
+                        'description' => $se->exercise->description,
+                        'image_url' => $se->exercise->image_url,
+                        'suggested_duration' => $se->exercise->suggested_duration,
+                        'user_id' => $se->exercise->user_id,
+                        'categories' => $se->exercise->categories->map(fn ($cat) => [
+                            'id' => $cat->id,
+                            'name' => $cat->name,
+                        ]),
+                    ] : null,
+                    'repetitions' => $se->repetitions,
+                    'weight' => $se->weight,
+                    'rest_time' => $se->rest_time,
+                    'duration' => $se->duration,
+                    'additional_description' => $se->additional_description,
+                    'order' => $se->order,
+                    'sets' => $se->sets->map(fn ($set) => [
+                        'id' => $set->id,
+                        'set_number' => $set->set_number,
+                        'repetitions' => $set->repetitions,
+                        'weight' => $set->weight,
+                        'rest_time' => $set->rest_time,
+                        'duration' => $set->duration,
+                        'order' => $set->order,
+                    ]),
+                ];
+            }),
+            'created_at' => $session->created_at,
+            'updated_at' => $session->updated_at,
+        ];
+
         return Inertia::render('sessions/Edit', [
-            'session' => $session,
+            'session' => $sessionData,
             'exercises' => $exercises,
             'categories' => $categories,
             'customers' => $customers,
@@ -337,18 +464,38 @@ class SessionsController extends Controller
         }
 
         // Synchroniser les exercices
-        $session->exercises()->detach();
+        // Supprimer tous les exercices existants (cela supprimera aussi les sets via cascade)
+        $session->sessionExercises()->delete();
+        
         foreach ($validated['exercises'] as $exerciseData) {
-            $session->exercises()->attach($exerciseData['exercise_id'], [
+            $sessionExercise = \App\Models\SessionExercise::create([
+                'session_id' => $session->id,
+                'exercise_id' => $exerciseData['exercise_id'],
                 'repetitions' => $exerciseData['repetitions'] ?? null,
+                'weight' => $exerciseData['weight'] ?? null,
                 'rest_time' => $exerciseData['rest_time'] ?? null,
                 'duration' => $exerciseData['duration'] ?? null,
                 'additional_description' => $exerciseData['description'] ?? null,
                 'order' => $exerciseData['order'],
             ]);
+
+            // Créer les séries multiples si elles existent
+            if (isset($exerciseData['sets']) && is_array($exerciseData['sets']) && count($exerciseData['sets']) > 0) {
+                foreach ($exerciseData['sets'] as $setData) {
+                    \App\Models\SessionExerciseSet::create([
+                        'session_exercise_id' => $sessionExercise->id,
+                        'set_number' => $setData['set_number'],
+                        'repetitions' => $setData['repetitions'] ?? null,
+                        'weight' => $setData['weight'] ?? null,
+                        'rest_time' => $setData['rest_time'] ?? null,
+                        'duration' => $setData['duration'] ?? null,
+                        'order' => $setData['order'],
+                    ]);
+                }
+            }
         }
 
-        return redirect()->route('sessions.index')
+        return redirect()->route('sessions.edit', $session)
             ->with('success', 'Séance mise à jour avec succès.');
     }
 
@@ -371,6 +518,9 @@ class SessionsController extends Controller
     /**
      * Generate PDF for the session.
      */
+    /**
+     * Generate PDF for a saved session.
+     */
     public function pdf(Session $session)
     {
         // Vérifier que la séance appartient à l'utilisateur
@@ -378,13 +528,105 @@ class SessionsController extends Controller
             abort(403);
         }
 
-        $session->load(['customer', 'exercises.categories', 'exercises.media', 'user']);
+        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'user']);
 
-        $pdf = \PDF::loadView('sessions.pdf', [
+        $pdf = Pdf::loadView('sessions.pdf', [
             'session' => $session,
         ]);
         
-        return $pdf->download("seance-{$session->id}.pdf");
+        $fileName = $session->name ?: "seance-{$session->id}";
+        $fileName = Str::slug($fileName) . '.pdf';
+        
+        return $pdf->download($fileName);
+    }
+
+    /**
+     * Generate PDF from unsaved session data (from create page).
+     */
+    public function pdfPreview(Request $request)
+    {
+        try {
+            // Si la requête est en JSON, décoder les données
+            if ($request->isJson() || $request->header('Content-Type') === 'application/json') {
+                $request->merge(json_decode($request->getContent(), true) ?? []);
+            }
+            
+            $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'session_date' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string'],
+            'exercises' => ['required', 'array', 'min:1'],
+            'exercises.*.exercise_id' => ['required', 'exists:exercises,id'],
+            'exercises.*.sets' => ['nullable', 'array'],
+            'exercises.*.sets.*.set_number' => ['required', 'integer', 'min:1'],
+            'exercises.*.sets.*.repetitions' => ['nullable', 'integer'],
+            'exercises.*.sets.*.weight' => ['nullable', 'numeric'],
+            'exercises.*.sets.*.rest_time' => ['nullable', 'string'],
+            'exercises.*.sets.*.duration' => ['nullable', 'string'],
+            'exercises.*.sets.*.order' => ['required', 'integer', 'min:0'],
+            'exercises.*.repetitions' => ['nullable', 'integer'],
+            'exercises.*.weight' => ['nullable', 'numeric'],
+            'exercises.*.rest_time' => ['nullable', 'string'],
+            'exercises.*.duration' => ['nullable', 'string'],
+            'exercises.*.description' => ['nullable', 'string'],
+            'exercises.*.order' => ['required', 'integer', 'min:0'],
+        ]);
+
+        // Charger les exercices avec leurs relations
+        $exerciseIds = array_column($validated['exercises'], 'exercise_id');
+        $exercises = Exercise::whereIn('id', $exerciseIds)
+            ->with(['categories', 'media'])
+            ->get()
+            ->keyBy('id');
+
+        // Construire les données de session pour la vue
+        $sessionData = [
+            'name' => $validated['name'] ?? 'Nouvelle Séance',
+            'session_date' => $validated['session_date'] ?? now(),
+            'notes' => $validated['notes'] ?? null,
+            'user' => Auth::user(),
+            'sessionExercises' => collect($validated['exercises'])->map(function ($exerciseData) use ($exercises) {
+                $exercise = $exercises->get($exerciseData['exercise_id']);
+                if (!$exercise) {
+                    return null;
+                }
+
+                return (object) [
+                    'exercise' => $exercise,
+                    'sets' => isset($exerciseData['sets']) && is_array($exerciseData['sets']) 
+                        ? collect($exerciseData['sets'])->map(fn($set) => (object) $set)->sortBy('order')
+                        : collect([(object) [
+                            'set_number' => 1,
+                            'repetitions' => $exerciseData['repetitions'] ?? null,
+                            'weight' => $exerciseData['weight'] ?? null,
+                            'rest_time' => $exerciseData['rest_time'] ?? null,
+                            'duration' => $exerciseData['duration'] ?? null,
+                            'order' => 0,
+                        ]]),
+                    'additional_description' => $exerciseData['description'] ?? null,
+                    'order' => $exerciseData['order'] ?? 0,
+                ];
+            })->filter()->sortBy('order')->values(),
+        ];
+
+            $pdf = Pdf::loadView('sessions.pdf', [
+                'session' => (object) $sessionData,
+            ]);
+            
+            $fileName = $sessionData['name'] ? Str::slug($sessionData['name']) : 'nouvelle-seance';
+            $fileName .= '.pdf';
+            
+            return $pdf->download($fileName);
+        } catch (\Exception $e) {
+            Log::error('Erreur génération PDF:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'error' => 'Erreur lors de la génération du PDF: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
 

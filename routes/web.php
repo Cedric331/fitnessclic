@@ -49,6 +49,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/sessions/{session}', [SessionsController::class, 'update'])->name('sessions.update');
     Route::delete('/sessions/{session}', [SessionsController::class, 'destroy'])->name('sessions.destroy');
     Route::get('/sessions/{session}/pdf', [SessionsController::class, 'pdf'])->name('sessions.pdf');
+    Route::post('/sessions/pdf-preview', [SessionsController::class, 'pdfPreview'])->name('sessions.pdf-preview');
 });
 
 // Pages légales

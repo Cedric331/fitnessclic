@@ -50,7 +50,7 @@ class Customer extends Model
     /**
      * Relation with multiple training sessions (many-to-many)
      */
-    public function sessions(): BelongsToMany
+    public function trainingSessions(): BelongsToMany
     {
         return $this->belongsToMany(Session::class, 'session_customer', 'customer_id', 'session_id')
             ->withTimestamps();

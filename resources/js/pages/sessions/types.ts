@@ -54,9 +54,11 @@ export interface Session {
     name?: string;
     customer_id?: number;
     customer?: Customer;
+    customers?: Customer[];
     person_name?: string;
     session_date?: string;
     notes?: string;
+    exercises_count?: number;
     exercises?: Array<{
         id: number;
         title: string;
@@ -68,6 +70,18 @@ export interface Session {
             additional_description?: string;
             order: number;
         };
+    }>;
+    sessionExercises?: Array<{
+        id: number;
+        exercise_id: number;
+        exercise?: Exercise;
+        repetitions?: number | null;
+        weight?: number | null;
+        rest_time?: string | null;
+        duration?: string | null;
+        additional_description?: string | null;
+        order: number;
+        sets?: ExerciseSet[];
     }>;
     created_at: string;
     updated_at: string;
@@ -101,6 +115,7 @@ export interface SessionsProps {
     filters: {
         search?: string | null;
         customer_id?: number | null;
+        sort?: 'newest' | 'oldest';
     };
 }
 

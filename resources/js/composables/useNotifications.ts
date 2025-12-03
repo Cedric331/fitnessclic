@@ -8,7 +8,7 @@ export const useNotifications = () => {
             type: 'success',
             title: title || 'Succès',
             text: message,
-            duration: 5000,
+            duration: 4000, // 4 secondes pour garantir au moins 2 secondes d'affichage visible
         });
     };
 

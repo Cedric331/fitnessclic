@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted, nextTick } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,7 @@ import {
     Pause,
     AlertTriangle
 } from 'lucide-vue-next';
-import type { CreateSessionProps, EditSessionProps, Exercise, SessionExercise, Customer, Category } from './types';
+import type { EditSessionProps, Exercise, SessionExercise, Customer, Category, ExerciseSet } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
 import ExerciseLibrary from './ExerciseLibrary.vue';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,38 +42,43 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { User, Users, CheckSquare, Square } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
 
-const props = defineProps<CreateSessionProps>();
+const props = defineProps<EditSessionProps>();
 const page = usePage();
 const currentUserId = computed(() => (page.props.auth as any)?.user?.id);
 const { success: notifySuccess, error: notifyError } = useNotifications();
 
 // Écouter les messages flash et les convertir en notifications
-// Utiliser un Set pour éviter les doublons
 const shownFlashMessages = ref(new Set<string>());
 
 watch(() => (page.props as any).flash, (flash) => {
     if (!flash) return;
     
-    // Créer une clé unique pour chaque message
     const successKey = flash.success ? `success-${flash.success}` : null;
     const errorKey = flash.error ? `error-${flash.error}` : null;
     
-    // Afficher la notification seulement si on ne l'a pas déjà affichée
     if (successKey && !shownFlashMessages.value.has(successKey)) {
         shownFlashMessages.value.add(successKey);
-        notifySuccess(flash.success);
-        // Nettoyer après 2 secondes pour permettre de réafficher le même message plus tard si nécessaire
+        // Ajouter un petit délai pour s'assurer que la page est bien chargée avant d'afficher la notification
+        nextTick(() => {
+            setTimeout(() => {
+                notifySuccess(flash.success);
+            }, 100);
+        });
         setTimeout(() => {
             shownFlashMessages.value.delete(successKey);
-        }, 2000);
+        }, 4500); // Nettoyer après la durée d'affichage + marge
     }
     
     if (errorKey && !shownFlashMessages.value.has(errorKey)) {
         shownFlashMessages.value.add(errorKey);
-        notifyError(flash.error);
+        nextTick(() => {
+            setTimeout(() => {
+                notifyError(flash.error);
+            }, 100);
+        });
         setTimeout(() => {
             shownFlashMessages.value.delete(errorKey);
-        }, 2000);
+        }, 6500); // Nettoyer après la durée d'affichage + marge
     }
 }, { immediate: true });
 
@@ -83,26 +88,51 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: '/sessions',
     },
     {
-        title: 'Nouvelle Séance',
-        href: '/sessions/create',
+        title: props.session.name || 'Modifier la séance',
+        href: `/sessions/${props.session.id}/edit`,
     },
 ];
 
-// État du formulaire
+// État du formulaire - initialiser avec les données de la session
 const form = useForm({
-    name: '',
-    customer_ids: [] as number[],
-    session_date: new Date().toISOString().split('T')[0],
-    notes: '',
+    name: props.session?.name || '',
+    customer_ids: (props.session?.customers?.map((c: Customer) => c.id) || []) as number[],
+    session_date: props.session?.session_date ? new Date(props.session.session_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    notes: props.session?.notes || '',
     exercises: [] as SessionExercise[],
 });
+
+// Pré-remplir le formulaire avec les données de la session quand elles sont disponibles
+watch(() => props.session, (session) => {
+    if (session) {
+        if (session.name !== undefined) {
+            form.name = session.name || '';
+        }
+        if (session.customers) {
+            form.customer_ids = session.customers.map((c: Customer) => c.id) || [];
+        }
+        if (session.session_date) {
+            try {
+                const date = new Date(session.session_date);
+                if (!isNaN(date.getTime())) {
+                    form.session_date = date.toISOString().split('T')[0];
+                }
+            } catch (e) {
+                // Ignorer silencieusement les erreurs de format de date
+            }
+        }
+        if (session.notes !== undefined) {
+            form.notes = session.notes || '';
+        }
+    }
+}, { immediate: true, deep: true });
 
 // État pour la modal de sélection de clients
 const showCustomerModal = ref(false);
 const tempSelectedCustomerIds = ref<number[]>([]);
 const customerSearchTerm = ref('');
 
-// Clients sélectionnés (computed depuis form.customer_ids)
+// Clients sélectionnés
 const selectedCustomers = computed(() => {
     if (!form.customer_ids || form.customer_ids.length === 0) {
         return [];
@@ -112,7 +142,6 @@ const selectedCustomers = computed(() => {
     );
 });
 
-// Alias pour customers dans le template
 const customers = computed(() => props.customers);
 
 // Clients filtrés pour la recherche dans la modal
@@ -135,7 +164,6 @@ const toggleAllFilteredCustomers = () => {
     );
     
     if (allFilteredSelected) {
-        // Désélectionner tous les clients filtrés
         filteredCustomersForModal.value.forEach(customer => {
             const index = tempSelectedCustomerIds.value.indexOf(customer.id);
             if (index > -1) {
@@ -143,7 +171,6 @@ const toggleAllFilteredCustomers = () => {
             }
         });
     } else {
-        // Sélectionner tous les clients filtrés
         filteredCustomersForModal.value.forEach(customer => {
             if (!tempSelectedCustomerIds.value.includes(customer.id)) {
                 tempSelectedCustomerIds.value.push(customer.id);
@@ -152,7 +179,6 @@ const toggleAllFilteredCustomers = () => {
     }
 };
 
-// Vérifier si tous les clients filtrés sont sélectionnés
 const allFilteredSelected = computed(() => {
     if (filteredCustomersForModal.value.length === 0) return false;
     return filteredCustomersForModal.value.every(customer => 
@@ -160,28 +186,23 @@ const allFilteredSelected = computed(() => {
     );
 });
 
-// Ouvrir la modal avec les clients actuellement sélectionnés
 const openCustomerModal = () => {
     tempSelectedCustomerIds.value = [...form.customer_ids];
     customerSearchTerm.value = '';
     showCustomerModal.value = true;
 };
 
-// Confirmer la sélection des clients
 const confirmCustomerSelection = () => {
     form.customer_ids = [...tempSelectedCustomerIds.value];
     showCustomerModal.value = false;
 };
 
-// Toggle la sélection d'un client dans la modal
 const toggleCustomer = (customerId: number, checked: boolean) => {
     if (checked) {
-        // Ajouter le client s'il n'est pas déjà dans la liste
         if (!tempSelectedCustomerIds.value.includes(customerId)) {
             tempSelectedCustomerIds.value.push(customerId);
         }
     } else {
-        // Retirer le client
         const index = tempSelectedCustomerIds.value.indexOf(customerId);
         if (index > -1) {
             tempSelectedCustomerIds.value.splice(index, 1);
@@ -189,70 +210,141 @@ const toggleCustomer = (customerId: number, checked: boolean) => {
     }
 };
 
-// Retirer un client de la sélection
 const removeCustomer = (customerId: number) => {
     form.customer_ids = form.customer_ids.filter(id => id !== customerId);
 };
 
 // État de l'interface
 const searchTerm = ref(props.filters.search || '');
-const localSearchTerm = ref(props.filters.search || ''); // Pour la recherche locale avec debounce
+const localSearchTerm = ref(props.filters.search || '');
 const selectedCategoryId = ref<number | null>(props.filters.category_id || null);
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>('grid-4');
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
 
-// Liste des exercices dans la séance (avec drag and drop)
+// Liste des exercices dans la séance
 const sessionExercises = ref<SessionExercise[]>([]);
 const isDraggingOver = ref(false);
 const draggedIndex = ref<number | null>(null);
 const dragOverIndex = ref<number | null>(null);
 
-// Sauvegarder les exercices dans le localStorage pour les préserver en cas de rafraîchissement
-const STORAGE_KEY = 'fitnessclic_session_exercises';
-
-// Charger les exercices depuis le localStorage au montage
-const loadExercisesFromStorage = () => {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                // Filtrer les exercices invalides
-                const validExercises = parsed.filter((ex: SessionExercise) => 
-                    ex && ex.exercise_id !== null && ex.exercise_id !== undefined
-                );
-                if (validExercises.length > 0) {
-                    sessionExercises.value = validExercises;
-                    form.exercises = validExercises;
-                }
+// Charger les exercices de la session existante
+const loadSessionExercises = () => {
+    // Vérifier si on a sessionExercises ou exercises (pour compatibilité)
+    const exercisesData = props.session?.sessionExercises || props.session?.exercises || [];
+    
+    if (exercisesData.length > 0) {
+        // Convertir les sessionExercises/exercises en SessionExercise pour le formulaire
+        sessionExercises.value = exercisesData.map((se: any, index: number) => {
+            // Pour les exercices via pivot (ancien système)
+            if (se.pivot) {
+                const exercise = props.exercises.find(e => e.id === se.id);
+                if (!exercise) return null;
+                
+                return {
+                    exercise_id: se.id,
+                    exercise: exercise,
+                    sets: [{
+                        set_number: 1,
+                        repetitions: se.pivot.repetitions ? parseInt(se.pivot.repetitions) : null,
+                        weight: null,
+                        rest_time: se.pivot.rest_time ?? null,
+                        duration: se.pivot.duration ?? null,
+                        order: 0
+                    }],
+                    repetitions: se.pivot.repetitions ? parseInt(se.pivot.repetitions) : null,
+                    weight: null,
+                    rest_time: se.pivot.rest_time ?? null,
+                    duration: se.pivot.duration ?? null,
+                    description: se.pivot.additional_description ?? null,
+                    order: se.pivot.order ?? index
+                };
             }
-        }
-    } catch (error) {
-        console.error('Erreur lors du chargement depuis le localStorage:', error);
+            
+            // Pour les sessionExercises (nouveau système)
+            // Trouver l'exercice dans la liste des exercices disponibles ou utiliser celui de la relation
+            let exercise = se.exercise;
+            if (!exercise || !exercise.image_url) {
+                exercise = props.exercises.find(e => e.id === se.exercise_id);
+            }
+            
+            if (!exercise) {
+                return null;
+            }
+            
+            // Convertir les sets si disponibles
+            let sets: ExerciseSet[] = [];
+            if (se.sets && se.sets.length > 0) {
+                sets = se.sets.map((set: any) => ({
+                    set_number: set.set_number || 1,
+                    repetitions: set.repetitions ?? null,
+                    weight: set.weight ?? null,
+                    rest_time: set.rest_time ?? null,
+                    duration: set.duration ?? null,
+                    order: set.order ?? 0
+                }));
+            } else if (se.repetitions || se.duration || se.rest_time || se.weight) {
+                // Si pas de sets mais des valeurs, créer un set par défaut
+                sets = [{
+                    set_number: 1,
+                    repetitions: se.repetitions ?? null,
+                    weight: se.weight ?? null,
+                    rest_time: se.rest_time ?? null,
+                    duration: se.duration ?? null,
+                    order: 0
+                }];
+            } else {
+                // Créer un set vide par défaut
+                sets = [{
+                    set_number: 1,
+                    repetitions: null,
+                    weight: null,
+                    rest_time: null,
+                    duration: null,
+                    order: 0
+                }];
+            }
+            
+            return {
+                id: se.id,
+                exercise_id: se.exercise_id,
+                exercise: exercise,
+                sets: sets,
+                repetitions: se.repetitions ?? null,
+                weight: se.weight ?? null,
+                rest_time: se.rest_time ?? null,
+                duration: se.duration ?? null,
+                description: se.additional_description ?? null,
+                order: se.order ?? index
+            };
+        }).filter((ex: SessionExercise | null) => ex !== null) as SessionExercise[];
+        
+        form.exercises = sessionExercises.value;
     }
 };
 
-// Sauvegarder les exercices dans le localStorage
-const saveExercisesToStorage = () => {
-    try {
-        if (sessionExercises.value.length > 0) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionExercises.value));
-        } else {
-            localStorage.removeItem(STORAGE_KEY);
-        }
-    } catch (error) {
-        console.error('Erreur lors de la sauvegarde dans le localStorage:', error);
-    }
-};
+// Charger au montage et quand les props changent
+onMounted(() => {
+    // Attendre que les props soient disponibles
+    nextTick(() => {
+        loadSessionExercises();
+    });
+});
 
-// Charger au montage
-loadExercisesFromStorage();
+watch(() => props.session?.sessionExercises, () => {
+    loadSessionExercises();
+}, { deep: true, immediate: true });
+
+// Aussi charger quand la session change
+watch(() => props.session, () => {
+    nextTick(() => {
+        loadSessionExercises();
+    });
+}, { deep: true, immediate: true });
 
 // Ajouter un exercice à la séance
 const addExerciseToSession = (exercise: Exercise) => {
     if (!exercise || !exercise.id) {
-        console.error('Tentative d\'ajout d\'un exercice invalide:', exercise);
         return;
     }
     const sessionExercise: SessionExercise = {
@@ -274,17 +366,13 @@ const addExerciseToSession = (exercise: Exercise) => {
         order: sessionExercises.value.length,
     };
     sessionExercises.value.push(sessionExercise);
-    // Forcer la réactivité en créant une nouvelle référence
     sessionExercises.value = [...sessionExercises.value];
     form.exercises = [...sessionExercises.value];
-    saveExercisesToStorage();
-    console.log('Exercice ajouté, total:', sessionExercises.value.length);
 };
 
 // Supprimer un exercice de la séance
 const removeExerciseFromSession = (index: number) => {
     sessionExercises.value.splice(index, 1);
-    // Réorganiser les ordres
     sessionExercises.value.forEach((ex, idx) => {
         ex.order = idx;
     });
@@ -300,7 +388,7 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
     form.exercises = sessionExercises.value;
 };
 
-// Réorganiser les exercices (drag and drop)
+// Réorganiser les exercices
 const reorderExercises = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return;
     if (fromIndex < 0 || fromIndex >= sessionExercises.value.length) return;
@@ -308,17 +396,14 @@ const reorderExercises = (fromIndex: number, toIndex: number) => {
     
     const [moved] = sessionExercises.value.splice(fromIndex, 1);
     sessionExercises.value.splice(toIndex, 0, moved);
-    // Réorganiser les ordres
     sessionExercises.value.forEach((ex, idx) => {
         ex.order = idx;
     });
-    form.exercises = [...sessionExercises.value]; // Créer une nouvelle référence pour forcer la réactivité
-    saveExercisesToStorage();
+    form.exercises = [...sessionExercises.value];
 };
 
-// Gestion du drag and drop HTML5
+// Gestion du drag and drop
 const handleDragStart = (event: DragEvent, index: number) => {
-    console.log('Drag start pour index:', index);
     draggedIndex.value = index;
     if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = 'move';
@@ -329,7 +414,6 @@ const handleDragStart = (event: DragEvent, index: number) => {
 const handleDragOver = (event: DragEvent, index: number) => {
     event.preventDefault();
     if (event.dataTransfer) {
-        // Vérifier si c'est un drag depuis la bibliothèque
         const types = event.dataTransfer.types;
         if (types.includes('application/json')) {
             event.dataTransfer.dropEffect = 'copy';
@@ -342,15 +426,11 @@ const handleDragOver = (event: DragEvent, index: number) => {
     }
 };
 
-const handleDragLeave = () => {
-    // Ne pas réinitialiser immédiatement pour éviter les tremblements
-};
+const handleDragLeave = () => {};
 
 const handleDrop = (event: DragEvent, dropIndex: number) => {
     event.preventDefault();
     event.stopPropagation();
-    
-    console.log('Drop sur index:', dropIndex);
     
     if (!event.dataTransfer) {
         draggedIndex.value = null;
@@ -358,25 +438,21 @@ const handleDrop = (event: DragEvent, dropIndex: number) => {
         return;
     }
     
-    // Vérifier si c'est un drop depuis la bibliothèque (application/json)
     const exerciseData = event.dataTransfer.getData('application/json');
     if (exerciseData) {
-        console.log('Drop depuis la bibliothèque');
         try {
             const exercise: Exercise = JSON.parse(exerciseData);
             addExerciseToSession(exercise);
         } catch (error) {
-            console.error('Erreur lors du drop depuis la bibliothèque:', error);
+            // Ignorer silencieusement les erreurs de drop
         }
         draggedIndex.value = null;
         dragOverIndex.value = null;
         return;
     }
     
-    // Sinon, c'est un réordonnancement
     let sourceIndex = draggedIndex.value;
     const data = event.dataTransfer.getData('text/plain');
-    console.log('Données drag:', data, 'sourceIndex:', sourceIndex);
     if (data) {
         const parsedIndex = parseInt(data, 10);
         if (!isNaN(parsedIndex)) {
@@ -385,7 +461,6 @@ const handleDrop = (event: DragEvent, dropIndex: number) => {
     }
     
     if (sourceIndex !== null && sourceIndex !== undefined && !isNaN(sourceIndex) && sourceIndex !== dropIndex) {
-        console.log('Réordonnancement de', sourceIndex, 'vers', dropIndex);
         reorderExercises(sourceIndex, dropIndex);
     }
     
@@ -398,7 +473,6 @@ const handleDragEnd = () => {
     dragOverIndex.value = null;
 };
 
-// Gestion du drop depuis la bibliothèque
 const handleDropFromLibrary = (event: DragEvent) => {
     isDraggingOver.value = false;
     if (!event.dataTransfer) return;
@@ -409,7 +483,6 @@ const handleDropFromLibrary = (event: DragEvent) => {
             const exercise: Exercise = JSON.parse(exerciseData);
             addExerciseToSession(exercise);
         } else {
-            // Fallback: essayer avec l'ID
             const exerciseId = event.dataTransfer.getData('text/plain');
             if (exerciseId) {
                 const exercise = props.exercises.find(ex => ex.id === parseInt(exerciseId));
@@ -419,33 +492,28 @@ const handleDropFromLibrary = (event: DragEvent) => {
             }
         }
     } catch (error) {
-        console.error('Erreur lors du drop:', error);
+        // Ignorer silencieusement les erreurs de drop
     }
 };
 
-// Gestion du drag over depuis la bibliothèque
 watch(() => sessionExercises.value.length, () => {
-    // Réinitialiser l'état de drag over quand la liste change
     isDraggingOver.value = false;
 });
 
-// Filtrer les exercices disponibles (recherche locale avec debounce)
+// Filtrer les exercices disponibles
 const filteredExercises = computed(() => {
     let exercises = props.exercises;
 
-    // Filtre par utilisateur (tous ou seulement les miens)
     if (showOnlyMine.value && currentUserId.value) {
         exercises = exercises.filter(ex => ex.user_id === currentUserId.value);
     }
 
-    // Recherche locale (instantanée)
     if (localSearchTerm.value.trim()) {
         exercises = exercises.filter(ex => 
             ex.title.toLowerCase().includes(localSearchTerm.value.toLowerCase())
         );
     }
 
-    // Filtre par catégorie
     if (selectedCategoryId.value) {
         exercises = exercises.filter(ex => 
             ex.categories?.some(cat => cat.id === selectedCategoryId.value)
@@ -455,7 +523,6 @@ const filteredExercises = computed(() => {
     return exercises;
 });
 
-// Debounce pour la recherche (uniquement pour synchroniser avec l'URL si nécessaire)
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(localSearchTerm, (newValue) => {
     if (searchTimeout) {
@@ -463,22 +530,8 @@ watch(localSearchTerm, (newValue) => {
     }
     searchTimeout = setTimeout(() => {
         searchTerm.value = newValue;
-        // Ne pas recharger la page pour préserver les exercices
     }, 300);
 });
-
-// Appliquer les filtres (désactivé pour éviter de perdre les exercices)
-// Le filtrage se fait maintenant entièrement côté client
-const applyFilters = () => {
-    // Désactivé pour éviter de perdre les exercices lors du rafraîchissement
-    // router.get('/sessions/create', {
-    //     search: searchTerm.value || null,
-    //     category_id: selectedCategoryId.value || null,
-    // }, {
-    //     preserveState: true,
-    //     preserveScroll: true,
-    // });
-};
 
 // Validation du formulaire
 const isFormValid = computed(() => {
@@ -487,9 +540,8 @@ const isFormValid = computed(() => {
     return hasName && hasExercises;
 });
 
-// Sauvegarder la séance
+// Sauvegarder la séance (mise à jour)
 const saveSession = () => {
-    // Validation côté client
     if (!form.name.trim()) {
         notifyError('Le nom de la séance est obligatoire.', 'Validation');
         return;
@@ -501,7 +553,6 @@ const saveSession = () => {
     }
 
     isSaving.value = true;
-    // S'assurer que customer_ids est bien un tableau
     if (!Array.isArray(form.customer_ids)) {
         form.customer_ids = [];
     }
@@ -525,42 +576,30 @@ const saveSession = () => {
         order: ex.order
     }));
     
-    form.post('/sessions', {
-        preserveScroll: false,
+    form.put(`/sessions/${props.session.id}`, {
+        preserveScroll: true,
         onSuccess: () => {
-            // Nettoyer le localStorage après sauvegarde réussie
-            localStorage.removeItem(STORAGE_KEY);
-            // Réinitialiser le formulaire et les exercices
-            form.reset();
-            sessionExercises.value = [];
             // La notification sera affichée automatiquement via le message flash du backend
+            // Recharger la page d'édition avec les nouvelles données
+            router.visit(`/sessions/${props.session.id}/edit`, {
+                preserveScroll: true,
+                preserveState: false,
+            });
         },
         onError: (errors) => {
             isSaving.value = false;
-            // Afficher les erreurs de validation
             if (errors.name) {
                 notifyError(errors.name);
             } else if (errors.exercises) {
                 notifyError(errors.exercises);
             } else {
-                notifyError('Une erreur est survenue lors de la création de la séance.');
+                notifyError('Une erreur est survenue lors de la mise à jour de la séance.');
             }
         },
         onFinish: () => {
             isSaving.value = false;
         },
     });
-};
-
-// Effacer la séance
-const clearSession = () => {
-    if (confirm('Êtes-vous sûr de vouloir effacer cette séance ?')) {
-        sessionExercises.value = [];
-        form.reset();
-        form.session_date = new Date().toISOString().split('T')[0];
-        form.exercises = [];
-        localStorage.removeItem(STORAGE_KEY);
-    }
 };
 
 // Générer le PDF
@@ -570,13 +609,11 @@ const generatePDF = () => {
         return;
     }
 
-    // Validation du nom
     if (!form.name.trim()) {
         notifyError('Le nom de la séance est obligatoire pour générer le PDF.', 'Validation');
         return;
     }
 
-    // Formater les exercices pour l'envoi au backend
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
         sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
@@ -595,8 +632,6 @@ const generatePDF = () => {
         order: ex.order
     }));
 
-    // Utiliser fetch pour télécharger le PDF
-    // Envoyer les données en JSON plutôt qu'en FormData pour éviter les problèmes de sérialisation
     const requestData = {
         name: form.name,
         session_date: form.session_date,
@@ -604,13 +639,10 @@ const generatePDF = () => {
         exercises: exercisesData,
     };
 
-    // Récupérer le token CSRF depuis les props Inertia ou le cookie XSRF
     const getCsrfToken = () => {
-        // Essayer depuis les props Inertia
         const propsToken = (page.props as any).csrfToken;
         if (propsToken) return propsToken;
         
-        // Essayer depuis le cookie XSRF-TOKEN (Laravel le met automatiquement)
         const cookies = document.cookie.split(';');
         for (const cookie of cookies) {
             const [name, value] = cookie.trim().split('=');
@@ -629,9 +661,6 @@ const generatePDF = () => {
         return;
     }
 
-    // Debug: afficher le token (à retirer en production)
-    console.log('Token CSRF:', csrfToken ? 'Présent' : 'Manquant');
-    
     fetch('/sessions/pdf-preview', {
         method: 'POST',
         headers: {
@@ -640,49 +669,41 @@ const generatePDF = () => {
             'Accept': 'application/pdf',
             'Content-Type': 'application/json',
         },
-        credentials: 'include', // Important pour envoyer les cookies de session (same-origin peut ne pas fonctionner)
+        credentials: 'include',
         body: JSON.stringify(requestData),
     })
     .then(async response => {
         if (!response.ok) {
-            // Essayer de lire le message d'erreur
             const errorText = await response.text();
-            console.error('Erreur serveur:', response.status, errorText);
             throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
         }
         
-        // Vérifier que c'est bien un PDF
         const contentType = response.headers.get('content-type');
         if (contentType && !contentType.includes('application/pdf')) {
             const errorText = await response.text();
-            console.error('Réponse inattendue:', contentType, errorText);
             throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
         }
         
         return response.blob();
     })
     .then(blob => {
-        // Vérifier que le blob n'est pas vide
         if (blob.size === 0) {
             throw new Error('Le PDF généré est vide');
         }
         
-        // Créer un lien de téléchargement
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${form.name ? form.name.replace(/[^a-z0-9]/gi, '-').toLowerCase() : 'nouvelle-seance'}.pdf`;
+        a.download = `${form.name ? form.name.replace(/[^a-z0-9]/gi, '-').toLowerCase() : 'seance'}.pdf`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
     })
     .catch(error => {
-        console.error('Erreur complète:', error);
         notifyError(error.message || 'Une erreur est survenue lors de la génération du PDF.', 'Erreur');
     });
 };
-
 
 // Détecter les exercices en double
 const duplicateExercises = computed(() => {
@@ -690,27 +711,26 @@ const duplicateExercises = computed(() => {
         .filter(ex => ex && ex.exercise_id !== null && ex.exercise_id !== undefined)
         .map(ex => ex.exercise_id);
     const duplicates = exerciseIds.filter((id, index) => exerciseIds.indexOf(id) !== index);
-    return [...new Set(duplicates)]; // Retourner les IDs uniques des exercices en double
+    return [...new Set(duplicates)];
 });
 
 const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0);
 
-// Synchroniser les exercices avec le formulaire et le localStorage
+// Synchroniser les exercices avec le formulaire
 watch(sessionExercises, () => {
     form.exercises = sessionExercises.value;
-    saveExercisesToStorage();
 }, { deep: true });
 </script>
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Nouvelle Séance" />
+        <Head :title="`Modifier: ${session.name || 'Séance'}`" />
 
         <div class="flex flex-col h-full">
             <!-- En-tête avec actions -->
             <div class="flex items-center justify-between border-b bg-white dark:bg-neutral-900 px-6 py-4">
                 <div class="flex items-center gap-4">
-                    <h1 class="text-2xl font-semibold">Nouvelle Séance</h1>
+                    <h1 class="text-2xl font-semibold">Modifier la séance</h1>
                 </div>
                 <div class="flex items-center gap-3">
                     <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
@@ -724,10 +744,9 @@ watch(sessionExercises, () => {
                     <Button
                         variant="outline"
                         size="sm"
-                        @click="clearSession"
+                        @click="router.visit(`/sessions/${session.id}`)"
                     >
-                        <Trash2 class="h-4 w-4 mr-2" />
-                        Effacer
+                        Annuler
                     </Button>
                     <Button
                         variant="outline"
@@ -776,7 +795,6 @@ watch(sessionExercises, () => {
                                 <div class="space-y-2">
                                     <Label>Clients (optionnel)</Label>
                                     <div class="space-y-2">
-                                        <!-- Bouton pour ouvrir la modal -->
                                         <Button
                                             type="button"
                                             variant="outline"
@@ -787,7 +805,6 @@ watch(sessionExercises, () => {
                                             {{ selectedCustomers.length > 0 ? `${selectedCustomers.length} client(s) sélectionné(s)` : 'Sélectionner des clients' }}
                                         </Button>
                                         
-                                        <!-- Liste des clients sélectionnés -->
                                         <div v-if="selectedCustomers.length > 0" class="flex flex-wrap gap-2 mt-2">
                                             <div
                                                 v-for="customer in selectedCustomers"
@@ -830,7 +847,6 @@ watch(sessionExercises, () => {
                                             {{ sessionExercises.length }} exercice(s)
                                         </span>
                                     </CardTitle>
-                                    <!-- Message d'avertissement pour les doublons -->
                                     <Alert
                                         v-if="hasDuplicateExercises"
                                         variant="destructive"
@@ -856,7 +872,6 @@ watch(sessionExercises, () => {
                                     }
                                 }"
                                 @dragleave="(e: DragEvent) => { 
-                                    // Ne pas réinitialiser si on entre dans un enfant
                                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                     const x = e.clientX;
                                     const y = e.clientY;
@@ -928,7 +943,6 @@ watch(sessionExercises, () => {
                 </DialogHeader>
                 
                 <div class="space-y-4 py-4">
-                    <!-- Barre de recherche -->
                     <div class="relative">
                         <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
                         <Input
@@ -938,7 +952,6 @@ watch(sessionExercises, () => {
                         />
                     </div>
 
-                    <!-- Actions rapides -->
                     <div class="flex items-center justify-between">
                         <div class="text-sm text-neutral-600 dark:text-neutral-400">
                             <span v-if="customerSearchTerm.trim()">
@@ -961,7 +974,6 @@ watch(sessionExercises, () => {
                         </Button>
                     </div>
 
-                    <!-- Liste des clients avec checkboxes -->
                     <div class="space-y-1 max-h-96 overflow-y-auto rounded-md border border-input bg-white dark:bg-neutral-900 p-2">
                         <label
                             v-for="customer in filteredCustomersForModal"
@@ -991,7 +1003,6 @@ watch(sessionExercises, () => {
                         </p>
                     </div>
 
-                    <!-- Compteur de sélection -->
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-neutral-600 dark:text-neutral-400">
                             <span v-if="tempSelectedCustomerIds.length > 0" class="font-medium text-blue-600 dark:text-blue-400">
