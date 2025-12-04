@@ -234,6 +234,8 @@ const isLibraryOpen = ref(false); // Pour le drawer mobile
 // Liste des exercices dans la séance
 const sessionExercises = ref<SessionExercise[]>([]);
 const isDraggingOver = ref(false);
+// Compteur pour générer des IDs uniques pour les nouveaux exercices
+let sessionExerciseIdCounter = 0;
 
 // Charger les exercices de la session existante
 const loadSessionExercises = () => {
@@ -249,6 +251,7 @@ const loadSessionExercises = () => {
                 if (!exercise) return null;
                 
                 return {
+                    id: se.id || --sessionExerciseIdCounter, // Utiliser l'ID existant ou générer un nouveau
                     exercise_id: se.id,
                     exercise: exercise,
                     sets: [{
@@ -313,7 +316,7 @@ const loadSessionExercises = () => {
             }
             
             return {
-                id: se.id,
+                id: se.id || --sessionExerciseIdCounter, // Utiliser l'ID existant ou générer un nouveau
                 exercise_id: se.exercise_id,
                 exercise: exercise,
                 sets: sets,
@@ -356,6 +359,7 @@ const addExerciseToSession = (exercise: Exercise) => {
         return;
     }
     const sessionExercise: SessionExercise = {
+        id: --sessionExerciseIdCounter, // ID unique négatif pour les nouveaux exercices
         exercise_id: exercise.id,
         exercise: exercise,
         sets: [{
@@ -425,17 +429,33 @@ const handleDropFromLibrary = (event: DragEvent) => {
     isDraggingOver.value = false;
     if (!event.dataTransfer) return;
     
+    // Vérifier que le drop vient bien de la bibliothèque (pas d'un drag interne)
+    // VueDraggable utilise des types différents, donc on vérifie la présence de 'application/json'
+    const types = event.dataTransfer.types;
+    if (!types.includes('application/json')) {
+        // Ce n'est pas un drop depuis la bibliothèque, ignorer
+        return;
+    }
+    
     try {
         const exerciseData = event.dataTransfer.getData('application/json');
         if (exerciseData) {
             const exercise: Exercise = JSON.parse(exerciseData);
-            addExerciseToSession(exercise);
+            // Vérifier que l'exercice n'est pas déjà dans la session pour éviter les doublons
+            const alreadyExists = sessionExercises.value.some(se => se.exercise_id === exercise.id);
+            if (!alreadyExists) {
+                addExerciseToSession(exercise);
+            }
         } else {
             const exerciseId = event.dataTransfer.getData('text/plain');
             if (exerciseId) {
                 const exercise = props.exercises.find(ex => ex.id === parseInt(exerciseId));
                 if (exercise) {
-                    addExerciseToSession(exercise);
+                    // Vérifier que l'exercice n'est pas déjà dans la session
+                    const alreadyExists = sessionExercises.value.some(se => se.exercise_id === exercise.id);
+                    if (!alreadyExists) {
+                        addExerciseToSession(exercise);
+                    }
                 }
             }
         }
@@ -953,11 +973,14 @@ watch(sessionExercises, () => {
                                 @dragover.prevent="(e: DragEvent) => { 
                                     if (e.dataTransfer) {
                                         const types = e.dataTransfer.types;
+                                        // Seulement gérer le dragover si c'est un drop depuis la bibliothèque
                                         if (types.includes('application/json')) {
                                             e.dataTransfer.dropEffect = 'copy';
                                             isDraggingOver = true;
                                         } else {
+                                            // Pour les drags internes, laisser VueDraggable gérer
                                             e.dataTransfer.dropEffect = 'move';
+                                            isDraggingOver = false;
                                         }
                                     }
                                 }"
@@ -969,7 +992,12 @@ watch(sessionExercises, () => {
                                         isDraggingOver = false;
                                     }
                                 }"
-                                @drop.prevent="handleDropFromLibrary"
+                                @drop.prevent="(e: DragEvent) => {
+                                    // Ne gérer le drop que si c'est depuis la bibliothèque
+                                    if (e.dataTransfer && e.dataTransfer.types.includes('application/json')) {
+                                        handleDropFromLibrary(e);
+                                    }
+                                }"
                                 class="min-h-[200px] transition-all duration-200 ease-out relative"
                             >
                                 <!-- Ligne d'insertion discrète quand on drag depuis la bibliothèque -->
@@ -995,7 +1023,7 @@ watch(sessionExercises, () => {
                                     >
                                         <SessionExerciseItem
                                             v-for="(sessionExercise, index) in sessionExercises"
-                                            :key="`session-ex-${sessionExercise.exercise_id}-${index}`"
+                                            :key="sessionExercise.id || `session-ex-${sessionExercise.exercise_id}-${index}`"
                                             :session-exercise="sessionExercise"
                                             :index="index"
                                             :draggable="true"

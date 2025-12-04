@@ -209,10 +209,13 @@ const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>('grid-4');
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
 const isLibraryOpen = ref(false); // Pour le drawer mobile
+const isClearDialogOpen = ref(false); // Pour la modal de confirmation d'effacement
 
 // Liste des exercices dans la séance (avec drag and drop)
 const sessionExercises = ref<SessionExercise[]>([]);
 const isDraggingOver = ref(false);
+// Compteur pour générer des IDs uniques pour les exercices de session
+let sessionExerciseIdCounter = 0;
 
 // Sauvegarder les exercices dans le localStorage pour les préserver en cas de rafraîchissement
 const STORAGE_KEY = 'fitnessclic_session_exercises';
@@ -224,10 +227,18 @@ const loadExercisesFromStorage = () => {
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                // Filtrer les exercices invalides
-                const validExercises = parsed.filter((ex: SessionExercise) => 
-                    ex && ex.exercise_id !== null && ex.exercise_id !== undefined
-                );
+                // Filtrer les exercices invalides et s'assurer qu'ils ont un ID unique
+                const validExercises = parsed
+                    .filter((ex: SessionExercise) => 
+                        ex && ex.exercise_id !== null && ex.exercise_id !== undefined
+                    )
+                    .map((ex: SessionExercise, idx: number) => {
+                        // Générer un ID unique si l'exercice n'en a pas
+                        if (!ex.id) {
+                            ex.id = --sessionExerciseIdCounter;
+                        }
+                        return ex;
+                    });
                 if (validExercises.length > 0) {
                     sessionExercises.value = validExercises;
                     form.exercises = validExercises;
@@ -261,6 +272,7 @@ const addExerciseToSession = (exercise: Exercise) => {
         return;
     }
     const sessionExercise: SessionExercise = {
+        id: --sessionExerciseIdCounter, // ID unique négatif pour les nouveaux exercices
         exercise_id: exercise.id,
         exercise: exercise,
         sets: [{
@@ -336,18 +348,34 @@ const handleDropFromLibrary = (event: DragEvent) => {
     isDraggingOver.value = false;
     if (!event.dataTransfer) return;
     
+    // Vérifier que le drop vient bien de la bibliothèque (pas d'un drag interne)
+    // VueDraggable utilise des types différents, donc on vérifie la présence de 'application/json'
+    const types = event.dataTransfer.types;
+    if (!types.includes('application/json')) {
+        // Ce n'est pas un drop depuis la bibliothèque, ignorer
+        return;
+    }
+    
     try {
         const exerciseData = event.dataTransfer.getData('application/json');
         if (exerciseData) {
             const exercise: Exercise = JSON.parse(exerciseData);
-            addExerciseToSession(exercise);
+            // Vérifier que l'exercice n'est pas déjà dans la session pour éviter les doublons
+            const alreadyExists = sessionExercises.value.some(se => se.exercise_id === exercise.id);
+            if (!alreadyExists) {
+                addExerciseToSession(exercise);
+            }
         } else {
             // Fallback: essayer avec l'ID
             const exerciseId = event.dataTransfer.getData('text/plain');
             if (exerciseId) {
                 const exercise = props.exercises.find(ex => ex.id === parseInt(exerciseId));
                 if (exercise) {
-                    addExerciseToSession(exercise);
+                    // Vérifier que l'exercice n'est pas déjà dans la session
+                    const alreadyExists = sessionExercises.value.some(se => se.exercise_id === exercise.id);
+                    if (!alreadyExists) {
+                        addExerciseToSession(exercise);
+                    }
                 }
             }
         }
@@ -486,15 +514,19 @@ const saveSession = () => {
     });
 };
 
-// Effacer la séance
-const clearSession = () => {
-    if (confirm('Êtes-vous sûr de vouloir effacer cette séance ?')) {
-        sessionExercises.value = [];
-        form.reset();
-        form.session_date = new Date().toISOString().split('T')[0];
-        form.exercises = [];
-        localStorage.removeItem(STORAGE_KEY);
-    }
+// Ouvrir la modal de confirmation d'effacement
+const openClearDialog = () => {
+    isClearDialogOpen.value = true;
+};
+
+// Confirmer l'effacement de la séance
+const confirmClearSession = () => {
+    sessionExercises.value = [];
+    form.reset();
+    form.session_date = new Date().toISOString().split('T')[0];
+    form.exercises = [];
+    localStorage.removeItem(STORAGE_KEY);
+    isClearDialogOpen.value = false;
 };
 
 // Générer le PDF
@@ -787,7 +819,7 @@ watch(sessionExercises, () => {
                             variant="outline"
                             size="sm"
                             class="w-full lg:w-auto"
-                            @click="clearSession"
+                            @click="openClearDialog"
                         >
                             <Trash2 class="h-4 w-4 sm:mr-2" />
                             <span class="sm:inline">Effacer</span>
@@ -924,11 +956,14 @@ watch(sessionExercises, () => {
                                 @dragover.prevent="(e: DragEvent) => { 
                                     if (e.dataTransfer) {
                                         const types = e.dataTransfer.types;
+                                        // Seulement gérer le dragover si c'est un drop depuis la bibliothèque
                                         if (types.includes('application/json')) {
                                             e.dataTransfer.dropEffect = 'copy';
                                             isDraggingOver = true;
                                         } else {
+                                            // Pour les drags internes, laisser VueDraggable gérer
                                             e.dataTransfer.dropEffect = 'move';
+                                            isDraggingOver = false;
                                         }
                                     }
                                 }"
@@ -941,7 +976,12 @@ watch(sessionExercises, () => {
                                         isDraggingOver = false;
                                     }
                                 }"
-                                @drop.prevent="handleDropFromLibrary"
+                                @drop.prevent="(e: DragEvent) => {
+                                    // Ne gérer le drop que si c'est depuis la bibliothèque
+                                    if (e.dataTransfer && e.dataTransfer.types.includes('application/json')) {
+                                        handleDropFromLibrary(e);
+                                    }
+                                }"
                                 class="min-h-[200px] transition-all duration-200 ease-out relative"
                             >
                                 <!-- Ligne d'insertion discrète quand on drag depuis la bibliothèque -->
@@ -967,7 +1007,7 @@ watch(sessionExercises, () => {
                                     >
                                         <SessionExerciseItem
                                             v-for="(sessionExercise, index) in sessionExercises"
-                                            :key="`session-ex-${sessionExercise.exercise_id}-${index}`"
+                                            :key="sessionExercise.id || `session-ex-${sessionExercise.exercise_id}-${index}`"
                                             :session-exercise="sessionExercise"
                                             :index="index"
                                             :draggable="true"
@@ -1149,6 +1189,39 @@ watch(sessionExercises, () => {
                 </div>
             </SheetContent>
         </Sheet>
+
+        <!-- Modal de confirmation d'effacement -->
+        <Dialog v-model:open="isClearDialogOpen">
+            <DialogContent class="sm:max-w-[480px]">
+                <DialogHeader>
+                    <DialogTitle class="text-xl font-semibold">Effacer la séance</DialogTitle>
+                    <DialogDescription class="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        Cette action est irréversible. Toutes les données non sauvegardées seront perdues.
+                    </DialogDescription>
+                </DialogHeader>
+                <div class="py-4">
+                    <p class="text-sm text-slate-600 dark:text-slate-300">
+                        Êtes-vous sûr de vouloir effacer cette séance ? Tous les exercices ajoutés seront supprimés.
+                    </p>
+                </div>
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        @click="isClearDialogOpen = false"
+                    >
+                        Annuler
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        class="flex items-center gap-2"
+                        @click="confirmClearSession"
+                    >
+                        <Trash2 class="h-4 w-4" />
+                        Effacer
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template>
 

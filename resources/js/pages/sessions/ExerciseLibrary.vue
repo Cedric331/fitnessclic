@@ -319,7 +319,7 @@ const handleDragEnd = () => {
                     :key="exercise.id"
                     data-exercise-card
                     :class="{
-                        'group cursor-pointer hover:shadow-md transition-all': true,
+                        'group cursor-pointer hover:shadow-md transition-all py-0': true,
                         'opacity-40 scale-95 blur-[2px]': draggingExerciseId === exercise.id,
                         'ring-2 ring-emerald-400 ring-offset-2': draggingExerciseId === exercise.id
                     }"
@@ -328,10 +328,10 @@ const handleDragEnd = () => {
                     @dragend="handleDragEnd"
                     @click="handleAddExercise(exercise)"
                 >
-                    <CardContent class="p-3">
-                        <div class="flex items-center gap-3">
-                            <!-- Image miniature -->
-                            <div class="flex-shrink-0 w-16 h-16 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                    <CardContent class="p-0">
+                        <div class="flex items-stretch gap-0">
+                            <!-- Image qui prend toute la hauteur du cadre -->
+                            <div class="flex-shrink-0 w-24 overflow-hidden bg-neutral-100 dark:bg-neutral-800 self-stretch">
                                 <img
                                     v-if="exercise.image_url"
                                     :src="exercise.image_url"
@@ -348,21 +348,23 @@ const handleDragEnd = () => {
                                 </div>
                             </div>
 
-                            <!-- Informations -->
-                            <div class="flex-1 min-w-0">
+                            <!-- Informations avec padding -->
+                            <div class="flex-1 min-w-0 flex items-center px-3 py-2">
                                 <h3 class="font-semibold text-sm line-clamp-1">
                                     {{ exercise.title }}
                                 </h3>
                             </div>
 
                             <!-- Bouton ajouter -->
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                class="opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                                <Plus class="h-4 w-4" />
-                            </Button>
+                            <div class="flex items-center px-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    class="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                >
+                                    <Plus class="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
