@@ -16,6 +16,8 @@ import {
 import { 
     GripVertical, 
     X, 
+    ChevronUp,
+    ChevronDown,
     AlertTriangle,
     Plus,
     Trash2
@@ -26,11 +28,14 @@ const props = defineProps<{
     sessionExercise: SessionExercise;
     index: number;
     draggable?: boolean;
+    totalCount?: number;
 }>();
 
 const emit = defineEmits<{
     update: [updates: Partial<SessionExercise>];
     remove: [];
+    moveUp: [];
+    moveDown: [];
 }>();
 
 const showRemoveDialog = ref(false);
@@ -114,19 +119,41 @@ const getSetLabel = (setNumber: number) => {
             <CardContent class="p-2">
                 <!-- En-tête : Image, nom, commentaires, bouton supprimer -->
                 <div class="flex items-start gap-3 mb-3">
-                    <!-- Poignée de drag -->
+                    <!-- Poignée de drag et boutons de déplacement -->
                     <div 
-                        v-if="draggable"
-                        class="handle flex items-center justify-center cursor-move text-neutral-400 hover:text-blue-600 transition-all duration-200 p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                        title="Glisser pour réorganiser"
+                        class="flex flex-col items-center gap-1 pt-1"
                     >
-                        <GripVertical class="h-5 w-5" />
-                    </div>
-                    <div 
-                        v-else
-                        class="select-none text-neutral-300"
-                    >
-                        <GripVertical class="h-5 w-5" />
+                        <button
+                            type="button"
+                            @click.stop.prevent="emit('moveUp')"
+                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                            :disabled="index === 0"
+                            title="Déplacer vers le haut"
+                        >
+                            <ChevronUp class="h-3 w-3" />
+                        </button>
+                        <div 
+                            v-if="draggable"
+                            class="handle flex items-center justify-center cursor-move text-neutral-400 hover:text-blue-600 transition-all duration-200 p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            title="Glisser pour réorganiser"
+                        >
+                            <GripVertical class="h-5 w-5" />
+                        </div>
+                        <div 
+                            v-else
+                            class="select-none text-neutral-300"
+                        >
+                            <GripVertical class="h-5 w-5" />
+                        </div>
+                        <button
+                            type="button"
+                            @click.stop.prevent="emit('moveDown')"
+                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                            :disabled="totalCount !== undefined && index === totalCount - 1"
+                            title="Déplacer vers le bas"
+                        >
+                            <ChevronDown class="h-3 w-3" />
+                        </button>
                     </div>
 
                     <!-- Image de l'exercice -->

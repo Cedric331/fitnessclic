@@ -303,6 +303,22 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
     form.exercises = sessionExercises.value;
 };
 
+// Réorganiser les exercices (utilisé par les boutons haut/bas et après drag)
+const reorderExercises = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || fromIndex >= sessionExercises.value.length) return;
+    if (toIndex < 0 || toIndex >= sessionExercises.value.length) return;
+    
+    const [moved] = sessionExercises.value.splice(fromIndex, 1);
+    sessionExercises.value.splice(toIndex, 0, moved);
+    // Réorganiser les ordres
+    sessionExercises.value.forEach((ex, idx) => {
+        ex.order = idx;
+    });
+    form.exercises = [...sessionExercises.value];
+    saveExercisesToStorage();
+};
+
 // Réorganiser les exercices après un drag (appelé automatiquement par VueDraggable)
 const onDragEnd = () => {
     // Réorganiser les ordres après le drag
@@ -810,8 +826,11 @@ watch(sessionExercises, () => {
                                             :session-exercise="sessionExercise"
                                             :index="index"
                                             :draggable="true"
+                                            :total-count="sessionExercises.length"
                                             @update="(updates: Partial<SessionExercise>) => updateSessionExercise(index, updates)"
                                             @remove="() => removeExerciseFromSession(index)"
+                                            @move-up="() => { if (index > 0) reorderExercises(index, index - 1); }"
+                                            @move-down="() => { if (index < sessionExercises.length - 1) reorderExercises(index, index + 1); }"
                                         />
                                     </VueDraggable>
                                 </div>
