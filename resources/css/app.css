@@ -194,4 +194,18 @@
     .vue-notification-wrapper .vue-notification {
         margin: 0 0 0.75rem 0 !important;
     }
+    
+    /* Styles pour VueDraggable - augmenter l'opacité des éléments en cours de drag */
+    .sortable-ghost {
+        opacity: 0 !important;
+    }
+    
+    .sortable-chosen {
+        opacity: 0 !important;
+    }
+    
+    /* Pour les éléments draggables en général */
+    [draggable="true"]:active {
+        opacity: 1 !important;
+    }
 }

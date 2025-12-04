@@ -96,15 +96,19 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
             const rect = dragElement.getBoundingClientRect();
             const dragImage = dragElement.cloneNode(true) as HTMLElement;
             dragImage.style.width = `${rect.width}px`;
-            dragImage.style.opacity = '0.95';
+            dragImage.style.opacity = '1';
             dragImage.style.transform = 'rotate(-3deg) scale(1.08)';
             dragImage.style.boxShadow = '0 25px 50px rgba(16, 185, 129, 0.4), 0 0 0 3px rgba(16, 185, 129, 0.2), 0 10px 30px rgba(0, 0, 0, 0.3)';
             dragImage.style.border = '3px solid #10b981';
             dragImage.style.borderRadius = '12px';
             dragImage.style.backgroundColor = 'white';
             dragImage.style.filter = 'brightness(1.05) saturate(1.1)';
-            // Ajouter un effet de glow
             dragImage.style.outline = 'none';
+            // Forcer l'opacité sur tous les éléments enfants
+            const allChildren = dragImage.querySelectorAll('*');
+            allChildren.forEach((child: Element) => {
+                (child as HTMLElement).style.opacity = '1';
+            });
             document.body.appendChild(dragImage);
             dragImage.style.position = 'absolute';
             dragImage.style.top = '-1000px';
@@ -263,7 +267,7 @@ const handleDragEnd = () => {
                     data-exercise-card
                     :class="{
                         'group cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] p-0': true,
-                        'opacity-40 scale-95 blur-[2px]': draggingExerciseId === exercise.id,
+                        'opacity-70 scale-95 blur-[1px]': draggingExerciseId === exercise.id,
                         'ring-2 ring-emerald-400 ring-offset-2': draggingExerciseId === exercise.id
                     }"
                     :draggable="true"
@@ -320,7 +324,7 @@ const handleDragEnd = () => {
                     data-exercise-card
                     :class="{
                         'group cursor-pointer hover:shadow-md transition-all py-0': true,
-                        'opacity-40 scale-95 blur-[2px]': draggingExerciseId === exercise.id,
+                        'opacity-70 scale-95 blur-[1px]': draggingExerciseId === exercise.id,
                         'ring-2 ring-emerald-400 ring-offset-2': draggingExerciseId === exercise.id
                     }"
                     :draggable="true"
