@@ -181,14 +181,14 @@ const getSetLabel = (setNumber: number) => {
                             {{ exercise?.title || 'Exercice' }}
                         </h3>
                         
-                        <!-- Commentaires/Consignes d'exécution -->
+                        <!-- Commentaires/Consignes de réalisationn -->
                         <div class="mb-2">
                             <Textarea
                                 :model-value="sessionExercise.description || ''"
                                 @update:model-value="(value: string) => updateField('description', value)"
                                 @mousedown.stop
                                 @dragstart.stop
-                                placeholder="Consignes d'exécution..."
+                                placeholder="Consignes de réalisation..."
                                 :rows="2"
                                 class="text-sm"
                             />

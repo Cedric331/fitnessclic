@@ -24,7 +24,8 @@ import {
     Pause,
     AlertTriangle,
     Library,
-    Printer
+    Printer,
+    ArrowLeft
 } from 'lucide-vue-next';
 import type { EditSessionProps, Exercise, SessionExercise, Customer, Category, ExerciseSet } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
@@ -798,54 +799,61 @@ watch(sessionExercises, () => {
             <div class="flex flex-col flex-1 p-6 space-y-4">
                 <!-- En-tête aligné + détaché du haut -->
                 <div
-                    class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3
-                           border px-12 py-4 rounded-xl shadow-sm"
+                    class="flex flex-col gap-3 border bg-white dark:bg-neutral-900 px-4 sm:px-6 lg:px-12 py-4 rounded-xl shadow-sm"
                 >
-                    <div class="flex items-center gap-4">
+                    <!-- Titre et date sur la même ligne sur grand écran -->
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <h1 class="text-xl sm:text-2xl font-semibold">Modifier la séance</h1>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                        <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-                            <Calendar class="h-4 w-4" />
+                        <div class="flex items-center gap-1 text-sm text-neutral-600 dark:text-neutral-400 w-fit">
+                            <Calendar class="h-4 w-4 flex-shrink-0" />
                             <input
                                 v-model="form.session_date"
                                 type="date"
-                                class="border-none bg-transparent text-sm focus:outline-none"
+                                class="border-none bg-transparent text-sm focus:outline-none w-auto"
                             />
                         </div>
+                    </div>
+
+                    <!-- Boutons organisés en grille responsive, alignés à droite sur grand écran -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:items-center lg:justify-end lg:flex-wrap gap-2 sm:gap-3">
                         <Button
                             variant="outline"
                             size="sm"
+                            class="w-full lg:w-auto"
                             @click="router.visit(`/sessions/${session.id}`)"
                         >
-                            Annuler
+                            <ArrowLeft class="h-4 w-4 sm:mr-2" />
+                            <span class="sm:inline">Annuler</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
+                            class="w-full lg:w-auto"
                             @click="generatePDF"
                             :disabled="sessionExercises.length === 0"
                         >
-                            <FileText class="h-4 w-4 mr-2" />
-                            PDF
+                            <FileText class="h-4 w-4 sm:mr-2" />
+                            <span class="sm:inline">PDF</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
+                            class="w-full lg:w-auto"
                             @click="printPDF"
                             :disabled="sessionExercises.length === 0"
                         >
-                            <Printer class="h-4 w-4 mr-2" />
-                            Imprimer
+                            <Printer class="h-4 w-4 sm:mr-2" />
+                            <span class="sm:inline">Imprimer</span>
                         </Button>
                         <Button
                             size="sm"
+                            class="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white"
                             @click="saveSession"
                             :disabled="isSaving || !isFormValid"
                         >
-                            <Save class="h-4 w-4 mr-2" />
-                            {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
+                            <Save class="h-4 w-4 sm:mr-2" />
+                            <span class="hidden sm:inline">{{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}</span>
+                            <span class="sm:hidden">{{ isSaving ? '...' : 'Enregistrer' }}</span>
                         </Button>
                     </div>
                 </div>

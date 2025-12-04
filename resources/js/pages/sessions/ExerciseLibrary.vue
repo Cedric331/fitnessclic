@@ -56,21 +56,21 @@ watch(localSearchValue, (newValue) => {
 });
 
 // Classes CSS pour les différents modes d'affichage
-// Sur mobile (< md) : 1 colonne
-// Sur tablette/écran moyen (md à 2xl) : 2 colonnes forcées
-// Sur très grand écran (>= 2xl, 1536px) : utiliser le mode sélectionné
+// Sur mobile : permettre 2 colonnes pour grid-4, 1 pour grid-2
+// Sur tablette (md) : 2 colonnes pour grid-2, 3 colonnes pour grid-4
+// Sur grand écran (lg+) : utiliser le mode sélectionné
 const gridColsClass = computed(() => {
     switch (props.viewMode) {
         case 'grid-2':
-            return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-2';
+            return 'grid-cols-1 sm:grid-cols-2';
         case 'grid-4':
-            return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-4';
+            return 'grid-cols-2 sm:grid-cols-3';
         case 'grid-6':
-            return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-6';
+            return 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6';
         case 'list':
             return '';
         default:
-            return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-4';
+            return 'grid-cols-2 sm:grid-cols-3';
     }
 });
 
@@ -129,52 +129,63 @@ const handleDragEnd = () => {
 <template>
     <div class="flex flex-col h-full">
         <Card class="flex flex-col h-full flex-1 overflow-hidden">
-            <CardHeader class="sticky top-6 z-10 bg-white dark:bg-neutral-900 border-b pb-4 space-y-4">
+            <CardHeader class="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b pb-4 space-y-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <CardTitle class="text-xl font-semibold">Bibliothèque</CardTitle>
-                            <!-- Mode d'affichage - à côté du titre, visible uniquement sur très grand écran -->
-                            <div class="hidden 2xl:flex items-center gap-1 border rounded-md p-0.5">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    :class="viewMode === 'list' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                                    @click="emit('viewModeChange', 'list')"
-                                    title="Liste"
-                                >
-                                    <List class="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    :class="viewMode === 'grid-2' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                                    @click="emit('viewModeChange', 'grid-2')"
-                                    title="2 par ligne"
-                                >
-                                    <Grid2x2 class="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    :class="viewMode === 'grid-4' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                                    @click="emit('viewModeChange', 'grid-4')"
-                                    title="4 par ligne"
-                                >
-                                    <LayoutGrid class="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    :class="viewMode === 'grid-6' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                                    @click="emit('viewModeChange', 'grid-6')"
-                                    title="6 par ligne"
-                                >
-                                    <Grid3x3 class="h-4 w-4" />
-                                </Button>
-                            </div>
                         </div>
-                        <p class="text-sm text-neutral-500">Glissez ou cliquez pour ajouter des exercices</p>
+                        <!-- Mode d'affichage - visible sur tous les écrans, mais grid-6 caché sur petit écran -->
+                        <div class="flex items-center gap-1 border rounded-md p-0.5 w-fit relative z-20">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                :class="viewMode === 'list' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                                @click.stop="emit('viewModeChange', 'list')"
+                                title="Liste"
+                            >
+                                <List class="h-4 w-4" />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                :class="viewMode === 'grid-2' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                                @click.stop="emit('viewModeChange', 'grid-2')"
+                                title="2 par ligne"
+                            >
+                                <Grid2x2 class="h-4 w-4" />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                :class="viewMode === 'grid-4' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                                @click.stop="emit('viewModeChange', 'grid-4')"
+                                title="3 par ligne"
+                            >
+                                <LayoutGrid class="h-4 w-4" />
+                            </Button>
+                            <!-- Grid-6 caché sur petit écran, visible à partir de xl -->
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                :class="[
+                                    viewMode === 'grid-6' ? 'bg-neutral-100 dark:bg-neutral-800' : '',
+                                    'hidden xl:flex'
+                                ]"
+                                @click.stop="emit('viewModeChange', 'grid-6')"
+                                title="6 par ligne"
+                            >
+                                <Grid3x3 class="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <p class="text-sm text-neutral-500">
+                            <span class="lg:hidden">Cliquez pour ajouter des exercices</span>
+                            <span class="hidden lg:inline">Glissez ou cliquez pour ajouter des exercices</span>
+                        </p>
                     </div>
                 </div>
 
