@@ -291,8 +291,12 @@ const sortedExercises = computed(() => {
                         <div
                             v-for="(sessionExercise, index) in sortedExercises"
                             :key="sessionExercise.id || `ex-${index}`"
-                            class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/50"
+                            class="relative rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/50"
                         >
+                            <!-- Numéro d'exercice en haut à gauche -->
+                            <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
+                                {{ index + 1 }}
+                            </div>
                             <div class="flex gap-4">
                                 <!-- Image de l'exercice -->
                                 <div
@@ -316,7 +320,7 @@ const sortedExercises = computed(() => {
                                 <div class="flex-1 space-y-2">
                                     <div>
                                         <h3 class="font-semibold text-slate-900 dark:text-white">
-                                            {{ index + 1 }}. {{ sessionExercise.exercise?.title || 'Exercice inconnu' }}
+                                            {{ sessionExercise.exercise?.title || 'Exercice inconnu' }}
                                         </h3>
                                     </div>
 

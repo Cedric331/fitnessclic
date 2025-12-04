@@ -307,6 +307,12 @@
                                         {{ $sessionExercise->additional_description }}
                                     </div>
                                 @endif
+
+                                @if($sessionExercise->sets_count ?? null)
+                                    <div class="exercise-description" style="font-weight: 600; color: #111827;">
+                                        Nombre de séries : {{ $sessionExercise->sets_count }}
+                                    </div>
+                                @endif
                             </div>
                         </div>
 

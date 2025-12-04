@@ -170,6 +170,7 @@ class SessionsController extends Controller
             'exercises.*.rest_time' => ['nullable', 'string'],
             'exercises.*.duration' => ['nullable', 'string'],
             'exercises.*.description' => ['nullable', 'string'],
+            'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
             'exercises.*.order' => ['required', 'integer', 'min:0'],
         ]);
 
@@ -209,6 +210,7 @@ class SessionsController extends Controller
                 'rest_time' => $exerciseData['rest_time'] ?? null,
                 'duration' => $exerciseData['duration'] ?? null,
                 'additional_description' => $exerciseData['description'] ?? null,
+                'sets_count' => $exerciseData['sets_count'] ?? null,
                 'order' => $exerciseData['order'],
             ]);
 
@@ -282,6 +284,7 @@ class SessionsController extends Controller
                     'rest_time' => $se->rest_time,
                     'duration' => $se->duration,
                     'additional_description' => $se->additional_description,
+                    'sets_count' => $se->sets_count,
                     'order' => $se->order,
                     'sets' => $se->sets->map(fn ($set) => [
                         'id' => $set->id,
@@ -395,6 +398,7 @@ class SessionsController extends Controller
                     'rest_time' => $se->rest_time,
                     'duration' => $se->duration,
                     'additional_description' => $se->additional_description,
+                    'sets_count' => $se->sets_count,
                     'order' => $se->order,
                     'sets' => $se->sets->map(fn ($set) => [
                         'id' => $set->id,
@@ -454,6 +458,7 @@ class SessionsController extends Controller
             'exercises.*.rest_time' => ['nullable', 'string'],
             'exercises.*.duration' => ['nullable', 'string'],
             'exercises.*.description' => ['nullable', 'string'],
+            'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
             'exercises.*.order' => ['required', 'integer', 'min:0'],
         ]);
 
@@ -495,6 +500,7 @@ class SessionsController extends Controller
                 'rest_time' => $exerciseData['rest_time'] ?? null,
                 'duration' => $exerciseData['duration'] ?? null,
                 'additional_description' => $exerciseData['description'] ?? null,
+                'sets_count' => $exerciseData['sets_count'] ?? null,
                 'order' => $exerciseData['order'],
             ]);
 
@@ -588,6 +594,7 @@ class SessionsController extends Controller
             'exercises.*.rest_time' => ['nullable', 'string'],
             'exercises.*.duration' => ['nullable', 'string'],
             'exercises.*.description' => ['nullable', 'string'],
+            'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
             'exercises.*.order' => ['required', 'integer', 'min:0'],
         ]);
 
@@ -623,6 +630,7 @@ class SessionsController extends Controller
                             'order' => 0,
                         ]]),
                     'additional_description' => $exerciseData['description'] ?? null,
+                    'sets_count' => $exerciseData['sets_count'] ?? null,
                     'order' => $exerciseData['order'] ?? 0,
                 ];
             })->filter()->sortBy('order')->values(),

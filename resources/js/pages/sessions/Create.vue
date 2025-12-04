@@ -23,7 +23,8 @@ import {
     RotateCcw,
     Pause,
     AlertTriangle,
-    Library
+    Library,
+    Printer
 } from 'lucide-vue-next';
 import type { CreateSessionProps, EditSessionProps, Exercise, SessionExercise, Customer, Category } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
@@ -275,6 +276,7 @@ const addExerciseToSession = (exercise: Exercise) => {
         rest_time: null,
         duration: null,
         description: '',
+        sets_count: null,
         order: sessionExercises.value.length,
     };
     sessionExercises.value.push(sessionExercise);
@@ -615,6 +617,127 @@ const generatePDF = () => {
     });
 };
 
+// Ouvrir le PDF dans un nouvel onglet pour impression
+const printPDF = () => {
+    if (sessionExercises.value.length === 0) {
+        notifyError('Veuillez ajouter au moins un exercice à la séance avant d\'imprimer.', 'Validation');
+        return;
+    }
+
+    // Validation du nom
+    if (!form.name.trim()) {
+        notifyError('Le nom de la séance est obligatoire pour imprimer.', 'Validation');
+        return;
+    }
+
+    // Formater les exercices pour l'envoi au backend
+    const exercisesData = sessionExercises.value.map(ex => ({
+        exercise_id: ex.exercise_id,
+        sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
+            set_number: set.set_number || idx + 1,
+            repetitions: set.repetitions ?? null,
+            weight: set.weight ?? null,
+            rest_time: set.rest_time ?? null,
+            duration: set.duration ?? null,
+            order: set.order ?? idx
+        })) : undefined,
+        repetitions: ex.repetitions ?? null,
+        weight: ex.weight ?? null,
+        rest_time: ex.rest_time ?? null,
+        duration: ex.duration ?? null,
+        description: ex.description ?? null,
+        order: ex.order
+    }));
+
+    const requestData = {
+        name: form.name,
+        session_date: form.session_date,
+        notes: form.notes || '',
+        exercises: exercisesData,
+    };
+
+    const getCsrfToken = () => {
+        const propsToken = (page.props as any).csrfToken;
+        if (propsToken) return propsToken;
+        
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'XSRF-TOKEN') {
+                return decodeURIComponent(value);
+            }
+        }
+        
+        return '';
+    };
+    
+    const csrfToken = getCsrfToken();
+    
+    if (!csrfToken) {
+        notifyError('Token CSRF manquant. Veuillez rafraîchir la page.', 'Erreur');
+        return;
+    }
+
+    fetch('/sessions/pdf-preview', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/pdf',
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestData),
+    })
+    .then(async response => {
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Erreur serveur:', response.status, errorText);
+            throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (contentType && !contentType.includes('application/pdf')) {
+            const errorText = await response.text();
+            console.error('Réponse inattendue:', contentType, errorText);
+            throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
+        }
+        
+        return response.blob();
+    })
+    .then(blob => {
+        if (blob.size === 0) {
+            throw new Error('Le PDF généré est vide');
+        }
+        
+        // Créer une URL blob et ouvrir dans un nouvel onglet
+        const url = window.URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank');
+        
+        if (printWindow) {
+            // Attendre que le PDF soit chargé puis déclencher l'impression
+            printWindow.onload = () => {
+                setTimeout(() => {
+                    printWindow.print();
+                }, 250);
+            };
+        } else {
+            // Si la popup est bloquée, ouvrir dans le même onglet
+            window.open(url, '_blank');
+            notifyError('Veuillez autoriser les popups pour cette fonctionnalité.', 'Information');
+        }
+        
+        // Nettoyer l'URL après un délai
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+        }, 1000);
+    })
+    .catch(error => {
+        console.error('Erreur complète:', error);
+        notifyError(error.message || 'Une erreur est survenue lors de l\'ouverture du PDF.', 'Erreur');
+    });
+};
+
 
 // Détecter les exercices en double
 const duplicateExercises = computed(() => {
@@ -639,53 +762,69 @@ watch(sessionExercises, () => {
         <Head title="Nouvelle Séance" />
 
         <div class="flex flex-col h-full">
-            <!-- En-tête avec actions -->
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b bg-white dark:bg-neutral-900 px-6 py-4">
-                <div class="flex items-center gap-4">
-                    <h1 class="text-xl sm:text-2xl font-semibold">Nouvelle Séance</h1>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                    <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-                        <Calendar class="h-4 w-4" />
-                        <input
-                            v-model="form.session_date"
-                            type="date"
-                            class="border-none bg-transparent text-sm focus:outline-none"
-                        />
+            <!-- Container global : aligne tout + espace avec le haut -->
+            <div class="flex flex-col flex-1 p-6 space-y-4">
+                <!-- En-tête aligné + détaché du haut -->
+                <div
+                    class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3
+                           border bg-white dark:bg-neutral-900 px-12 py-4 rounded-xl shadow-sm"
+                >
+                    <div class="flex items-center gap-4">
+                        <h1 class="text-xl sm:text-2xl font-semibold">Nouvelle Séance</h1>
                     </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        @click="clearSession"
-                    >
-                        <Trash2 class="h-4 w-4 mr-2" />
-                        Effacer
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        @click="generatePDF"
-                        :disabled="sessionExercises.length === 0"
-                    >
-                        <FileText class="h-4 w-4 mr-2" />
-                        PDF
-                    </Button>
-                    <Button
-                        size="sm"
-                        @click="saveSession"
-                        :disabled="isSaving || !isFormValid"
-                    >
-                        <Save class="h-4 w-4 mr-2" />
-                        {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
-                    </Button>
-                </div>
-            </div>
 
-            <!-- Contenu principal -->
-            <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                <!-- Panneau gauche : Formulaire de séance -->
-                <div class="w-full lg:w-3/5 lg:border-r overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
-                    <div class="p-6 space-y-6">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                        <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                            <Calendar class="h-4 w-4" />
+                            <input
+                                v-model="form.session_date"
+                                type="date"
+                                class="border-none bg-transparent text-sm focus:outline-none"
+                            />
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="clearSession"
+                        >
+                            <Trash2 class="h-4 w-4 mr-2" />
+                            Effacer
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="generatePDF"
+                            :disabled="sessionExercises.length === 0"
+                        >
+                            <FileText class="h-4 w-4 mr-2" />
+                            PDF
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="printPDF"
+                            :disabled="sessionExercises.length === 0"
+                        >
+                            <Printer class="h-4 w-4 mr-2" />
+                            Imprimer
+                        </Button>
+                        <Button
+                            size="sm"
+                            @click="saveSession"
+                            :disabled="isSaving || !isFormValid"
+                        >
+                            <Save class="h-4 w-4 mr-2" />
+                            {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
+                        </Button>
+                    </div>
+                </div>
+
+                <!-- Contenu principal, aligné sur le même container -->
+                <div class="flex-1 flex flex-col lg:flex-row overflow-hidden gap-4">
+                    
+                    <!-- Panneau gauche -->
+                    <div class="w-full lg:w-3/5 overflow-y-auto rounded-xl">
+                        <div class="space-y-6">
                         <Card>
                             <CardHeader>
                                 <CardTitle>Informations de la séance</CardTitle>
@@ -839,22 +978,25 @@ watch(sessionExercises, () => {
                     </div>
                 </div>
 
-                <!-- Panneau droit : Bibliothèque d'exercices (caché sur mobile) -->
-                <div class="hidden lg:block w-full lg:w-2/5 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
-                    <ExerciseLibrary
-                        :exercises="filteredExercises"
-                        :categories="categories"
-                        :search-term="localSearchTerm"
-                        :selected-category-id="selectedCategoryId"
-                        :view-mode="viewMode"
-                        :show-only-mine="showOnlyMine"
-                        :current-user-id="currentUserId"
-                        @search="(term: string) => { localSearchTerm = term; }"
-                        @category-change="(id: number | null) => { selectedCategoryId = id; }"
-                        @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
-                        @filter-change="(showOnly: boolean) => { showOnlyMine = showOnly; }"
-                        @add-exercise="addExerciseToSession"
-                    />
+                    <!-- Panneau droit -->
+                    <div class="hidden lg:block w-full lg:w-2/5 overflow-y-auto rounded-xl">
+                        <div>
+                            <ExerciseLibrary
+                                :exercises="filteredExercises"
+                                :categories="categories"
+                                :search-term="localSearchTerm"
+                                :selected-category-id="selectedCategoryId"
+                                :view-mode="viewMode"
+                                :show-only-mine="showOnlyMine"
+                                :current-user-id="currentUserId"
+                                @search="(term: string) => { localSearchTerm = term; }"
+                                @category-change="(id: number | null) => { selectedCategoryId = id; }"
+                                @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
+                                @filter-change="(showOnly: boolean) => { showOnlyMine = showOnly; }"
+                                @add-exercise="addExerciseToSession"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

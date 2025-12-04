@@ -32,6 +32,7 @@ export interface SessionExercise {
     rest_time?: string | null;
     duration?: string | null;
     description?: string | null; // Notes/commentaires
+    sets_count?: number | null; // Nombre de séries
     order: number;
 }
 
@@ -81,6 +82,7 @@ export interface Session {
         rest_time?: string | null;
         duration?: string | null;
         additional_description?: string | null;
+        sets_count?: number | null;
         order: number;
         sets?: ExerciseSet[];
     }>;

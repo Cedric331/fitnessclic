@@ -127,7 +127,7 @@ const handleDragEnd = () => {
 </script>
 
 <template>
-    <div class="flex flex-col h-full p-6">
+    <div class="flex flex-col h-full">
         <Card class="flex flex-col h-full flex-1 overflow-hidden">
             <CardHeader class="sticky top-6 z-10 bg-white dark:bg-neutral-900 border-b pb-4 space-y-4">
                 <div class="flex items-center justify-between">
@@ -277,29 +277,24 @@ const handleDragEnd = () => {
                             >
                                 <span class="text-xs">Aucune image</span>
                             </div>
-                            <!-- Overlay au survol avec titre, catégories et bouton -->
-                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-4">
-                                <div class="flex flex-col items-center gap-3">
-                                    <h3 class="font-semibold text-base text-white text-center line-clamp-2">
+                            <!-- Overlay au survol avec titre et icône -->
+                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-3 gap-2">
+                                <div class="flex flex-col items-center gap-2">
+                                    <h3 
+                                        :class="{
+                                            'font-semibold text-white text-center line-clamp-2': true,
+                                            'text-xs': viewMode === 'grid-6',
+                                            'text-sm': viewMode === 'grid-4',
+                                            'text-base': viewMode === 'grid-2'
+                                        }"
+                                    >
                                         {{ exercise.title }}
                                     </h3>
-                                    <!-- Catégories -->
-                                    <div v-if="exercise.categories && exercise.categories.length > 0" class="flex flex-wrap gap-2 justify-center">
-                                        <Badge
-                                            v-for="category in exercise.categories"
-                                            :key="category.id"
-                                            variant="secondary"
-                                            class="text-xs bg-white/20 text-white border-white/30"
-                                        >
-                                            {{ category.name }}
-                                        </Badge>
-                                    </div>
                                 </div>
-                                <!-- Bouton Ajouter -->
-                                <Button size="sm" variant="secondary">
-                                    <Plus class="h-4 w-4 mr-2" />
-                                    Ajouter
-                                </Button>
+                                <!-- Icône + dans un cercle -->
+                                <div class="flex items-center justify-center w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 border-2 border-white/50 hover:border-white transition-all">
+                                    <Plus class="h-4 w-4 text-white" />
+                                </div>
                             </div>
                         </div>
                     </CardContent>

@@ -23,7 +23,8 @@ import {
     RotateCcw,
     Pause,
     AlertTriangle,
-    Library
+    Library,
+    Printer
 } from 'lucide-vue-next';
 import type { EditSessionProps, Exercise, SessionExercise, Customer, Category, ExerciseSet } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
@@ -46,6 +47,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { User, Users, CheckSquare, Square } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
+import { VueDraggable } from 'vue-draggable-plus';
 
 const props = defineProps<EditSessionProps>();
 const page = usePage();
@@ -231,8 +233,6 @@ const isLibraryOpen = ref(false); // Pour le drawer mobile
 // Liste des exercices dans la séance
 const sessionExercises = ref<SessionExercise[]>([]);
 const isDraggingOver = ref(false);
-const draggedIndex = ref<number | null>(null);
-const dragOverIndex = ref<number | null>(null);
 
 // Charger les exercices de la session existante
 const loadSessionExercises = () => {
@@ -317,6 +317,7 @@ const loadSessionExercises = () => {
                 exercise: exercise,
                 sets: sets,
                 repetitions: se.repetitions ?? null,
+                sets_count: se.sets_count ?? null,
                 weight: se.weight ?? null,
                 rest_time: se.rest_time ?? null,
                 duration: se.duration ?? null,
@@ -366,6 +367,7 @@ const addExerciseToSession = (exercise: Exercise) => {
         }],
         repetitions: null,
         weight: null,
+        sets_count: null,
         rest_time: null,
         duration: null,
         description: '',
@@ -394,7 +396,7 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
     form.exercises = sessionExercises.value;
 };
 
-// Réorganiser les exercices
+// Réorganiser les exercices (utilisé par les boutons haut/bas et après drag)
 const reorderExercises = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return;
     if (fromIndex < 0 || fromIndex >= sessionExercises.value.length) return;
@@ -402,107 +404,20 @@ const reorderExercises = (fromIndex: number, toIndex: number) => {
     
     const [moved] = sessionExercises.value.splice(fromIndex, 1);
     sessionExercises.value.splice(toIndex, 0, moved);
+    // Réorganiser les ordres
     sessionExercises.value.forEach((ex, idx) => {
         ex.order = idx;
     });
     form.exercises = [...sessionExercises.value];
 };
 
-// Gestion du drag and drop
-const handleDragStart = (event: DragEvent, index: number) => {
-    draggedIndex.value = index;
-    if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', index.toString());
-        // Créer une image personnalisée pour le drag avec meilleur visuel
-        const dragElement = (event.target as HTMLElement).closest('[data-drag-item]') as HTMLElement;
-        if (dragElement) {
-            const rect = dragElement.getBoundingClientRect();
-            const dragImage = dragElement.cloneNode(true) as HTMLElement;
-            dragImage.style.width = `${rect.width}px`;
-            dragImage.style.opacity = '0.95';
-            dragImage.style.transform = 'rotate(3deg) scale(1.08)';
-            dragImage.style.boxShadow = '0 25px 50px rgba(59, 130, 246, 0.4), 0 0 0 3px rgba(59, 130, 246, 0.2), 0 10px 30px rgba(0, 0, 0, 0.3)';
-            dragImage.style.border = '3px solid #3b82f6';
-            dragImage.style.borderRadius = '12px';
-            dragImage.style.backgroundColor = 'white';
-            dragImage.style.filter = 'brightness(1.05) saturate(1.1)';
-            dragImage.style.outline = 'none';
-            document.body.appendChild(dragImage);
-            dragImage.style.position = 'absolute';
-            dragImage.style.top = '-1000px';
-            dragImage.style.pointerEvents = 'none';
-            dragImage.style.zIndex = '10000';
-            event.dataTransfer.setDragImage(dragImage, event.offsetX, event.offsetY);
-            setTimeout(() => {
-                if (document.body.contains(dragImage)) {
-                    document.body.removeChild(dragImage);
-                }
-            }, 0);
-        }
-    }
-};
-
-const handleDragOver = (event: DragEvent, index: number) => {
-    event.preventDefault();
-    if (event.dataTransfer) {
-        const types = event.dataTransfer.types;
-        if (types.includes('application/json')) {
-            event.dataTransfer.dropEffect = 'copy';
-        } else {
-            event.dataTransfer.dropEffect = 'move';
-        }
-    }
-    if (dragOverIndex.value !== index) {
-        dragOverIndex.value = index;
-    }
-};
-
-const handleDragLeave = () => {};
-
-const handleDrop = (event: DragEvent, dropIndex: number) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (!event.dataTransfer) {
-        draggedIndex.value = null;
-        dragOverIndex.value = null;
-        return;
-    }
-    
-    const exerciseData = event.dataTransfer.getData('application/json');
-    if (exerciseData) {
-        try {
-            const exercise: Exercise = JSON.parse(exerciseData);
-            addExerciseToSession(exercise);
-        } catch (error) {
-            // Ignorer silencieusement les erreurs de drop
-        }
-        draggedIndex.value = null;
-        dragOverIndex.value = null;
-        return;
-    }
-    
-    let sourceIndex = draggedIndex.value;
-    const data = event.dataTransfer.getData('text/plain');
-    if (data) {
-        const parsedIndex = parseInt(data, 10);
-        if (!isNaN(parsedIndex)) {
-            sourceIndex = parsedIndex;
-        }
-    }
-    
-    if (sourceIndex !== null && sourceIndex !== undefined && !isNaN(sourceIndex) && sourceIndex !== dropIndex) {
-        reorderExercises(sourceIndex, dropIndex);
-    }
-    
-    draggedIndex.value = null;
-    dragOverIndex.value = null;
-};
-
-const handleDragEnd = () => {
-    draggedIndex.value = null;
-    dragOverIndex.value = null;
+// Réorganiser les exercices après un drag (appelé automatiquement par VueDraggable)
+const onDragEnd = () => {
+    // Réorganiser les ordres après le drag
+    sessionExercises.value.forEach((ex, idx) => {
+        ex.order = idx;
+    });
+    form.exercises = [...sessionExercises.value];
 };
 
 const handleDropFromLibrary = (event: DragEvent) => {
@@ -738,6 +653,125 @@ const generatePDF = () => {
     });
 };
 
+// Ouvrir le PDF dans un nouvel onglet pour impression
+const printPDF = () => {
+    if (sessionExercises.value.length === 0) {
+        notifyError('Veuillez ajouter au moins un exercice à la séance avant d\'imprimer.', 'Validation');
+        return;
+    }
+
+    if (!form.name.trim()) {
+        notifyError('Le nom de la séance est obligatoire pour imprimer.', 'Validation');
+        return;
+    }
+
+    const exercisesData = sessionExercises.value.map(ex => ({
+        exercise_id: ex.exercise_id,
+        sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
+            set_number: set.set_number || idx + 1,
+            repetitions: set.repetitions ?? null,
+            weight: set.weight ?? null,
+            rest_time: set.rest_time ?? null,
+            duration: set.duration ?? null,
+            order: set.order ?? idx
+        })) : undefined,
+        repetitions: ex.repetitions ?? null,
+        weight: ex.weight ?? null,
+        rest_time: ex.rest_time ?? null,
+        duration: ex.duration ?? null,
+        description: ex.description ?? null,
+        order: ex.order
+    }));
+
+    const requestData = {
+        name: form.name,
+        session_date: form.session_date,
+        notes: form.notes || '',
+        exercises: exercisesData,
+    };
+
+    const getCsrfToken = () => {
+        const propsToken = (page.props as any).csrfToken;
+        if (propsToken) return propsToken;
+        
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'XSRF-TOKEN') {
+                return decodeURIComponent(value);
+            }
+        }
+        
+        return '';
+    };
+    
+    const csrfToken = getCsrfToken();
+    
+    if (!csrfToken) {
+        notifyError('Token CSRF manquant. Veuillez rafraîchir la page.', 'Erreur');
+        return;
+    }
+
+    fetch('/sessions/pdf-preview', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/pdf',
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestData),
+    })
+    .then(async response => {
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Erreur serveur:', response.status, errorText);
+            throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (contentType && !contentType.includes('application/pdf')) {
+            const errorText = await response.text();
+            console.error('Réponse inattendue:', contentType, errorText);
+            throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
+        }
+        
+        return response.blob();
+    })
+    .then(blob => {
+        if (blob.size === 0) {
+            throw new Error('Le PDF généré est vide');
+        }
+        
+        // Créer une URL blob et ouvrir dans un nouvel onglet
+        const url = window.URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank');
+        
+        if (printWindow) {
+            // Attendre que le PDF soit chargé puis déclencher l'impression
+            printWindow.onload = () => {
+                setTimeout(() => {
+                    printWindow.print();
+                }, 250);
+            };
+        } else {
+            // Si la popup est bloquée, ouvrir dans le même onglet
+            window.open(url, '_blank');
+            notifyError('Veuillez autoriser les popups pour cette fonctionnalité.', 'Information');
+        }
+        
+        // Nettoyer l'URL après un délai
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+        }, 1000);
+    })
+    .catch(error => {
+        console.error('Erreur complète:', error);
+        notifyError(error.message || 'Une erreur est survenue lors de l\'ouverture du PDF.', 'Erreur');
+    });
+};
+
 // Détecter les exercices en double
 const duplicateExercises = computed(() => {
     const exerciseIds = sessionExercises.value
@@ -760,52 +794,67 @@ watch(sessionExercises, () => {
         <Head :title="`Modifier: ${session.name || 'Séance'}`" />
 
         <div class="flex flex-col h-full">
-            <!-- En-tête avec actions -->
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b bg-white dark:bg-neutral-900 px-6 py-4">
-                <div class="flex items-center gap-4">
-                    <h1 class="text-xl sm:text-2xl font-semibold">Modifier la séance</h1>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                    <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-                        <Calendar class="h-4 w-4" />
-                        <input
-                            v-model="form.session_date"
-                            type="date"
-                            class="border-none bg-transparent text-sm focus:outline-none"
-                        />
+            <!-- Container global : aligne tout + espace avec le haut -->
+            <div class="flex flex-col flex-1 p-6 space-y-4">
+                <!-- En-tête aligné + détaché du haut -->
+                <div
+                    class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3
+                           border px-12 py-4 rounded-xl shadow-sm"
+                >
+                    <div class="flex items-center gap-4">
+                        <h1 class="text-xl sm:text-2xl font-semibold">Modifier la séance</h1>
                     </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        @click="router.visit(`/sessions/${session.id}`)"
-                    >
-                        Annuler
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        @click="generatePDF"
-                        :disabled="sessionExercises.length === 0"
-                    >
-                        <FileText class="h-4 w-4 mr-2" />
-                        PDF
-                    </Button>
-                    <Button
-                        size="sm"
-                        @click="saveSession"
-                        :disabled="isSaving || !isFormValid"
-                    >
-                        <Save class="h-4 w-4 mr-2" />
-                        {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
-                    </Button>
-                </div>
-            </div>
 
-                    <!-- Contenu principal -->
-                    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                        <!-- Panneau gauche : Formulaire de séance -->
-                        <div class="w-full lg:w-3/5 lg:border-r overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
-                    <div class="p-6 space-y-6">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                        <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+                            <Calendar class="h-4 w-4" />
+                            <input
+                                v-model="form.session_date"
+                                type="date"
+                                class="border-none bg-transparent text-sm focus:outline-none"
+                            />
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="router.visit(`/sessions/${session.id}`)"
+                        >
+                            Annuler
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="generatePDF"
+                            :disabled="sessionExercises.length === 0"
+                        >
+                            <FileText class="h-4 w-4 mr-2" />
+                            PDF
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="printPDF"
+                            :disabled="sessionExercises.length === 0"
+                        >
+                            <Printer class="h-4 w-4 mr-2" />
+                            Imprimer
+                        </Button>
+                        <Button
+                            size="sm"
+                            @click="saveSession"
+                            :disabled="isSaving || !isFormValid"
+                        >
+                            <Save class="h-4 w-4 mr-2" />
+                            {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
+                        </Button>
+                    </div>
+                </div>
+
+                <!-- Contenu principal, aligné sur le même container -->
+                <div class="flex-1 flex flex-col lg:flex-row overflow-hidden gap-4">
+                    <!-- Panneau gauche -->
+                    <div class="w-full lg:w-3/5 overflow-y-auto rounded-xl">
+                        <div class="space-y-6">
                         <Card>
                             <CardHeader>
                                 <CardTitle>Informations de la séance</CardTitle>
@@ -928,50 +977,52 @@ watch(sessionExercises, () => {
                                         <p class="mb-2">Aucun exercice ajouté</p>
                                         <p class="text-sm">Glissez des exercices depuis la bibliothèque à droite</p>
                                     </div>
-                                    <div v-else class="space-y-4">
+                                    <VueDraggable
+                                        v-else
+                                        v-model="sessionExercises"
+                                        :animation="150"
+                                        handle=".handle"
+                                        class="flex flex-col gap-4"
+                                        @end="onDragEnd"
+                                    >
                                         <SessionExerciseItem
                                             v-for="(sessionExercise, index) in sessionExercises"
                                             :key="`session-ex-${sessionExercise.exercise_id}-${index}`"
                                             :session-exercise="sessionExercise"
                                             :index="index"
                                             :draggable="true"
-                                            :is-dragging="draggedIndex === index"
-                                            :is-drag-over="dragOverIndex === index && draggedIndex !== index && draggedIndex !== null"
-                                            :should-shift-down="draggedIndex !== null && draggedIndex !== index && dragOverIndex !== null && index > dragOverIndex"
-                                            :should-shift-up="draggedIndex !== null && draggedIndex !== index && dragOverIndex !== null && draggedIndex > dragOverIndex && index < draggedIndex && index >= dragOverIndex"
-                                            @dragstart="handleDragStart($event, index)"
-                                            @dragover="handleDragOver($event, index)"
-                                            @dragleave="handleDragLeave"
-                                            @drop="handleDrop($event, index)"
-                                            @dragend="handleDragEnd"
+                                            :total-count="sessionExercises.length"
                                             @update="(updates: Partial<SessionExercise>) => updateSessionExercise(index, updates)"
                                             @remove="() => removeExerciseFromSession(index)"
                                             @move-up="() => { if (index > 0) reorderExercises(index, index - 1); }"
                                             @move-down="() => { if (index < sessionExercises.length - 1) reorderExercises(index, index + 1); }"
                                         />
-                                    </div>
+                                    </VueDraggable>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
                 </div>
 
-                <!-- Panneau droit : Bibliothèque d'exercices (caché sur mobile) -->
-                <div class="hidden lg:block w-full lg:w-2/5 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
-                    <ExerciseLibrary
-                        :exercises="filteredExercises"
-                        :categories="categories"
-                        :search-term="localSearchTerm"
-                        :selected-category-id="selectedCategoryId"
-                        :view-mode="viewMode"
-                        :show-only-mine="showOnlyMine"
-                        :current-user-id="currentUserId"
-                        @search="(term: string) => { localSearchTerm = term; }"
-                        @category-change="(id: number | null) => { selectedCategoryId = id; }"
-                        @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
-                        @filter-change="(showOnly: boolean) => { showOnlyMine = showOnly; }"
-                        @add-exercise="addExerciseToSession"
-                    />
+                    <!-- Panneau droit -->
+                    <div class="hidden lg:block w-full lg:w-2/5 overflow-y-auto rounded-xl">
+                        <div>
+                            <ExerciseLibrary
+                                :exercises="filteredExercises"
+                                :categories="categories"
+                                :search-term="localSearchTerm"
+                                :selected-category-id="selectedCategoryId"
+                                :view-mode="viewMode"
+                                :show-only-mine="showOnlyMine"
+                                :current-user-id="currentUserId"
+                                @search="(term: string) => { localSearchTerm = term; }"
+                                @category-change="(id: number | null) => { selectedCategoryId = id; }"
+                                @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
+                                @filter-change="(showOnly: boolean) => { showOnlyMine = showOnly; }"
+                                @add-exercise="addExerciseToSession"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1109,7 +1160,7 @@ watch(sessionExercises, () => {
                         @category-change="(id: number | null) => { selectedCategoryId = id; }"
                         @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
                         @filter-change="(showOnly: boolean) => { showOnlyMine = showOnly; }"
-                        @add-exercise="(exercise) => { addExerciseToSession(exercise); isLibraryOpen = false; }"
+                        @add-exercise="(exercise: Exercise) => { addExerciseToSession(exercise); isLibraryOpen = false; }"
                     />
                 </div>
             </SheetContent>

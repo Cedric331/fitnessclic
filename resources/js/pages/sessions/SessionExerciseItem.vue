@@ -211,7 +211,7 @@ const getSetLabel = (setNumber: number) => {
                 <!-- Séries multiples -->
                 <div class="space-y-2">
                     <div class="flex items-center justify-between mb-2">
-                        <Label class="text-sm font-medium">Séries</Label>
+                        <Label class="text-sm font-medium">Lignes</Label>
                         <Button
                             variant="ghost"
                             size="sm"
@@ -219,7 +219,7 @@ const getSetLabel = (setNumber: number) => {
                             class="h-7 text-xs"
                         >
                             <Plus class="h-3 w-3 mr-1" />
-                            Ajouter une série
+                            Ajouter une ligne
                         </Button>
                     </div>
 
@@ -232,6 +232,21 @@ const getSetLabel = (setNumber: number) => {
                             <!-- Numéro de série -->
                             <div class="flex-shrink-0 w-12 text-sm font-medium text-neutral-600 dark:text-neutral-400">
                                 {{ getSetLabel(set.set_number) }}
+                            </div>
+
+                            <!-- Série (nombre de séries) - seulement pour la première série -->
+                            <div v-if="setIndex === 0" class="flex-1">
+                                <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
+                                <Input
+                                    type="number"
+                                    :model-value="sessionExercise.sets_count"
+                                    @update:model-value="(value: string | number) => updateField('sets_count', value ? parseInt(value as string) : null)"
+                                    @mousedown.stop
+                                    @dragstart.stop
+                                    placeholder="Nombre"
+                                    class="h-8 text-sm"
+                                    min="1"
+                                />
                             </div>
 
                             <!-- Répétitions -->

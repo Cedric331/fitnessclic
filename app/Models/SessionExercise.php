@@ -32,6 +32,7 @@ class SessionExercise extends Model
         'weight',
         'additional_description',
         'order',
+        'sets_count',
     ];
 
     /**
