@@ -22,26 +22,61 @@
 
         /* HEADER -------------------------------------------------- */
         .pdf-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             margin-bottom: 5mm;
             padding-bottom: 4mm;
             border-bottom: 1px solid #e5e7eb;
         }
 
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 3mm;
+        }
+
+        .logo-container {
+            flex-shrink: 0;
+        }
+
         .logo-container img {
-            height: 40px;
+            height: 60px;
             width: auto;
+            max-width: 100%;
+        }
+
+        .header-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8mm;
+        }
+
+        .header-notes {
+            font-size: 7.5pt;
+            color: #111827;
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        .header-notes strong {
+            display: inline;
+            font-size: 7.5pt;
+            font-weight: 700;
+            color: #111827;
+            margin-right: 2mm;
         }
 
         .header-info {
             text-align: right;
             font-size: 7.5pt;
             color: #4b5563;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
 
-        .header-info div {
+        .header-info > div {
             margin-bottom: 2px;
         }
 
@@ -79,24 +114,42 @@
             padding: 4mm;
             margin-bottom: 5mm;
             background: #f9fafb;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .exercise-image-wrapper {
+            width: 60px;
+            border-radius: 4px;
+            background: #f9fafb;
+            padding: 3px;
+            box-sizing: border-box;
+            overflow: hidden;
+            position: absolute;
+            top: 4mm;
+            left: 4mm;
+            bottom: 4mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .exercise-image {
-            float: left;
-            width: 60px;         /* largeur fixe */
-            height: 60px;        /* hauteur fixe pour un carré */
-            object-fit: contain; /* l'image s'adapte sans être coupée */
-            object-position: top; /* aligne l'image en haut */
-            border-radius: 4px;
-            border: 1px solid #d1d5db;
-            margin-right: 4mm;
             display: block;
-            background: #f9fafb; /* fond pour les espaces vides */
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            object-position: center;
+            margin: 0;
         }
 
         .exercise-header {
-            overflow: hidden; /* pour contenir le float */
+            margin-left: 70px; /* 60px image + 4mm margin + 6mm padding */
+            overflow: hidden;
         }
+
 
         .exercise-content {
             overflow: hidden; /* force le texte à se placer à côté de l'image */
@@ -131,10 +184,12 @@
 
         /* TABLE DES SERIES ---------------------------------------- */
         .sets-table {
-            width: 100%;
+            width: calc(100% - 70px);
+            max-width: calc(100% - 70px);
             border-collapse: collapse;
             margin-top: 3mm;
-            font-size: 7.5pt;
+            margin-left: 70px;
+            font-size: 7pt;
         }
 
         .sets-table thead {
@@ -143,10 +198,11 @@
 
         .sets-table th,
         .sets-table td {
-            padding: 2mm 2mm;
+            padding: 1.5mm 1mm;
             border: 1px solid #d1d5db;
             text-align: center;
             vertical-align: middle;
+            font-size: 6.5pt;
         }
 
         .sets-table th {
@@ -160,29 +216,6 @@
 
         .sets-table .set-index {
             font-weight: 600;
-        }
-
-        /* NOTES --------------------------------------------------- */
-        .notes-section {
-            margin-top: 6mm;
-            padding: 4mm;
-            border-radius: 4px;
-            background: #fffbeb;
-            border: 1px solid #fef3c7;
-        }
-
-        .notes-section h3 {
-            margin: 0 0 2mm;
-            font-size: 8.5pt;
-            font-weight: 700;
-            color: #92400e;
-        }
-
-        .notes-section p {
-            margin: 0;
-            font-size: 7pt;
-            color: #78350f;
-            white-space: pre-wrap;
         }
 
         /* === FOOTER GLOBAL === */
@@ -219,23 +252,35 @@
 
     <!-- HEADER -->
     <div class="pdf-header">
-        <div class="logo-container">
-            @php
-                $logoPath = public_path('assets/logo_fitnessclic.png');
-                $logoUrl = file_exists($logoPath)
-                    ? $logoPath
-                    : asset('assets/logo_fitnessclic.png');
-            @endphp
-            <img src="{{ $logoUrl }}" alt="FitnessClic">
+        <div class="header-top">
+            <div class="logo-container">
+                @php
+                    $logoPath = public_path('assets/logo_fitnessclic.png');
+                    $logoUrl = file_exists($logoPath)
+                        ? $logoPath
+                        : asset('assets/logo_fitnessclic.png');
+                @endphp
+                <img src="{{ $logoUrl }}" alt="FitnessClic">
+            </div>
         </div>
 
-        <div class="header-info">
-            @if(isset($session->user))
-                <div><strong>Coach :</strong> {{ $session->user->name }}</div>
+        <div class="header-bottom">
+            @if($session->notes ?? null)
+                <div class="header-notes">
+                    <strong>Notes :</strong>{{ $session->notes }}
+                </div>
+            @else
+                <div></div>
             @endif
-            <div>
-                <strong>Date :</strong>
-                {{ $session->session_date ? \Carbon\Carbon::parse($session->session_date)->format('d/m/Y') : 'Non définie' }}
+
+            <div class="header-info">
+                @if(isset($session->user))
+                    <div><strong>Coach :</strong> {{ $session->user->name }}</div>
+                @endif
+                <div>
+                    <strong>Date :</strong>
+                    {{ $session->session_date ? \Carbon\Carbon::parse($session->session_date)->format('d/m/Y') : 'Non définie' }}
+                </div>
             </div>
         </div>
     </div>
@@ -284,11 +329,13 @@
 
                 @if($exercise)
                     <div class="exercise-item">
-                        <div class="exercise-header">
-                            @if($imagePath)
+                        @if($imagePath)
+                            <div class="exercise-image-wrapper">
                                 <img src="{{ $imagePath }}" alt="{{ $exercise->title }}" class="exercise-image">
-                            @endif
+                            </div>
+                        @endif
 
+                        <div class="exercise-header">
                             <div class="exercise-content">
                                 <div class="exercise-title-row">
                                     <div class="exercise-title">
@@ -347,14 +394,6 @@
                     </div>
                 @endif
             @endforeach
-        </div>
-    @endif
-
-    <!-- NOTES -->
-    @if($session->notes ?? null)
-        <div class="notes-section">
-            <h3>Notes</h3>
-            <p>{{ $session->notes }}</p>
         </div>
     @endif
 

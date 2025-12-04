@@ -441,21 +441,13 @@ const handleDropFromLibrary = (event: DragEvent) => {
         const exerciseData = event.dataTransfer.getData('application/json');
         if (exerciseData) {
             const exercise: Exercise = JSON.parse(exerciseData);
-            // Vérifier que l'exercice n'est pas déjà dans la session pour éviter les doublons
-            const alreadyExists = sessionExercises.value.some(se => se.exercise_id === exercise.id);
-            if (!alreadyExists) {
-                addExerciseToSession(exercise);
-            }
+            addExerciseToSession(exercise);
         } else {
             const exerciseId = event.dataTransfer.getData('text/plain');
             if (exerciseId) {
                 const exercise = props.exercises.find(ex => ex.id === parseInt(exerciseId));
                 if (exercise) {
-                    // Vérifier que l'exercice n'est pas déjà dans la session
-                    const alreadyExists = sessionExercises.value.some(se => se.exercise_id === exercise.id);
-                    if (!alreadyExists) {
-                        addExerciseToSession(exercise);
-                    }
+                    addExerciseToSession(exercise);
                 }
             }
         }

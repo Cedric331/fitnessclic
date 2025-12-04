@@ -197,15 +197,31 @@
     
     /* Styles pour VueDraggable - augmenter l'opacité des éléments en cours de drag */
     .sortable-ghost {
-        opacity: 0 !important;
+        opacity: 1 !important;
     }
     
     .sortable-chosen {
-        opacity: 0 !important;
+        opacity: 1 !important;
+    }
+
+    .sortable-drag {
+        opacity: 1 !important;
     }
     
     /* Pour les éléments draggables en général */
     [draggable="true"]:active {
         opacity: 1 !important;
+    }
+
+    .fc-ghost {
+        opacity: 1 !important;
+    }
+
+    .fc-chosen {
+        opacity: 0 !important;
+    }
+
+    .fc-drag {
+        opacity: 0 !important;
     }
 }

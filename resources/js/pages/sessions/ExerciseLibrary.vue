@@ -85,44 +85,53 @@ const handleAddExercise = (exercise: Exercise) => {
 
 // Gestion du drag depuis la bibliothèque
 const handleDragStart = (event: DragEvent, exercise: Exercise) => {
-    draggingExerciseId.value = exercise.id;
-    if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = 'copy';
-        event.dataTransfer.setData('application/json', JSON.stringify(exercise));
-        event.dataTransfer.setData('text/plain', exercise.id.toString());
-        // Créer une image personnalisée pour le drag depuis la bibliothèque
-        const dragElement = (event.target as HTMLElement).closest('[data-exercise-card]') as HTMLElement;
-        if (dragElement) {
-            const rect = dragElement.getBoundingClientRect();
-            const dragImage = dragElement.cloneNode(true) as HTMLElement;
-            dragImage.style.width = `${rect.width}px`;
-            dragImage.style.opacity = '1';
-            dragImage.style.transform = 'rotate(-3deg) scale(1.08)';
-            dragImage.style.boxShadow = '0 25px 50px rgba(16, 185, 129, 0.4), 0 0 0 3px rgba(16, 185, 129, 0.2), 0 10px 30px rgba(0, 0, 0, 0.3)';
-            dragImage.style.border = '3px solid #10b981';
-            dragImage.style.borderRadius = '12px';
-            dragImage.style.backgroundColor = 'white';
-            dragImage.style.filter = 'brightness(1.05) saturate(1.1)';
-            dragImage.style.outline = 'none';
-            // Forcer l'opacité sur tous les éléments enfants
-            const allChildren = dragImage.querySelectorAll('*');
-            allChildren.forEach((child: Element) => {
-                (child as HTMLElement).style.opacity = '1';
-            });
-            document.body.appendChild(dragImage);
-            dragImage.style.position = 'absolute';
-            dragImage.style.top = '-1000px';
-            dragImage.style.pointerEvents = 'none';
-            dragImage.style.zIndex = '10000';
-            event.dataTransfer.setDragImage(dragImage, event.offsetX, event.offsetY);
-            setTimeout(() => {
-                if (document.body.contains(dragImage)) {
-                    document.body.removeChild(dragImage);
-                }
-            }, 0);
-        }
+    if (!event.dataTransfer) return;
+    
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData('application/json', JSON.stringify(exercise));
+    event.dataTransfer.setData('text/plain', exercise.id.toString());
+    
+    // Créer une image personnalisée pour le drag depuis la bibliothèque
+    const dragElement = (event.target as HTMLElement).closest('[data-exercise-card]') as HTMLElement;
+    if (dragElement) {
+        const rect = dragElement.getBoundingClientRect();
+        const dragImage = dragElement.cloneNode(true) as HTMLElement;
+        
+        dragImage.style.width = `${rect.width}px`;
+        dragImage.style.opacity = '1';
+        dragImage.style.transform = 'rotate(-3deg) scale(1.08)';
+        dragImage.style.boxShadow = '0 25px 50px rgba(16, 185, 129, 0.4), 0 0 0 3px rgba(16, 185, 129, 0.2), 0 10px 30px rgba(0, 0, 0, 0.3)';
+        dragImage.style.border = '3px solid #10b981';
+        dragImage.style.borderRadius = '12px';
+        dragImage.style.backgroundColor = 'white';
+        dragImage.style.filter = 'brightness(1.05) saturate(1.1)';
+        dragImage.style.outline = 'none';
+        
+        // Forcer l'opacité sur tous les éléments enfants
+        const allChildren = dragImage.querySelectorAll('*');
+        allChildren.forEach((child: Element) => {
+            (child as HTMLElement).style.opacity = '1';
+        });
+        
+        document.body.appendChild(dragImage);
+        dragImage.style.position = 'absolute';
+        dragImage.style.top = '-1000px';
+        dragImage.style.pointerEvents = 'none';
+        dragImage.style.zIndex = '10000';
+        
+        event.dataTransfer.setDragImage(dragImage, event.offsetX, event.offsetY);
+        
+        setTimeout(() => {
+            if (document.body.contains(dragImage)) {
+                document.body.removeChild(dragImage);
+            }
+        }, 0);
     }
+    
+    // On met à jour l'état APRÈS la création du dragImage pour éviter que le clone hérite de l'opacité
+    draggingExerciseId.value = exercise.id;
 };
+
 
 // Réinitialiser l'état de drag quand le drag se termine
 const handleDragEnd = () => {
