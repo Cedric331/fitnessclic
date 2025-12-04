@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,25 @@ const emit = defineEmits<{
     addExercise: [exercise: Exercise];
 }>();
 
+// Valeur locale de recherche pour une mise à jour immédiate de l'input
+const localSearchValue = ref(props.searchTerm);
+
+// Synchroniser avec la prop searchTerm quand elle change depuis l'extérieur
+watch(() => props.searchTerm, (newValue) => {
+    localSearchValue.value = newValue;
+});
+
+// Debounce pour la recherche - émet seulement après 300ms d'inactivité
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+watch(localSearchValue, (newValue) => {
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    searchTimeout = setTimeout(() => {
+        emit('search', newValue);
+    }, 300);
+});
+
 // Classes CSS pour les différents modes d'affichage
 // Sur mobile (< md) : 1 colonne
 // Sur tablette/écran moyen (md à 2xl) : 2 colonnes forcées
@@ -51,11 +70,6 @@ const gridColsClass = computed(() => {
             return 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-4';
     }
 });
-
-const handleSearch = (event: Event) => {
-    const value = (event.target as HTMLInputElement).value;
-    emit('search', value);
-};
 
 const handleCategoryChange = (event: Event) => {
     const value = (event.target as HTMLSelectElement).value;
@@ -155,8 +169,7 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                 <div class="relative">
                     <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
                     <Input
-                        :value="searchTerm"
-                        @input="handleSearch"
+                        v-model="localSearchValue"
                         placeholder="Rechercher un exercice..."
                         class="pl-9"
                     />
