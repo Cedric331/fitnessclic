@@ -15,6 +15,9 @@ import {
 } from 'lucide-vue-next';
 import type { Exercise, Category } from './types';
 
+// État pour suivre quel exercice est en cours de drag
+const draggingExerciseId = ref<number | null>(null);
+
 const props = defineProps<{
     exercises: Exercise[];
     categories: Category[];
@@ -82,6 +85,7 @@ const handleAddExercise = (exercise: Exercise) => {
 
 // Gestion du drag depuis la bibliothèque
 const handleDragStart = (event: DragEvent, exercise: Exercise) => {
+    draggingExerciseId.value = exercise.id;
     if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = 'copy';
         event.dataTransfer.setData('application/json', JSON.stringify(exercise));
@@ -92,16 +96,20 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
             const rect = dragElement.getBoundingClientRect();
             const dragImage = dragElement.cloneNode(true) as HTMLElement;
             dragImage.style.width = `${rect.width}px`;
-            dragImage.style.opacity = '0.9';
-            dragImage.style.transform = 'rotate(-2deg) scale(1.05)';
-            dragImage.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.4)';
-            dragImage.style.border = '2px solid #10b981';
-            dragImage.style.borderRadius = '8px';
+            dragImage.style.opacity = '0.95';
+            dragImage.style.transform = 'rotate(-3deg) scale(1.08)';
+            dragImage.style.boxShadow = '0 25px 50px rgba(16, 185, 129, 0.4), 0 0 0 3px rgba(16, 185, 129, 0.2), 0 10px 30px rgba(0, 0, 0, 0.3)';
+            dragImage.style.border = '3px solid #10b981';
+            dragImage.style.borderRadius = '12px';
             dragImage.style.backgroundColor = 'white';
+            dragImage.style.filter = 'brightness(1.05) saturate(1.1)';
+            // Ajouter un effet de glow
+            dragImage.style.outline = 'none';
             document.body.appendChild(dragImage);
             dragImage.style.position = 'absolute';
             dragImage.style.top = '-1000px';
             dragImage.style.pointerEvents = 'none';
+            dragImage.style.zIndex = '10000';
             event.dataTransfer.setDragImage(dragImage, event.offsetX, event.offsetY);
             setTimeout(() => {
                 if (document.body.contains(dragImage)) {
@@ -110,6 +118,11 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
             }, 0);
         }
     }
+};
+
+// Réinitialiser l'état de drag quand le drag se termine
+const handleDragEnd = () => {
+    draggingExerciseId.value = null;
 };
 </script>
 
@@ -237,9 +250,14 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                     v-for="exercise in exercises"
                     :key="exercise.id"
                     data-exercise-card
-                    class="group cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] p-0"
+                    :class="{
+                        'group cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] p-0': true,
+                        'opacity-40 scale-95 blur-[2px]': draggingExerciseId === exercise.id,
+                        'ring-2 ring-emerald-400 ring-offset-2': draggingExerciseId === exercise.id
+                    }"
                     :draggable="true"
                     @dragstart="handleDragStart($event, exercise)"
+                    @dragend="handleDragEnd"
                     @click="handleAddExercise(exercise)"
                 >
                     <CardContent class="p-0">
@@ -294,9 +312,14 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
                     v-for="exercise in exercises"
                     :key="exercise.id"
                     data-exercise-card
-                    class="group cursor-pointer hover:shadow-md transition-all"
+                    :class="{
+                        'group cursor-pointer hover:shadow-md transition-all': true,
+                        'opacity-40 scale-95 blur-[2px]': draggingExerciseId === exercise.id,
+                        'ring-2 ring-emerald-400 ring-offset-2': draggingExerciseId === exercise.id
+                    }"
                     :draggable="true"
                     @dragstart="handleDragStart($event, exercise)"
+                    @dragend="handleDragEnd"
                     @click="handleAddExercise(exercise)"
                 >
                     <CardContent class="p-3">

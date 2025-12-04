@@ -76,12 +76,12 @@ import { Star } from 'lucide-vue-next';
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </Link>
-                    <button
+                    <!-- <button
                         type="button"
                         class="inline-flex items-center rounded-xl border-2 border-gray-300 bg-white px-10 py-4 text-base font-semibold text-gray-700 transition-all hover:scale-105 hover:border-gray-400 hover:bg-gray-50 hover:shadow-lg dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:border-gray-500 dark:hover:bg-gray-700"
                     >
                         Voir une démo
-                    </button>
+                    </button> -->
                 </div>
             </div>
         </div>

@@ -16,8 +16,6 @@ import {
 import { 
     GripVertical, 
     X, 
-    ChevronUp,
-    ChevronDown,
     AlertTriangle,
     Plus,
     Trash2
@@ -28,20 +26,11 @@ const props = defineProps<{
     sessionExercise: SessionExercise;
     index: number;
     draggable?: boolean;
-    isDragging?: boolean;
-    isDragOver?: boolean;
 }>();
 
 const emit = defineEmits<{
     update: [updates: Partial<SessionExercise>];
     remove: [];
-    moveUp: [];
-    moveDown: [];
-    dragstart: [event: DragEvent, index: number];
-    dragover: [event: DragEvent, index: number];
-    dragleave: [];
-    drop: [event: DragEvent, index: number];
-    dragend: [];
 }>();
 
 const showRemoveDialog = ref(false);
@@ -116,31 +105,8 @@ const getSetLabel = (setNumber: number) => {
 </script>
 
 <template>
-    <!-- Ligne d'insertion avant l'élément si c'est une zone de drop -->
-    <div
-        v-if="isDragOver && !isDragging"
-        class="h-1.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-400 rounded-full mb-2 animate-pulse shadow-lg"
-        style="box-shadow: 0 0 15px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.3); animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;"
-    ></div>
-    
-    <div
-        data-drag-item
-        :class="{
-            'relative group transition-all duration-300 ease-out': true,
-            'opacity-30 scale-[0.98] transform rotate-1': isDragging,
-            'ring-4 ring-blue-500 ring-offset-2 scale-[1.02] shadow-xl border-blue-500': isDragOver && !isDragging,
-            'hover:shadow-lg': !isDragging && !isDragOver
-        }"
-        @dragover.prevent="emit('dragover', $event, index)"
-        @dragleave="emit('dragleave')"
-        @drop.prevent="emit('drop', $event, index)"
-    >
-        <Card
-            :class="{
-                'border-blue-500 border-2': isDragOver && !isDragging,
-                'transform transition-transform': true
-            }"
-        >
+    <div class="relative group">
+        <Card class="transform transition-all duration-200">
             <!-- Numéro d'exercice en haut à gauche -->
             <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
                 {{ index + 1 }}
@@ -150,41 +116,17 @@ const getSetLabel = (setNumber: number) => {
                 <div class="flex items-start gap-3 mb-3">
                     <!-- Poignée de drag -->
                     <div 
-                        class="flex flex-col items-center gap-1 pt-1 cursor-move"
+                        v-if="draggable"
+                        class="handle flex items-center justify-center cursor-move text-neutral-400 hover:text-blue-600 transition-all duration-200 p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        title="Glisser pour réorganiser"
                     >
-                        <button
-                            type="button"
-                            @click.stop.prevent="emit('moveUp')"
-                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600"
-                            :disabled="index === 0"
-                            title="Déplacer vers le haut"
-                        >
-                            <ChevronUp class="h-3 w-3" />
-                        </button>
-                        <div 
-                            v-if="draggable"
-                            :draggable="true"
-                            class="drag-handle select-none cursor-grab active:cursor-grabbing text-neutral-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                            @dragstart="emit('dragstart', $event, index)"
-                            @dragend="emit('dragend')"
-                            :class="{ 'text-blue-600 scale-110': isDragging }"
-                        >
-                            <GripVertical class="h-5 w-5" title="Glisser pour réorganiser" />
-                        </div>
-                        <div 
-                            v-else
-                            class="select-none text-neutral-300"
-                        >
-                            <GripVertical class="h-5 w-5" />
-                        </div>
-                        <button
-                            type="button"
-                            @click.stop.prevent="emit('moveDown')"
-                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600"
-                            title="Déplacer vers le bas"
-                        >
-                            <ChevronDown class="h-3 w-3" />
-                        </button>
+                        <GripVertical class="h-5 w-5" />
+                    </div>
+                    <div 
+                        v-else
+                        class="select-none text-neutral-300"
+                    >
+                        <GripVertical class="h-5 w-5" />
                     </div>
 
                     <!-- Image de l'exercice -->
@@ -216,7 +158,7 @@ const getSetLabel = (setNumber: number) => {
                         <div class="mb-2">
                             <Textarea
                                 :model-value="sessionExercise.description || ''"
-                                @update:model-value="(value) => updateField('description', value)"
+                                @update:model-value="(value: string) => updateField('description', value)"
                                 @mousedown.stop
                                 @dragstart.stop
                                 placeholder="Consignes d'exécution..."
@@ -271,7 +213,7 @@ const getSetLabel = (setNumber: number) => {
                                 <Input
                                     type="number"
                                     :model-value="set.repetitions"
-                                    @update:model-value="(value) => updateSet(setIndex, 'repetitions', value ? parseInt(value as string) : null)"
+                                    @update:model-value="(value: string | number) => updateSet(setIndex, 'repetitions', value ? parseInt(value as string) : null)"
                                     @mousedown.stop
                                     @dragstart.stop
                                     placeholder="10"
@@ -287,7 +229,7 @@ const getSetLabel = (setNumber: number) => {
                                     type="number"
                                     step="0.5"
                                     :model-value="set.weight"
-                                    @update:model-value="(value) => updateSet(setIndex, 'weight', value ? parseFloat(value as string) : null)"
+                                    @update:model-value="(value: string | number) => updateSet(setIndex, 'weight', value ? parseFloat(value as string) : null)"
                                     @mousedown.stop
                                     @dragstart.stop
                                     placeholder="20"
@@ -302,7 +244,7 @@ const getSetLabel = (setNumber: number) => {
                                 <Input
                                     type="text"
                                     :model-value="set.rest_time"
-                                    @update:model-value="(value) => updateSet(setIndex, 'rest_time', value)"
+                                    @update:model-value="(value: string) => updateSet(setIndex, 'rest_time', value)"
                                     @mousedown.stop
                                     @dragstart.stop
                                     placeholder="30s"

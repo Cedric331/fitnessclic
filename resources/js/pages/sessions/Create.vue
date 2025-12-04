@@ -46,6 +46,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { User, Users, CheckSquare, Square } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
+import { VueDraggable } from 'vue-draggable-plus';
 
 const props = defineProps<CreateSessionProps>();
 const page = usePage();
@@ -211,8 +212,6 @@ const isLibraryOpen = ref(false); // Pour le drawer mobile
 // Liste des exercices dans la séance (avec drag and drop)
 const sessionExercises = ref<SessionExercise[]>([]);
 const isDraggingOver = ref(false);
-const draggedIndex = ref<number | null>(null);
-const dragOverIndex = ref<number | null>(null);
 
 // Sauvegarder les exercices dans le localStorage pour les préserver en cas de rafraîchissement
 const STORAGE_KEY = 'fitnessclic_session_exercises';
@@ -258,7 +257,6 @@ loadExercisesFromStorage();
 // Ajouter un exercice à la séance
 const addExerciseToSession = (exercise: Exercise) => {
     if (!exercise || !exercise.id) {
-        console.error('Tentative d\'ajout d\'un exercice invalide:', exercise);
         return;
     }
     const sessionExercise: SessionExercise = {
@@ -284,7 +282,6 @@ const addExerciseToSession = (exercise: Exercise) => {
     sessionExercises.value = [...sessionExercises.value];
     form.exercises = [...sessionExercises.value];
     saveExercisesToStorage();
-    console.log('Exercice ajouté, total:', sessionExercises.value.length);
 };
 
 // Supprimer un exercice de la séance
@@ -306,141 +303,14 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
     form.exercises = sessionExercises.value;
 };
 
-// Réorganiser les exercices (drag and drop)
-const reorderExercises = (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return;
-    if (fromIndex < 0 || fromIndex >= sessionExercises.value.length) return;
-    if (toIndex < 0 || toIndex >= sessionExercises.value.length) return;
-    
-    const [moved] = sessionExercises.value.splice(fromIndex, 1);
-    sessionExercises.value.splice(toIndex, 0, moved);
-    // Réorganiser les ordres
+// Réorganiser les exercices après un drag (appelé automatiquement par VueDraggable)
+const onDragEnd = () => {
+    // Réorganiser les ordres après le drag
     sessionExercises.value.forEach((ex, idx) => {
         ex.order = idx;
     });
-    form.exercises = [...sessionExercises.value]; // Créer une nouvelle référence pour forcer la réactivité
+    form.exercises = [...sessionExercises.value];
     saveExercisesToStorage();
-};
-
-// Gestion du drag and drop HTML5
-const handleDragStart = (event: DragEvent, index: number) => {
-    console.log('Drag start pour index:', index);
-    draggedIndex.value = index;
-    if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', index.toString());
-        // Créer une image personnalisée pour le drag avec meilleur visuel
-        const dragElement = (event.target as HTMLElement).closest('[data-drag-item]') as HTMLElement;
-        if (dragElement) {
-            const rect = dragElement.getBoundingClientRect();
-            const dragImage = dragElement.cloneNode(true) as HTMLElement;
-            dragImage.style.width = `${rect.width}px`;
-            dragImage.style.opacity = '0.9';
-            dragImage.style.transform = 'rotate(2deg) scale(1.05)';
-            dragImage.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.4)';
-            dragImage.style.border = '2px solid #3b82f6';
-            dragImage.style.borderRadius = '8px';
-            dragImage.style.backgroundColor = 'white';
-            document.body.appendChild(dragImage);
-            dragImage.style.position = 'absolute';
-            dragImage.style.top = '-1000px';
-            dragImage.style.pointerEvents = 'none';
-            event.dataTransfer.setDragImage(dragImage, event.offsetX, event.offsetY);
-            setTimeout(() => {
-                if (document.body.contains(dragImage)) {
-                    document.body.removeChild(dragImage);
-                }
-            }, 0);
-        }
-    }
-};
-
-const handleDragOver = (event: DragEvent, index: number) => {
-    event.preventDefault();
-    if (event.dataTransfer) {
-        // Vérifier si c'est un drag depuis la bibliothèque
-        const types = event.dataTransfer.types;
-        if (types.includes('application/json')) {
-            event.dataTransfer.dropEffect = 'copy';
-        } else {
-            event.dataTransfer.dropEffect = 'move';
-        }
-    }
-    if (dragOverIndex.value !== index) {
-        dragOverIndex.value = index;
-    }
-};
-
-let dragLeaveTimeout: ReturnType<typeof setTimeout> | null = null;
-
-const handleDragLeave = (event: DragEvent) => {
-    // Utiliser un délai pour éviter les tremblements lors du passage sur les enfants
-    if (dragLeaveTimeout) {
-        clearTimeout(dragLeaveTimeout);
-    }
-    dragLeaveTimeout = setTimeout(() => {
-        // Vérifier que le curseur est vraiment sorti de l'élément
-        const relatedTarget = event.relatedTarget as HTMLElement;
-        if (!relatedTarget || !document.body.contains(relatedTarget)) {
-            dragOverIndex.value = null;
-        }
-    }, 100);
-};
-
-const handleDrop = (event: DragEvent, dropIndex: number) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    console.log('Drop sur index:', dropIndex);
-    
-    if (!event.dataTransfer) {
-        draggedIndex.value = null;
-        dragOverIndex.value = null;
-        return;
-    }
-    
-    // Vérifier si c'est un drop depuis la bibliothèque (application/json)
-    const exerciseData = event.dataTransfer.getData('application/json');
-    if (exerciseData) {
-        console.log('Drop depuis la bibliothèque');
-        try {
-            const exercise: Exercise = JSON.parse(exerciseData);
-            addExerciseToSession(exercise);
-        } catch (error) {
-            console.error('Erreur lors du drop depuis la bibliothèque:', error);
-        }
-        draggedIndex.value = null;
-        dragOverIndex.value = null;
-        return;
-    }
-    
-    // Sinon, c'est un réordonnancement
-    let sourceIndex = draggedIndex.value;
-    const data = event.dataTransfer.getData('text/plain');
-    console.log('Données drag:', data, 'sourceIndex:', sourceIndex);
-    if (data) {
-        const parsedIndex = parseInt(data, 10);
-        if (!isNaN(parsedIndex)) {
-            sourceIndex = parsedIndex;
-        }
-    }
-    
-    if (sourceIndex !== null && sourceIndex !== undefined && !isNaN(sourceIndex) && sourceIndex !== dropIndex) {
-        console.log('Réordonnancement de', sourceIndex, 'vers', dropIndex);
-        reorderExercises(sourceIndex, dropIndex);
-    }
-    
-    draggedIndex.value = null;
-    dragOverIndex.value = null;
-};
-
-const handleDragEnd = () => {
-    if (dragLeaveTimeout) {
-        clearTimeout(dragLeaveTimeout);
-        dragLeaveTimeout = null;
-    }
-    draggedIndex.value = null;
-    dragOverIndex.value = null;
 };
 
 // Gestion du drop depuis la bibliothèque
@@ -911,35 +781,39 @@ watch(sessionExercises, () => {
                                     }
                                 }"
                                 @drop.prevent="handleDropFromLibrary"
-                                :class="{ 
-                                    'border-4 border-dashed border-blue-500 bg-blue-50/70 dark:bg-blue-900/30 scale-[1.01]': isDraggingOver,
-                                    'ring-4 ring-blue-400 ring-offset-2 animate-pulse': isDraggingOver
-                                }"
-                                class="min-h-[200px] transition-all duration-300 ease-out"
+                                class="min-h-[200px] transition-all duration-200 ease-out relative"
                             >
-                                <div v-if="sessionExercises.length === 0" class="text-center py-12 text-neutral-500">
-                                    <p class="mb-2">Aucun exercice ajouté</p>
-                                    <p class="text-sm">Glissez des exercices depuis la bibliothèque à droite</p>
-                                </div>
-                                <div v-else class="space-y-4">
-                                    <SessionExerciseItem
-                                        v-for="(sessionExercise, index) in sessionExercises"
-                                        :key="`session-ex-${sessionExercise.exercise_id}-${index}`"
-                                        :session-exercise="sessionExercise"
-                                        :index="index"
-                                        :draggable="true"
-                                        :is-dragging="draggedIndex === index"
-                                        :is-drag-over="dragOverIndex === index && draggedIndex !== index && draggedIndex !== null"
-                                        @dragstart="handleDragStart($event, index)"
-                                        @dragover="handleDragOver($event, index)"
-                                        @dragleave="handleDragLeave"
-                                        @drop="handleDrop($event, index)"
-                                        @dragend="handleDragEnd"
-                                        @update="(updates: Partial<SessionExercise>) => updateSessionExercise(index, updates)"
-                                        @remove="() => removeExerciseFromSession(index)"
-                                        @move-up="() => { if (index > 0) reorderExercises(index, index - 1); }"
-                                        @move-down="() => { if (index < sessionExercises.length - 1) reorderExercises(index, index + 1); }"
-                                    />
+                                <!-- Ligne d'insertion discrète quand on drag depuis la bibliothèque -->
+                                <div
+                                    v-if="isDraggingOver"
+                                    class="absolute top-0 left-0 right-0 h-0.5 bg-blue-500/40 rounded-full z-10"
+                                ></div>
+                                <div
+                                    :class="{ 'opacity-50': isDraggingOver }"
+                                    class="transition-opacity duration-200"
+                                >
+                                    <div v-if="sessionExercises.length === 0" class="text-center py-12 text-neutral-500">
+                                        <p class="mb-2">Aucun exercice ajouté</p>
+                                        <p class="text-sm">Glissez des exercices depuis la bibliothèque à droite</p>
+                                    </div>
+                                    <VueDraggable
+                                        v-else
+                                        v-model="sessionExercises"
+                                        :animation="150"
+                                        handle=".handle"
+                                        class="flex flex-col gap-4"
+                                        @end="onDragEnd"
+                                    >
+                                        <SessionExerciseItem
+                                            v-for="(sessionExercise, index) in sessionExercises"
+                                            :key="`session-ex-${sessionExercise.exercise_id}-${index}`"
+                                            :session-exercise="sessionExercise"
+                                            :index="index"
+                                            :draggable="true"
+                                            @update="(updates: Partial<SessionExercise>) => updateSessionExercise(index, updates)"
+                                            @remove="() => removeExerciseFromSession(index)"
+                                        />
+                                    </VueDraggable>
                                 </div>
                             </CardContent>
                         </Card>
@@ -1103,7 +977,7 @@ watch(sessionExercises, () => {
                         @category-change="(id: number | null) => { selectedCategoryId = id; }"
                         @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
                         @filter-change="(showOnly: boolean) => { showOnlyMine = showOnly; }"
-                        @add-exercise="(exercise) => { addExerciseToSession(exercise); isLibraryOpen = false; }"
+                        @add-exercise="(exercise: Exercise) => { addExerciseToSession(exercise); isLibraryOpen = false; }"
                     />
                 </div>
             </SheetContent>

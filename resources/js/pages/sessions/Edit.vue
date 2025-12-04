@@ -414,6 +414,32 @@ const handleDragStart = (event: DragEvent, index: number) => {
     if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', index.toString());
+        // Créer une image personnalisée pour le drag avec meilleur visuel
+        const dragElement = (event.target as HTMLElement).closest('[data-drag-item]') as HTMLElement;
+        if (dragElement) {
+            const rect = dragElement.getBoundingClientRect();
+            const dragImage = dragElement.cloneNode(true) as HTMLElement;
+            dragImage.style.width = `${rect.width}px`;
+            dragImage.style.opacity = '0.95';
+            dragImage.style.transform = 'rotate(3deg) scale(1.08)';
+            dragImage.style.boxShadow = '0 25px 50px rgba(59, 130, 246, 0.4), 0 0 0 3px rgba(59, 130, 246, 0.2), 0 10px 30px rgba(0, 0, 0, 0.3)';
+            dragImage.style.border = '3px solid #3b82f6';
+            dragImage.style.borderRadius = '12px';
+            dragImage.style.backgroundColor = 'white';
+            dragImage.style.filter = 'brightness(1.05) saturate(1.1)';
+            dragImage.style.outline = 'none';
+            document.body.appendChild(dragImage);
+            dragImage.style.position = 'absolute';
+            dragImage.style.top = '-1000px';
+            dragImage.style.pointerEvents = 'none';
+            dragImage.style.zIndex = '10000';
+            event.dataTransfer.setDragImage(dragImage, event.offsetX, event.offsetY);
+            setTimeout(() => {
+                if (document.body.contains(dragImage)) {
+                    document.body.removeChild(dragImage);
+                }
+            }, 0);
+        }
     }
 };
 
@@ -887,32 +913,43 @@ watch(sessionExercises, () => {
                                     }
                                 }"
                                 @drop.prevent="handleDropFromLibrary"
-                                :class="{ 'border-2 border-dashed border-blue-400 bg-blue-50/50 dark:bg-blue-900/20': isDraggingOver }"
-                                class="min-h-[200px] transition-colors"
+                                class="min-h-[200px] transition-all duration-200 ease-out relative"
                             >
-                                <div v-if="sessionExercises.length === 0" class="text-center py-12 text-neutral-500">
-                                    <p class="mb-2">Aucun exercice ajouté</p>
-                                    <p class="text-sm">Glissez des exercices depuis la bibliothèque à droite</p>
-                                </div>
-                                <div v-else class="space-y-4">
-                                    <SessionExerciseItem
-                                        v-for="(sessionExercise, index) in sessionExercises"
-                                        :key="`session-ex-${sessionExercise.exercise_id}-${index}`"
-                                        :session-exercise="sessionExercise"
-                                        :index="index"
-                                        :draggable="true"
-                                        :is-dragging="draggedIndex === index"
-                                        :is-drag-over="dragOverIndex === index && draggedIndex !== index && draggedIndex !== null"
-                                        @dragstart="handleDragStart($event, index)"
-                                        @dragover="handleDragOver($event, index)"
-                                        @dragleave="handleDragLeave"
-                                        @drop="handleDrop($event, index)"
-                                        @dragend="handleDragEnd"
-                                        @update="(updates: Partial<SessionExercise>) => updateSessionExercise(index, updates)"
-                                        @remove="() => removeExerciseFromSession(index)"
-                                        @move-up="() => { if (index > 0) reorderExercises(index, index - 1); }"
-                                        @move-down="() => { if (index < sessionExercises.length - 1) reorderExercises(index, index + 1); }"
-                                    />
+                                <!-- Ligne d'insertion discrète quand on drag depuis la bibliothèque -->
+                                <div
+                                    v-if="isDraggingOver"
+                                    class="absolute top-0 left-0 right-0 h-0.5 bg-blue-500/40 rounded-full z-10"
+                                ></div>
+                                <div
+                                    :class="{ 'opacity-50': isDraggingOver }"
+                                    class="transition-opacity duration-200"
+                                >
+                                    <div v-if="sessionExercises.length === 0" class="text-center py-12 text-neutral-500">
+                                        <p class="mb-2">Aucun exercice ajouté</p>
+                                        <p class="text-sm">Glissez des exercices depuis la bibliothèque à droite</p>
+                                    </div>
+                                    <div v-else class="space-y-4">
+                                        <SessionExerciseItem
+                                            v-for="(sessionExercise, index) in sessionExercises"
+                                            :key="`session-ex-${sessionExercise.exercise_id}-${index}`"
+                                            :session-exercise="sessionExercise"
+                                            :index="index"
+                                            :draggable="true"
+                                            :is-dragging="draggedIndex === index"
+                                            :is-drag-over="dragOverIndex === index && draggedIndex !== index && draggedIndex !== null"
+                                            :should-shift-down="draggedIndex !== null && draggedIndex !== index && dragOverIndex !== null && index > dragOverIndex"
+                                            :should-shift-up="draggedIndex !== null && draggedIndex !== index && dragOverIndex !== null && draggedIndex > dragOverIndex && index < draggedIndex && index >= dragOverIndex"
+                                            @dragstart="handleDragStart($event, index)"
+                                            @dragover="handleDragOver($event, index)"
+                                            @dragleave="handleDragLeave"
+                                            @drop="handleDrop($event, index)"
+                                            @dragend="handleDragEnd"
+                                            @update="(updates: Partial<SessionExercise>) => updateSessionExercise(index, updates)"
+                                            @remove="() => removeExerciseFromSession(index)"
+                                            @move-up="() => { if (index > 0) reorderExercises(index, index - 1); }"
+                                            @move-down="() => { if (index < sessionExercises.length - 1) reorderExercises(index, index + 1); }"
+                                        />
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
