@@ -247,7 +247,26 @@
         if (is_array($sessionExercises)) {
             $sessionExercises = collect($sessionExercises);
         }
+        // Convertir en collection si ce n'est pas déjà le cas
+        if (!($sessionExercises instanceof \Illuminate\Support\Collection)) {
+            $sessionExercises = collect($sessionExercises);
+        }
+        // Trier par ordre pour respecter l'ordre de la liste
+        $sessionExercises = $sessionExercises->sortBy('order')->values();
         $exerciseCount = $sessionExercises->count();
+        
+        // Debug: vérifier que les champs block_id, block_type sont présents
+        // (à retirer en production)
+        // \Log::info('PDF Debug - Total exercises: ' . $sessionExercises->count());
+        // foreach ($sessionExercises->take(5) as $se) {
+        //     \Log::info('PDF Debug Exercise', [
+        //         'id' => $se->id ?? 'no-id', 
+        //         'block_id' => $se->block_id ?? 'null', 
+        //         'block_type' => $se->block_type ?? 'null', 
+        //         'position_in_block' => $se->position_in_block ?? 'null',
+        //         'order' => $se->order ?? 'no-order'
+        //     ]);
+        // }
     @endphp
 
     <!-- HEADER -->
@@ -296,36 +315,114 @@
     <!-- EXERCICES -->
     @if($exerciseCount > 0)
         <div class="exercises-section">
-            @foreach($sessionExercises as $index => $sessionExercise)
-                @php
-                    $exercise = $sessionExercise->exercise ?? null;
-
-                    $sets = $sessionExercise->sets ?? collect();
-                    if (is_array($sets)) {
-                        $sets = collect($sets);
-                    }
-                    $sets = $sets->sortBy('order');
-
-                    $imagePath = null;
-                    // Utiliser l'image optimisée si disponible (pour les emails)
-                    if (isset($use_optimized_images) && $use_optimized_images && isset($exercise->optimized_image_path)) {
-                        $imagePath = $exercise->optimized_image_path;
-                    } elseif ($exercise && isset($exercise->media) && $exercise->media->count() > 0) {
-                        $firstMedia = $exercise->media->first();
-                        if ($firstMedia) {
-                            try {
-                                $imagePath = $firstMedia->getPath();
-                            } catch (\Exception $e) {
-                                $imagePath = storage_path('app/public/' . $firstMedia->id . '/' . $firstMedia->file_name);
-                            }
+            @php
+                // Créer une liste mixte qui respecte l'ordre de la liste
+                $orderedItems = [];
+                $processedBlockIds = [];
+                $displayIndex = 0;
+                
+                // D'abord, grouper tous les exercices par block_id pour les Super Set
+                $setBlocks = [];
+                $standardExercises = [];
+                
+                foreach ($sessionExercises as $sessionExercise) {
+                    $blockId = $sessionExercise->block_id ?? null;
+                    $blockType = $sessionExercise->block_type ?? null;
+                    $order = $sessionExercise->order ?? 0;
+                    
+                    // Vérifier si c'est un exercice dans un bloc Super Set
+                    if ($blockType === 'set' && $blockId !== null) {
+                        // Grouper par block_id
+                        if (!isset($setBlocks[$blockId])) {
+                            $setBlocks[$blockId] = [
+                                'blockId' => $blockId,
+                                'order' => $order,
+                                'exercises' => [],
+                                'description' => null,
+                            ];
                         }
-                    } elseif ($exercise && method_exists($exercise, 'getFirstMediaPath')) {
-                        $imagePath = $exercise->getFirstMediaPath('exercise_image');
+                        $setBlocks[$blockId]['exercises'][] = $sessionExercise;
+                        // Prendre la description du premier exercice du bloc
+                        if ($setBlocks[$blockId]['description'] === null) {
+                            $setBlocks[$blockId]['description'] = $sessionExercise->additional_description ?? $sessionExercise->description ?? null;
+                        }
+                    } else {
+                        // Exercice standard
+                        $standardExercises[] = [
+                            'order' => $order,
+                            'exercise' => $sessionExercise,
+                        ];
                     }
-                    if ($imagePath && ! file_exists($imagePath)) {
+                }
+                
+                // Trier les exercices dans chaque bloc Super Set par position_in_block
+                foreach ($setBlocks as $blockId => &$block) {
+                    usort($block['exercises'], function($a, $b) {
+                        $posA = $a->position_in_block ?? 0;
+                        $posB = $b->position_in_block ?? 0;
+                        return $posA <=> $posB;
+                    });
+                    $block['type'] = 'set';
+                }
+                unset($block);
+                
+                // Créer la liste ordonnée en mélangeant les blocs Super Set et les exercices standard
+                $allItems = [];
+                foreach ($setBlocks as $block) {
+                    $allItems[] = $block;
+                }
+                foreach ($standardExercises as $ex) {
+                    $allItems[] = [
+                        'type' => 'standard',
+                        'order' => $ex['order'],
+                        'exercise' => $ex['exercise'],
+                    ];
+                }
+                
+                // Trier par ordre pour respecter l'ordre de la liste
+                usort($allItems, function($a, $b) {
+                    $orderA = $a['order'] ?? 0;
+                    $orderB = $b['order'] ?? 0;
+                    return $orderA <=> $orderB;
+                });
+                
+                $orderedItems = $allItems;
+            @endphp
+            
+            <!-- Afficher les items dans l'ordre de la liste -->
+            @foreach($orderedItems as $item)
+                @if($item['type'] === 'standard')
+                    @php
+                        $sessionExercise = $item['exercise'];
+                        $index = $displayIndex++;
+                        $exercise = $sessionExercise->exercise ?? null;
+
+                        $sets = $sessionExercise->sets ?? collect();
+                        if (is_array($sets)) {
+                            $sets = collect($sets);
+                        }
+                        $sets = $sets->sortBy('order');
+
                         $imagePath = null;
-                    }
-                @endphp
+                        // Utiliser l'image optimisée si disponible (pour les emails)
+                        if (isset($use_optimized_images) && $use_optimized_images && isset($exercise->optimized_image_path)) {
+                            $imagePath = $exercise->optimized_image_path;
+                        } elseif ($exercise && isset($exercise->media) && $exercise->media->count() > 0) {
+                            $firstMedia = $exercise->media->first();
+                            if ($firstMedia) {
+                                try {
+                                    $imagePath = $firstMedia->getPath();
+                                } catch (\Exception $e) {
+                                    $imagePath = storage_path('app/public/' . $firstMedia->id . '/' . $firstMedia->file_name);
+                                }
+                            }
+                        } elseif ($exercise && method_exists($exercise, 'getFirstMediaPath')) {
+                            $imagePath = $exercise->getFirstMediaPath('exercise_image');
+                        }
+                        if ($imagePath && ! file_exists($imagePath)) {
+                            $imagePath = null;
+                        }
+                    @endphp
 
                 @if($exercise)
                     <div class="exercise-item">
@@ -391,6 +488,91 @@
                                 </tbody>
                             </table>
                         @endif
+                    </div>
+                @endif
+                @else
+                    @php
+                        $blockExercises = $item['exercises'];
+                        $blockDescription = $item['description'];
+                        $blockIndex = $displayIndex++;
+                    @endphp
+                    <div class="super7-block" style="page-break-inside: avoid; margin-bottom: 8mm; border: 2px solid #3b82f6; border-radius: 8px; padding: 4mm; background: linear-gradient(to bottom, #f0f9ff 0%, #e0f2fe 100%); position: relative; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);">
+                        <!-- Numéro du bloc en haut à gauche -->
+                        <div style="position: absolute; top: -12px; left: -12px; width: 28px; height: 28px; background: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10pt; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            {{ $blockIndex + 1 }}
+                        </div>
+                        <!-- Badge Super Set en haut à droite -->
+                        <div style="position: absolute; top: -10px; right: 10px; background: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 7pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Super Set
+                        </div>
+                        @if($blockDescription && !empty(trim($blockDescription)))
+                            <div style="font-size: 8pt; margin-bottom: 3mm; margin-top: 5px; padding: 2mm; border: 1px solid #93c5fd; border-left: 4px solid #3b82f6; background-color: #eff6ff; border-radius: 4px;">
+                                <strong style="color: #1e40af;">Consignes du bloc :</strong> <span style="color: #1e3a8a;">{{ $blockDescription }}</span>
+                            </div>
+                        @endif
+                        <div style="display: grid; grid-template-columns: repeat({{ count($blockExercises) }}, 1fr); gap: 3mm; margin-top: 2mm;">
+                            @foreach($blockExercises as $sessionExercise)
+                                @php
+                                    $exercise = $sessionExercise->exercise ?? null;
+                                    $imagePath = null;
+                                    if (isset($use_optimized_images) && $use_optimized_images && isset($exercise->optimized_image_path)) {
+                                        $imagePath = $exercise->optimized_image_path;
+                                    } elseif ($exercise && isset($exercise->media) && $exercise->media->count() > 0) {
+                                        $firstMedia = $exercise->media->first();
+                                        if ($firstMedia) {
+                                            try {
+                                                $imagePath = $firstMedia->getPath();
+                                            } catch (\Exception $e) {
+                                                $imagePath = storage_path('app/public/' . $firstMedia->id . '/' . $firstMedia->file_name);
+                                            }
+                                        }
+                                    } elseif ($exercise && method_exists($exercise, 'getFirstMediaPath')) {
+                                        $imagePath = $exercise->getFirstMediaPath('exercise_image');
+                                    }
+                                    if ($imagePath && ! file_exists($imagePath)) {
+                                        $imagePath = null;
+                                    }
+                                @endphp
+                                <div class="set-exercise-item" style="border: 1px solid #93c5fd; border-radius: 6px; padding: 2.5mm; background: white; box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);">
+                                    @if($exercise)
+                                        @if($imagePath)
+                                            <img src="{{ $imagePath }}" alt="{{ $exercise->title }}" style="max-width: 100%; height: auto; margin-bottom: 1.5mm; border-radius: 4px; border: 1px solid #e5e7eb;">
+                                        @endif
+                                        <div style="font-size: 7pt; font-weight: 600; margin-bottom: 1.5mm; line-height: 1.3; color: #1e3a8a;">
+                                            {{ $exercise->title }}
+                                        </div>
+                                        <!-- Informations compactes (serie, reps, poids, repos) -->
+                                        @php
+                                            $sets = $sessionExercise->sets ?? collect();
+                                            if (is_array($sets)) {
+                                                $sets = collect($sets);
+                                            }
+                                            $firstSet = $sets->first();
+                                        @endphp
+                                        <div style="font-size: 6pt; color: #4b5563; line-height: 1.5; background: #f9fafb; padding: 1.5mm; border-radius: 3px;">
+                                            @if($sessionExercise->sets_count ?? null) 
+                                                <div style="margin-bottom: 0.5mm;"><strong style="color: #1e40af;">Série:</strong> {{ $sessionExercise->sets_count }}</div>
+                                            @endif
+                                            @if($firstSet && ($firstSet->repetitions ?? null)) 
+                                                <div style="margin-bottom: 0.5mm;"><strong style="color: #1e40af;">Rep:</strong> {{ $firstSet->repetitions }}</div>
+                                            @elseif($sessionExercise->repetitions ?? null)
+                                                <div style="margin-bottom: 0.5mm;"><strong style="color: #1e40af;">Rep:</strong> {{ $sessionExercise->repetitions }}</div>
+                                            @endif
+                                            @if($firstSet && ($firstSet->weight ?? null)) 
+                                                <div style="margin-bottom: 0.5mm;"><strong style="color: #1e40af;">Charge:</strong> {{ $firstSet->weight }}kg</div>
+                                            @elseif($sessionExercise->weight ?? null)
+                                                <div style="margin-bottom: 0.5mm;"><strong style="color: #1e40af;">Charge:</strong> {{ $sessionExercise->weight }}kg</div>
+                                            @endif
+                                            @if($firstSet && ($firstSet->rest_time ?? null)) 
+                                                <div><strong style="color: #1e40af;">Repos:</strong> {{ $firstSet->rest_time }}</div>
+                                            @elseif($sessionExercise->rest_time ?? null)
+                                                <div><strong style="color: #1e40af;">Repos:</strong> {{ $sessionExercise->rest_time }}</div>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
                 @endif
             @endforeach

@@ -172,6 +172,10 @@ class SessionsController extends Controller
             'exercises.*.description' => ['nullable', 'string'],
             'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
             'exercises.*.order' => ['required', 'integer', 'min:0'],
+            // Nouveaux champs pour Super 7
+            'exercises.*.block_id' => ['nullable', 'integer'],
+            'exercises.*.block_type' => ['nullable', 'in:standard,set'],
+            'exercises.*.position_in_block' => ['nullable', 'integer', 'min:0', 'max:6'],
         ]);
 
         // Récupérer les IDs des clients
@@ -212,6 +216,10 @@ class SessionsController extends Controller
                 'additional_description' => $exerciseData['description'] ?? null,
                 'sets_count' => $exerciseData['sets_count'] ?? null,
                 'order' => $exerciseData['order'],
+                // Nouveaux champs Super 7
+                'block_id' => $exerciseData['block_id'] ?? null,
+                'block_type' => $exerciseData['block_type'] ?? null,
+                'position_in_block' => $exerciseData['position_in_block'] ?? null,
             ]);
 
             // Créer les séries multiples si elles existent
@@ -400,6 +408,9 @@ class SessionsController extends Controller
                     'additional_description' => $se->additional_description,
                     'sets_count' => $se->sets_count,
                     'order' => $se->order,
+                    'block_id' => $se->block_id ?? null,
+                    'block_type' => $se->block_type ?? null,
+                    'position_in_block' => $se->position_in_block ?? null,
                     'sets' => $se->sets->map(fn ($set) => [
                         'id' => $set->id,
                         'set_number' => $set->set_number,
@@ -460,6 +471,10 @@ class SessionsController extends Controller
             'exercises.*.description' => ['nullable', 'string'],
             'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
             'exercises.*.order' => ['required', 'integer', 'min:0'],
+            // Nouveaux champs pour Super 7
+            'exercises.*.block_id' => ['nullable', 'integer'],
+            'exercises.*.block_type' => ['nullable', 'in:standard,set'],
+            'exercises.*.position_in_block' => ['nullable', 'integer', 'min:0', 'max:6'],
         ]);
 
         // Récupérer les IDs des clients
@@ -502,6 +517,10 @@ class SessionsController extends Controller
                 'additional_description' => $exerciseData['description'] ?? null,
                 'sets_count' => $exerciseData['sets_count'] ?? null,
                 'order' => $exerciseData['order'],
+                // Nouveaux champs Super 7
+                'block_id' => $exerciseData['block_id'] ?? null,
+                'block_type' => $exerciseData['block_type'] ?? null,
+                'position_in_block' => $exerciseData['position_in_block'] ?? null,
             ]);
 
             // Créer les séries multiples si elles existent
@@ -603,6 +622,9 @@ class SessionsController extends Controller
             'exercises.*.description' => ['nullable', 'string'],
             'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
             'exercises.*.order' => ['required', 'integer', 'min:0'],
+            'exercises.*.block_id' => ['nullable', 'integer'],
+            'exercises.*.block_type' => ['nullable', 'in:standard,set'],
+            'exercises.*.position_in_block' => ['nullable', 'integer', 'min:0'],
         ]);
 
         // Charger les exercices avec leurs relations
@@ -637,8 +659,12 @@ class SessionsController extends Controller
                             'order' => 0,
                         ]]),
                     'additional_description' => $exerciseData['description'] ?? null,
+                    'description' => $exerciseData['description'] ?? null,
                     'sets_count' => $exerciseData['sets_count'] ?? null,
                     'order' => $exerciseData['order'] ?? 0,
+                    'block_id' => $exerciseData['block_id'] ?? null,
+                    'block_type' => $exerciseData['block_type'] ?? null,
+                    'position_in_block' => $exerciseData['position_in_block'] ?? null,
                 ];
             })->filter()->sortBy('order')->values(),
         ];

@@ -34,6 +34,20 @@ export interface SessionExercise {
     description?: string | null; // Notes/commentaires
     sets_count?: number | null; // Nombre de séries
     order: number;
+    
+    // Nouveaux champs pour Super 7
+    block_id?: number | null;
+    block_type?: 'standard' | 'set' | null;
+    position_in_block?: number | null;
+}
+
+// Nouveau type pour les blocs (géré en mémoire côté frontend)
+export interface SessionBlock {
+    id: number; // Généré automatiquement
+    type: 'standard' | 'set';
+    exercises: SessionExercise[];
+    order: number;
+    block_description?: string | null; // Consignes pour l'ensemble du bloc Super 7
 }
 
 export interface Customer {

@@ -13,14 +13,13 @@ return new class extends Migration
     {
         Schema::create('training_sessions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // User who creates the session
-            $table->foreignId('customer_id')->constrained('customers')->onDelete('cascade'); // Customer for whom the session is created
-            $table->string('name')->nullable(); // Session name/title (optional)
-            $table->text('notes')->nullable(); // General notes about the session
-            $table->date('session_date')->nullable(); // Session date
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('name')->nullable();
+            $table->text('notes')->nullable();
+            $table->date('session_date')->nullable();
             $table->timestamps();
 
-            $table->index(['user_id', 'customer_id']);
+            $table->index('user_id');
         });
     }
 

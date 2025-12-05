@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('exercises', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Creator (admin or client)
-            $table->string('title'); // Title
-            $table->text('description')->nullable(); // Description
-            $table->string('suggested_duration')->nullable(); // Suggested duration (text field)
-            $table->boolean('is_shared')->default(false); // Share with other members (default false)
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('title');
+            $table->text('description')->nullable();
+            $table->string('suggested_duration')->nullable();
+            $table->boolean('is_shared')->default(false);
             $table->timestamps();
 
             $table->index(['user_id', 'is_shared']);

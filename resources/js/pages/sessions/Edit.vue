@@ -29,6 +29,7 @@ import {
 } from 'lucide-vue-next';
 import type { EditSessionProps, Exercise, SessionExercise, Customer, Category, ExerciseSet } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
+import SessionBlockSet from './SessionBlockSet.vue';
 import ExerciseLibrary from './ExerciseLibrary.vue';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -236,6 +237,10 @@ const sessionExercises = ref<SessionExercise[]>([]);
 const isDraggingOver = ref(false);
 // Compteur pour générer des IDs uniques pour les nouveaux exercices
 let sessionExerciseIdCounter = 0;
+// Compteur pour générer des IDs de blocs uniques
+let nextBlockId = 1;
+// État du mode Super Set (pour créer de nouveaux blocs en mode set)
+const isSetMode = ref(false);
 
 // Charger les exercices de la session existante
 const loadSessionExercises = () => {
@@ -326,9 +331,21 @@ const loadSessionExercises = () => {
                 rest_time: se.rest_time ?? null,
                 duration: se.duration ?? null,
                 description: se.additional_description ?? null,
-                order: se.order ?? index
+                order: se.order ?? index,
+                // Champs Super Set
+                block_id: se.block_id ?? null,
+                block_type: se.block_type ?? null,
+                position_in_block: se.position_in_block ?? null,
             };
         }).filter((ex: SessionExercise | null) => ex !== null) as SessionExercise[];
+        
+        // Initialiser nextBlockId avec la valeur maximale des block_id existants
+        const maxBlockId = sessionExercises.value
+            .filter(ex => ex.block_id !== null)
+            .reduce((max, ex) => Math.max(max, ex.block_id || 0), 0);
+        if (maxBlockId > 0) {
+            nextBlockId = maxBlockId + 1;
+        }
         
         form.exercises = sessionExercises.value;
     }
@@ -353,7 +370,7 @@ watch(() => props.session, () => {
     });
 }, { deep: true, immediate: true });
 
-// Ajouter un exercice à la séance
+// Ajouter un exercice à la séance (mode standard)
 const addExerciseToSession = (exercise: Exercise) => {
     if (!exercise || !exercise.id) {
         return;
@@ -377,10 +394,240 @@ const addExerciseToSession = (exercise: Exercise) => {
         duration: null,
         description: '',
         order: sessionExercises.value.length,
+        block_id: null,
+        block_type: null,
+        position_in_block: null,
     };
     sessionExercises.value.push(sessionExercise);
     sessionExercises.value = [...sessionExercises.value];
     form.exercises = [...sessionExercises.value];
+};
+
+// Créer un nouveau bloc Super Set
+const createNewSetBlock = (exercise: Exercise) => {
+    if (!exercise || !exercise.id) {
+        return;
+    }
+    const blockId = nextBlockId++;
+    const sessionExercise: SessionExercise = {
+        id: --sessionExerciseIdCounter,
+        exercise_id: exercise.id,
+        exercise: exercise,
+        sets: [{
+            set_number: 1,
+            repetitions: null,
+            weight: null,
+            rest_time: null,
+            duration: null,
+            order: 0
+        }],
+        repetitions: null,
+        weight: null,
+        rest_time: null,
+        duration: null,
+        description: '',
+        sets_count: null,
+        block_id: blockId,
+        block_type: 'set',
+        position_in_block: 0,
+        order: sessionExercises.value.length,
+    };
+    
+    sessionExercises.value.push(sessionExercise);
+    form.exercises = [...sessionExercises.value];
+};
+
+// Ajouter un exercice à un bloc Super Set existant
+const addExerciseToSetBlock = (exercise: Exercise, blockId: number) => {
+    if (!exercise || !exercise.id) {
+        return;
+    }
+    
+    // Trouver la position dans le bloc
+    const blockExercises = sessionExercises.value.filter(
+        ex => ex.block_id === blockId && ex.block_type === 'set'
+    );
+    const positionInBlock = blockExercises.length;
+    const sessionExercise: SessionExercise = {
+        id: --sessionExerciseIdCounter,
+        exercise_id: exercise.id,
+        exercise: exercise,
+        sets: [{
+            set_number: 1,
+            repetitions: null,
+            weight: null,
+            rest_time: null,
+            duration: null,
+            order: 0
+        }],
+        repetitions: null,
+        weight: null,
+        rest_time: null,
+        duration: null,
+        description: '',
+        sets_count: null,
+        block_id: blockId,
+        block_type: 'set',
+        position_in_block: positionInBlock,
+        order: sessionExercises.value.length,
+    };
+    
+    sessionExercises.value.push(sessionExercise);
+    form.exercises = [...sessionExercises.value];
+};
+
+// Grouper les exercices par blocs (standard et Super Set)
+const groupExercisesIntoBlocks = () => {
+    const blocksMap = new Map<number, SessionExercise[]>();
+    const standardExercises: SessionExercise[] = [];
+    
+    sessionExercises.value.forEach(ex => {
+        if (ex.block_id && ex.block_type === 'set') {
+            if (!blocksMap.has(ex.block_id)) {
+                blocksMap.set(ex.block_id, []);
+            }
+            blocksMap.get(ex.block_id)!.push(ex);
+        } else {
+            // Exercice standard (pas de block_id ou block_type !== 'set')
+            standardExercises.push(ex);
+        }
+    });
+    
+    // Convertir les blocs Super Set en objets SessionBlock
+    const setBlocks = Array.from(blocksMap.entries())
+        .map(([blockId, exercises]) => ({
+            id: blockId,
+            type: 'set' as const,
+            exercises: exercises.sort((a, b) => 
+                (a.position_in_block || 0) - (b.position_in_block || 0)
+            ),
+            order: exercises[0]?.order || 0,
+            block_description: exercises[0]?.description || null,
+        }))
+        .sort((a, b) => a.order - b.order);
+    
+    return {
+        standard: standardExercises.sort((a, b) => a.order - b.order),
+        set: setBlocks,
+    };
+};
+
+// Items ordonnés (standard et Super Set mélangés) - computed pour réactivité
+const orderedItems = computed(() => {
+    const blocks = groupExercisesIntoBlocks();
+    const items: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number }> = [];
+    
+    // Combiner et trier tous les items
+    const allItems: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, order: number }> = [];
+    
+    // Ajouter les exercices standard
+    blocks.standard.forEach(ex => {
+        allItems.push({
+            type: 'standard',
+            exercise: ex,
+            order: ex.order
+        });
+    });
+    
+    // Ajouter les blocs Super Set
+    blocks.set.forEach(block => {
+        allItems.push({
+            type: 'set',
+            block: block,
+            order: block.order
+        });
+    });
+    
+    // Trier par ordre
+    allItems.sort((a, b) => a.order - b.order);
+    
+    // Ajouter l'index d'affichage (compteur)
+    allItems.forEach((item, index) => {
+        items.push({
+            ...item,
+            key: item.type === 'set' ? `set-${item.block!.id}` : `standard-${item.exercise!.id}`,
+            displayIndex: index
+        });
+    });
+    
+    return items;
+});
+
+// Convertir un exercice standard en bloc Super Set
+const convertExerciseToSet = (exercise: SessionExercise) => {
+    const index = sessionExercises.value.findIndex(e => e.id === exercise.id);
+    if (index === -1) return;
+    
+    const blockId = nextBlockId++;
+    const updatedExercise: SessionExercise = {
+        ...exercise,
+        block_id: blockId,
+        block_type: 'set',
+        position_in_block: 0,
+    };
+    
+    sessionExercises.value[index] = updatedExercise;
+    form.exercises = [...sessionExercises.value];
+};
+
+// Convertir un bloc Super Set en exercices standard
+const convertBlockToStandard = (block: SessionBlock) => {
+    const blockExercises = sessionExercises.value.filter(
+        (ex: SessionExercise) => ex.block_id === block.id && ex.block_type === 'set'
+    );
+    
+    blockExercises.forEach((ex: SessionExercise) => {
+        const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === ex.id);
+        if (index !== -1) {
+            sessionExercises.value[index] = {
+                ...ex,
+                block_id: null,
+                block_type: null,
+                position_in_block: null,
+            };
+        }
+    });
+    
+    form.exercises = [...sessionExercises.value];
+};
+
+// Gérer le dragover sur la zone principale
+const handleDragOverMain = (e: DragEvent) => {
+    if (!e.dataTransfer) return;
+    const target = e.target as HTMLElement;
+    const types = e.dataTransfer.types;
+    if (types.includes('application/json')) {
+        const supersetDropZone = target.closest('.superset-block [class*="border-dashed"]');
+        if (supersetDropZone) return;
+        e.dataTransfer.dropEffect = 'copy';
+        isDraggingOver.value = true;
+    } else {
+        e.dataTransfer.dropEffect = 'move';
+        isDraggingOver.value = false;
+    }
+};
+
+// Gérer le dragleave sur la zone principale
+const handleDragLeaveMain = (e: DragEvent) => {
+    const target = e.relatedTarget as HTMLElement;
+    if (target && target.closest('.superset-block')) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+        isDraggingOver.value = false;
+    }
+};
+
+// Gérer le drop sur la zone principale
+const handleDropMain = (e: DragEvent) => {
+    if (!e.dataTransfer) return;
+    const target = e.target as HTMLElement;
+    const supersetDropZone = target.closest('.superset-block [class*="border-dashed"]');
+    if (supersetDropZone) return;
+    if (e.dataTransfer.types.includes('application/json')) {
+        handleDropFromLibrary(e);
+    }
 };
 
 // Supprimer un exercice de la séance
@@ -962,34 +1209,9 @@ watch(sessionExercises, () => {
                                 </div>
                             </CardHeader>
                             <CardContent
-                                @dragover.prevent="(e: DragEvent) => { 
-                                    if (e.dataTransfer) {
-                                        const types = e.dataTransfer.types;
-                                        // Seulement gérer le dragover si c'est un drop depuis la bibliothèque
-                                        if (types.includes('application/json')) {
-                                            e.dataTransfer.dropEffect = 'copy';
-                                            isDraggingOver = true;
-                                        } else {
-                                            // Pour les drags internes, laisser VueDraggable gérer
-                                            e.dataTransfer.dropEffect = 'move';
-                                            isDraggingOver = false;
-                                        }
-                                    }
-                                }"
-                                @dragleave="(e: DragEvent) => { 
-                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                    const x = e.clientX;
-                                    const y = e.clientY;
-                                    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-                                        isDraggingOver = false;
-                                    }
-                                }"
-                                @drop.prevent="(e: DragEvent) => {
-                                    // Ne gérer le drop que si c'est depuis la bibliothèque
-                                    if (e.dataTransfer && e.dataTransfer.types.includes('application/json')) {
-                                        handleDropFromLibrary(e);
-                                    }
-                                }"
+                                @dragover.prevent="handleDragOverMain"
+                                @dragleave.prevent="handleDragLeaveMain"
+                                @drop.prevent="handleDropMain"
                                 class="min-h-[200px] transition-all duration-200 ease-out relative"
                             >
                                 <!-- Ligne d'insertion discrète quand on drag depuis la bibliothèque -->
@@ -1005,27 +1227,64 @@ watch(sessionExercises, () => {
                                         <p class="mb-2">Aucun exercice ajouté</p>
                                         <p class="text-sm">Glissez des exercices depuis la bibliothèque à droite</p>
                                     </div>
-                                    <VueDraggable
-                                        v-else
-                                        v-model="sessionExercises"
-                                        :animation="150"
-                                        handle=".handle"
-                                        class="flex flex-col gap-4"
-                                        @end="onDragEnd"
-                                    >
-                                        <SessionExerciseItem
-                                            v-for="(sessionExercise, index) in sessionExercises"
-                                            :key="sessionExercise.id || `session-ex-${sessionExercise.exercise_id}-${index}`"
-                                            :session-exercise="sessionExercise"
-                                            :index="index"
-                                            :draggable="true"
-                                            :total-count="sessionExercises.length"
-                                            @update="(updates: Partial<SessionExercise>) => updateSessionExercise(index, updates)"
-                                            @remove="() => removeExerciseFromSession(index)"
-                                            @move-up="() => { if (index > 0) reorderExercises(index, index - 1); }"
-                                            @move-down="() => { if (index < sessionExercises.length - 1) reorderExercises(index, index + 1); }"
-                                        />
-                                    </VueDraggable>
+                                    <template v-if="orderedItems.length > 0">
+                                        <template v-for="(item, itemIndex) in orderedItems" :key="item.key">
+                                            <!-- Bloc Super Set -->
+                                            <SessionBlockSet
+                                                v-if="item.type === 'set'"
+                                                :block="item.block!"
+                                                :block-index="itemIndex"
+                                                :display-index="item.displayIndex"
+                                                :draggable="true"
+                                                :total-count="orderedItems.length"
+                                                @drop="(event: DragEvent, blockId: number) => handleDropFromLibrary(event, blockId)"
+                                                @remove-exercise="(index: number) => handleRemoveExerciseFromBlock(item, index)"
+                                                @update-exercise="(index: number, updates: Partial<SessionExercise>) => {
+                                                    const blockExercises = sessionExercises.value.filter(
+                                                        (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
+                                                    );
+                                                    const exerciseIndex = sessionExercises.value.findIndex(
+                                                        (ex: SessionExercise) => ex.id === blockExercises[index].id
+                                                    );
+                                                    if (exerciseIndex !== -1) {
+                                                        updateSessionExercise(exerciseIndex, updates);
+                                                    }
+                                                }"
+                                                @update-block-description="(description: string) => {
+                                                    const blockExercises = sessionExercises.value.filter(
+                                                        (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
+                                                    );
+                                                    blockExercises.forEach((ex: SessionExercise) => {
+                                                        ex.description = description;
+                                                    });
+                                                    form.exercises = [...sessionExercises.value];
+                                                }"
+                                                @convert-to-standard="() => convertBlockToStandard(item.block!)"
+                                                @remove-block="() => handleRemoveBlock(item)"
+                                                @move-up="() => { if (itemIndex > 0) reorderItems(item, orderedItems[itemIndex - 1]); }"
+                                                @move-down="() => { if (itemIndex < orderedItems.length - 1) reorderItems(item, orderedItems[itemIndex + 1]); }"
+                                            />
+                                            <!-- Exercice standard -->
+                                            <SessionExerciseItem
+                                                v-else
+                                                :session-exercise="item.exercise!"
+                                                :index="sessionExercises.findIndex(e => e.id === item.exercise!.id)"
+                                                :display-index="item.displayIndex"
+                                                :draggable="true"
+                                                :total-count="orderedItems.length"
+                                                @update="(updates: Partial<SessionExercise>) => {
+                                                    const index = sessionExercises.value.findIndex(e => e.id === item.exercise!.id);
+                                                    if (index !== -1) {
+                                                        updateSessionExercise(index, updates);
+                                                    }
+                                                }"
+                                                @remove="() => handleRemoveExercise(item)"
+                                                @move-up="() => { if (itemIndex > 0) reorderItems(item, orderedItems[itemIndex - 1]); }"
+                                                @move-down="() => { if (itemIndex < orderedItems.length - 1) reorderItems(item, orderedItems[itemIndex + 1]); }"
+                                                @convert-to-set="() => convertExerciseToSet(item.exercise!)"
+                                            />
+                                        </template>
+                                    </template>
                                 </div>
                             </CardContent>
                         </Card>

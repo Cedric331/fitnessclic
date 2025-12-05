@@ -20,7 +20,8 @@ import {
     ChevronDown,
     AlertTriangle,
     Plus,
-    Trash2
+    Trash2,
+    Grid3x3
 } from 'lucide-vue-next';
 import type { SessionExercise, ExerciseSet } from './types';
 
@@ -36,6 +37,7 @@ const emit = defineEmits<{
     remove: [];
     moveUp: [];
     moveDown: [];
+    convertToSet: [];
 }>();
 
 const showRemoveDialog = ref(false);
@@ -117,11 +119,40 @@ const getSetLabel = (setNumber: number) => {
                 {{ index + 1 }}
             </div>
             <CardContent class="p-2">
-                <!-- En-tête : Image, nom, commentaires, bouton supprimer -->
+                <!-- En-tête avec boutons en haut à droite -->
+                <div class="flex items-center justify-end gap-2 mb-3">
+                    <!-- Toggle Super Set -->
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        class="text-xs"
+                        @click.stop="emit('convertToSet')"
+                        @mousedown.stop
+                        @dragstart.stop
+                        title="Convertir en bloc Super Set"
+                    >
+                        <Grid3x3 class="h-3 w-3 mr-1" />
+                        Super Set
+                    </Button>
+                    <!-- Bouton supprimer -->
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        class="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                        @click.stop="handleRemoveClick"
+                        @mousedown.stop
+                        @dragstart.stop
+                        title="Retirer l'exercice"
+                    >
+                        <X class="h-4 w-4" />
+                    </Button>
+                </div>
+                
+                <!-- Contenu principal : Image, nom, commentaires avec icônes de drag and drop alignées -->
                 <div class="flex items-start gap-3 mb-3">
                     <!-- Poignée de drag et boutons de déplacement -->
                     <div 
-                        class="flex flex-col items-center gap-1 pt-1"
+                        class="flex flex-col items-center gap-1 flex-shrink-0 pt-1"
                     >
                         <button
                             type="button"
@@ -194,18 +225,6 @@ const getSetLabel = (setNumber: number) => {
                             />
                         </div>
                     </div>
-
-                    <!-- Bouton supprimer -->
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        class="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 flex-shrink-0"
-                        @click.stop="handleRemoveClick"
-                        @mousedown.stop
-                        @dragstart.stop
-                    >
-                        <X class="h-4 w-4" />
-                    </Button>
                 </div>
 
                 <!-- Séries multiples -->

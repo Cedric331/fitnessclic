@@ -15,14 +15,20 @@ return new class extends Migration
             $table->id();
             $table->foreignId('session_id')->constrained('training_sessions')->onDelete('cascade');
             $table->foreignId('exercise_id')->constrained()->onDelete('cascade');
-            $table->integer('repetitions')->nullable(); // Number of repetitions
-            $table->string('rest_time')->nullable(); // Rest time (text field)
-            $table->string('duration')->nullable(); // Duration (text field)
-            $table->text('additional_description')->nullable(); // Additional description
-            $table->integer('order')->default(0); // Order in the session
+            $table->integer('repetitions')->nullable();
+            $table->decimal('weight', 8, 2)->nullable();
+            $table->string('rest_time')->nullable();
+            $table->string('duration')->nullable();
+            $table->text('additional_description')->nullable();
+            $table->integer('order')->default(0);
+            $table->integer('sets_count')->nullable();
+            $table->unsignedBigInteger('block_id')->nullable();
+            $table->enum('block_type', ['standard', 'set'])->nullable();
+            $table->tinyInteger('position_in_block')->nullable()->default(0);
             $table->timestamps();
 
             $table->index(['session_id', 'order']);
+            $table->index(['block_id', 'position_in_block']);
         });
     }
 

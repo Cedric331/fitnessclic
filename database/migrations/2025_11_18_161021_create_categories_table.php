@@ -13,10 +13,9 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // Category name
-            $table->enum('type', ['public', 'private'])->default('private'); // Type: public or private
-            $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade'); // null for public categories (admin), user_id for private ones
-            // Note: For public categories created by admin, user_id can be null or the admin's ID
+            $table->string('name');
+            $table->enum('type', ['public', 'private'])->default('private');
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
             $table->timestamps();
 
             $table->index(['type', 'user_id']);

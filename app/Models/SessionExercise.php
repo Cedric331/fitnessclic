@@ -33,6 +33,10 @@ class SessionExercise extends Model
         'additional_description',
         'order',
         'sets_count',
+        // Nouveaux champs pour Super 7
+        'block_id',
+        'block_type',
+        'position_in_block',
     ];
 
     /**
@@ -69,6 +73,37 @@ class SessionExercise extends Model
     public function sets(): HasMany
     {
         return $this->hasMany(SessionExerciseSet::class, 'session_exercise_id')->orderBy('order');
+    }
+
+    /**
+     * Vérifier si l'exercice est en mode Super Set
+     */
+    public function isSet(): bool
+    {
+        return $this->block_type === 'set' && $this->block_id !== null;
+    }
+
+    /**
+     * @deprecated Use isSet() instead
+     */
+    public function isSuper7(): bool
+    {
+        return $this->isSet();
+    }
+
+    /**
+     * Relation avec les autres exercices du même bloc
+     */
+    public function blockExercises()
+    {
+        if (!$this->block_id) {
+            return collect([]);
+        }
+        
+        return self::where('block_id', $this->block_id)
+            ->where('id', '!=', $this->id)
+            ->orderBy('position_in_block')
+            ->get();
     }
 }
 
