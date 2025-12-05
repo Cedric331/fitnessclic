@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Trash2 } from 'lucide-vue-next';
+import { ArrowLeft, Edit, Trash2, Eye, Download, Printer } from 'lucide-vue-next';
 import { computed, ref, watch, nextTick } from 'vue';
 import type { BreadcrumbItemType } from '@/types';
 import ExerciseFormDialog from './ExerciseFormDialog.vue';
@@ -132,6 +132,96 @@ const formatSessionDate = (date: string | null) => {
     }
     return formatDate(date);
 };
+
+// Actions pour les séances
+const handleViewSession = (session: Session) => {
+    router.visit(`/sessions/${session.id}`);
+};
+
+const handleDownloadPdf = (session: Session) => {
+    window.open(`/sessions/${session.id}/pdf`, '_blank');
+};
+
+const handlePrint = (session: Session) => {
+    // Récupérer le token CSRF
+    const getCsrfToken = () => {
+        const propsToken = (page.props as any).csrfToken;
+        if (propsToken) return propsToken;
+        
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'XSRF-TOKEN') {
+                return decodeURIComponent(value);
+            }
+        }
+        
+        return '';
+    };
+    
+    const csrfToken = getCsrfToken();
+    
+    if (!csrfToken) {
+        notifyError('Token CSRF manquant. Veuillez rafraîchir la page.', 'Erreur');
+        return;
+    }
+
+    // Récupérer le PDF via fetch
+    fetch(`/sessions/${session.id}/pdf`, {
+        method: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/pdf',
+        },
+        credentials: 'include',
+    })
+    .then(async response => {
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (contentType && !contentType.includes('application/pdf')) {
+            const errorText = await response.text();
+            throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
+        }
+        
+        return response.blob();
+    })
+    .then(blob => {
+        if (blob.size === 0) {
+            throw new Error('Le PDF généré est vide');
+        }
+        
+        // Créer une URL blob et ouvrir dans un nouvel onglet
+        const url = window.URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank');
+        
+        if (printWindow) {
+            // Attendre que le PDF soit chargé puis déclencher l'impression
+            printWindow.onload = () => {
+                setTimeout(() => {
+                    printWindow.print();
+                }, 250);
+            };
+        } else {
+            // Si la popup est bloquée, ouvrir dans le même onglet
+            window.open(url, '_blank');
+            notifyError('Veuillez autoriser les popups pour cette fonctionnalité.', 'Information');
+        }
+        
+        // Nettoyer l'URL après un délai
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+        }, 1000);
+    })
+    .catch(error => {
+        console.error('Erreur complète:', error);
+        notifyError(error.message || 'Une erreur est survenue lors de l\'ouverture du PDF.', 'Erreur');
+    });
+};
 </script>
 
 <template>
@@ -168,12 +258,23 @@ const formatSessionDate = (date: string | null) => {
                     </Button>
                     <Button
                         v-if="canEdit"
+                        variant="outline"
                         size="sm"
                         class="inline-flex items-center gap-2"
                         @click="isEditDialogOpen = true"
                     >
                         <Edit class="size-4" />
                         <span>Modifier</span>
+                    </Button>
+                    <Button
+                        v-if="canDelete"
+                        variant="outline"
+                        size="sm"
+                        class="inline-flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        @click="isDeleteDialogOpen = true"
+                    >
+                        <Trash2 class="size-4" />
+                        <span>Supprimer</span>
                     </Button>
                 </div>
             </div>
@@ -183,12 +284,12 @@ const formatSessionDate = (date: string | null) => {
                 <div class="lg:col-span-2 space-y-6">
                     <!-- Image -->
                     <Card v-if="exercise.image_url">
-                        <CardContent class="p-0">
-                            <div class="relative aspect-video w-full overflow-hidden rounded-t-lg">
+                        <CardContent class="p-4">
+                            <div class="relative w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
                                 <img
                                     :src="exercise.image_url"
                                     :alt="exercise.title"
-                                    class="h-full w-full object-cover"
+                                    class="w-full h-auto max-h-96 object-contain"
                                 />
                             </div>
                         </CardContent>
@@ -249,6 +350,35 @@ const formatSessionDate = (date: string | null) => {
                                                 {{ session.pivot.additional_description }}
                                             </p>
                                         </div>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="h-8 text-xs"
+                                            @click="handleViewSession(session)"
+                                        >
+                                            <Eye class="size-3.5 mr-1.5" />
+                                            Consulter
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="h-8 text-xs"
+                                            @click="handleDownloadPdf(session)"
+                                        >
+                                            <Download class="size-3.5 mr-1.5" />
+                                            PDF
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            class="h-8 text-xs"
+                                            @click="handlePrint(session)"
+                                        >
+                                            <Printer class="size-3.5 mr-1.5" />
+                                            Imprimer
+                                        </Button>
                                     </div>
                                 </div>
                             </div>

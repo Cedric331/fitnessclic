@@ -182,7 +182,7 @@ class ExercisesController extends Controller
         // Charger uniquement les séances de l'utilisateur connecté
         $userSessions = $exercise->sessions()
             ->where('user_id', $userId)
-            ->with('customer')
+            ->with('customers')
             ->get();
 
         $data = [
@@ -217,10 +217,10 @@ class ExercisesController extends Controller
             'id' => $session->id,
             'name' => $session->name,
             'session_date' => optional($session->session_date)->format('Y-m-d'),
-            'customer' => $session->customer ? [
-                'id' => $session->customer->id,
-                'first_name' => $session->customer->first_name,
-                'last_name' => $session->customer->last_name,
+            'customer' => $session->customers->first() ? [
+                'id' => $session->customers->first()->id,
+                'first_name' => $session->customers->first()->first_name,
+                'last_name' => $session->customers->first()->last_name,
             ] : null,
             'pivot' => [
                 'repetitions' => $session->pivot->repetitions,

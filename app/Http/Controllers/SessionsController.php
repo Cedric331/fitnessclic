@@ -546,7 +546,7 @@ class SessionsController extends Controller
     /**
      * Generate PDF for a saved session.
      */
-    public function pdf(Session $session)
+    public function pdf(Session $session, Request $request)
     {
         // Vérifier que la séance appartient à l'utilisateur
         if ($session->user_id !== Auth::id()) {
@@ -561,6 +561,13 @@ class SessionsController extends Controller
         
         $fileName = $session->name ?: "seance-{$session->id}";
         $fileName = Str::slug($fileName) . '.pdf';
+        
+        // Si c'est une requête AJAX (pour l'impression), retourner le PDF sans forcer le téléchargement
+        if ($request->ajax() || $request->wantsJson()) {
+            return response($pdf->output(), 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'inline; filename="' . $fileName . '"');
+        }
         
         return $pdf->download($fileName);
     }
@@ -668,6 +675,7 @@ class SessionsController extends Controller
 
         $validated = $request->validate([
             'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'redirect_to_customer' => ['sometimes', 'boolean'],
         ]);
 
         // Charger la session avec les relations nécessaires
@@ -679,20 +687,28 @@ class SessionsController extends Controller
             ->where('is_active', true)
             ->first();
 
+        // Déterminer la route de redirection
+        $redirectRoute = $validated['redirect_to_customer'] ?? false
+            ? 'client.customers.show'
+            : 'sessions.index';
+        $redirectParams = $validated['redirect_to_customer'] ?? false
+            ? ['customer' => $validated['customer_id']]
+            : [];
+
         if (!$customer) {
-            return redirect()->route('sessions.index')
+            return redirect()->route($redirectRoute, $redirectParams)
                 ->with('error', 'Client non trouvé ou inactif.');
         }
 
         // Vérifier que le client est bien associé à cette séance
         if (!$session->customers->contains($customer->id)) {
-            return redirect()->route('sessions.index')
+            return redirect()->route($redirectRoute, $redirectParams)
                 ->with('error', 'Ce client n\'est pas associé à cette séance.');
         }
 
         // Vérifier que le client a une adresse email
         if (!$customer->email) {
-            return redirect()->route('sessions.index')
+            return redirect()->route($redirectRoute, $redirectParams)
                 ->with('error', 'Ce client n\'a pas d\'adresse email.');
         }
 
@@ -700,7 +716,7 @@ class SessionsController extends Controller
             // Envoyer l'email
             Mail::to($customer->email)->send(new SessionEmail($session, $customer));
 
-            return redirect()->route('sessions.index')
+            return redirect()->route($redirectRoute, $redirectParams)
                 ->with('success', "La séance a été envoyée par email à {$customer->full_name}.");
         } catch (\Exception $e) {
             Log::error('Erreur envoi email séance:', [
@@ -710,7 +726,7 @@ class SessionsController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->route('sessions.index')
+            return redirect()->route($redirectRoute, $redirectParams)
                 ->with('error', 'Une erreur est survenue lors de l\'envoi de l\'email.');
         }
     }
