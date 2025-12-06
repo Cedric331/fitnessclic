@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +28,7 @@ import type { SessionExercise, ExerciseSet } from './types';
 const props = defineProps<{
     sessionExercise: SessionExercise;
     index: number;
+    displayIndex?: number;
     draggable?: boolean;
     totalCount?: number;
 }>();
@@ -45,48 +46,145 @@ const exercise = computed(() => props.sessionExercise.exercise);
 
 // Initialiser les séries si elles n'existent pas
 const sets = computed(() => {
-    if (props.sessionExercise.sets && props.sessionExercise.sets.length > 0) {
+    // TOUJOURS retourner les sets réels de l'exercice, même s'ils sont vides
+    // Ne pas créer de tableau par défaut ici, car cela empêche la sauvegarde
+    if (props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0) {
         return props.sessionExercise.sets;
     }
-    // Si pas de séries, créer une série par défaut
-    return [{
-        set_number: 1,
-        repetitions: props.sessionExercise.repetitions || null,
-        weight: props.sessionExercise.weight || null,
-        rest_time: props.sessionExercise.rest_time || null,
-        duration: props.sessionExercise.duration || null,
-        order: 0
-    }];
+    // Si pas de séries, retourner un tableau vide
+    // Les sets seront initialisés lors de la première modification
+    return [];
+});
+
+// S'assurer que les sets sont initialisés lors du montage si nécessaire
+onMounted(() => {
+    // Si les sets n'existent pas dans l'exercice, les initialiser avec un set par défaut
+    if (!props.sessionExercise.sets || !Array.isArray(props.sessionExercise.sets) || props.sessionExercise.sets.length === 0) {
+        // Initialiser les sets dans l'exercice avec un set par défaut
+        const defaultSet = [{
+            set_number: 1,
+            repetitions: props.sessionExercise.repetitions ?? null,
+            weight: props.sessionExercise.weight ?? null,
+            rest_time: props.sessionExercise.rest_time ?? null,
+            duration: props.sessionExercise.duration ?? null,
+            order: 0
+        }];
+        emit('update', { sets: defaultSet });
+    }
 });
 
 const updateField = (field: keyof SessionExercise, value: any) => {
+    // Debug
+    console.log('updateField:', { field, value, sessionExercise: props.sessionExercise });
     emit('update', { [field]: value });
 };
 
 const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
-    const updatedSets = [...sets.value];
-    if (updatedSets[setIndex]) {
-        updatedSets[setIndex] = { ...updatedSets[setIndex], [field]: value };
-        emit('update', { sets: updatedSets });
+    // TOUJOURS utiliser les sets réels de l'exercice, même s'ils sont vides
+    // Si les sets n'existent pas dans props, on doit les créer et les initialiser
+    let currentSets: ExerciseSet[];
+    
+    // Vérifier si les sets existent réellement dans props.sessionExercise.sets
+    // IMPORTANT: Vérifier aussi si les sets sont un tableau vide (length === 0)
+    const hasSets = props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0;
+    
+    if (hasSets) {
+        // Les sets existent, les copier en profondeur
+        currentSets = props.sessionExercise.sets.map(set => ({ 
+            set_number: set.set_number ?? 1,
+            repetitions: set.repetitions ?? null,
+            weight: set.weight ?? null,
+            rest_time: set.rest_time ?? null,
+            duration: set.duration ?? null,
+            order: set.order ?? 0
+        }));
+    } else {
+        // Les sets n'existent pas ou sont vides, créer un set par défaut avec les valeurs existantes de l'exercice
+        currentSets = [{
+            set_number: 1,
+            repetitions: props.sessionExercise.repetitions ?? null,
+            weight: props.sessionExercise.weight ?? null,
+            rest_time: props.sessionExercise.rest_time ?? null,
+            duration: props.sessionExercise.duration ?? null,
+            order: 0
+        }];
     }
+    
+    // S'assurer que le set à l'index existe
+    if (!currentSets[setIndex]) {
+        // Créer le set s'il n'existe pas
+        while (currentSets.length <= setIndex) {
+            currentSets.push({
+                set_number: currentSets.length + 1,
+                repetitions: null,
+                weight: null,
+                rest_time: null,
+                duration: null,
+                order: currentSets.length
+            });
+        }
+    }
+    
+    // Mettre à jour le set
+    currentSets[setIndex] = { ...currentSets[setIndex], [field]: value };
+    
+    // Debug
+    console.log('updateSet:', { 
+        setIndex, 
+        field, 
+        value, 
+        currentSets,
+        propsSets: props.sessionExercise.sets,
+        propsSetsExists: !!props.sessionExercise.sets,
+        propsSetsLength: props.sessionExercise.sets?.length || 0,
+        hasSets: hasSets,
+        exerciseId: props.sessionExercise.exercise_id,
+        willEmit: true
+    });
+    
+    // TOUJOURS émettre les sets, même si c'était un set par défaut
+    // C'est crucial pour que les sets soient sauvegardés dans sessionExercises.value
+    emit('update', { sets: currentSets });
 };
 
 const addSet = () => {
+    // Utiliser les sets réels de l'exercice ou créer un tableau par défaut
+    let currentSets: ExerciseSet[];
+    if (props.sessionExercise.sets && props.sessionExercise.sets.length > 0) {
+        currentSets = [...props.sessionExercise.sets];
+    } else {
+        // Créer un set par défaut avec les valeurs existantes de l'exercice
+        currentSets = [{
+            set_number: 1,
+            repetitions: props.sessionExercise.repetitions ?? null,
+            weight: props.sessionExercise.weight ?? null,
+            rest_time: props.sessionExercise.rest_time ?? null,
+            duration: props.sessionExercise.duration ?? null,
+            order: 0
+        }];
+    }
+    
     const newSet: ExerciseSet = {
-        set_number: sets.value.length + 1,
+        set_number: currentSets.length + 1,
         repetitions: null,
         weight: null,
         rest_time: null,
         duration: null,
-        order: sets.value.length
+        order: currentSets.length
     };
-    const updatedSets = [...sets.value, newSet];
+    const updatedSets = [...currentSets, newSet];
     emit('update', { sets: updatedSets });
 };
 
 const removeSet = (setIndex: number) => {
-    if (sets.value.length <= 1) return; // Garder au moins une série
-    const updatedSets = sets.value.filter((_, index) => index !== setIndex);
+    // Utiliser les sets réels de l'exercice
+    if (!props.sessionExercise.sets || props.sessionExercise.sets.length === 0) {
+        return; // Pas de sets à supprimer
+    }
+    
+    const currentSets = [...props.sessionExercise.sets];
+    if (currentSets.length <= 1) return; // Garder au moins une série
+    const updatedSets = currentSets.filter((_, index) => index !== setIndex);
     // Renuméroter les séries
     updatedSets.forEach((set, index) => {
         set.set_number = index + 1;
@@ -116,7 +214,7 @@ const getSetLabel = (setNumber: number) => {
         <Card class="transform transition-all duration-200">
             <!-- Numéro d'exercice en haut à gauche -->
             <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
-                {{ index + 1 }}
+                {{ (displayIndex !== undefined ? displayIndex : index) + 1 }}
             </div>
             <CardContent class="p-2">
                 <!-- En-tête avec boutons en haut à droite -->
@@ -243,8 +341,9 @@ const getSetLabel = (setNumber: number) => {
                     </div>
 
                     <div class="space-y-2">
+                        <!-- Afficher les sets réels de l'exercice, ou un set par défaut si vide -->
                         <div
-                            v-for="(set, setIndex) in sets"
+                            v-for="(set, setIndex) in (props.sessionExercise.sets && props.sessionExercise.sets.length > 0 ? props.sessionExercise.sets : [{ set_number: 1, repetitions: null, weight: null, rest_time: null, duration: null, order: 0 }])"
                             :key="setIndex"
                             class="flex items-center gap-2 p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-md"
                         >
@@ -253,8 +352,8 @@ const getSetLabel = (setNumber: number) => {
                                 {{ getSetLabel(set.set_number) }}
                             </div>
 
-                            <!-- Série (nombre de séries) - seulement pour la première série -->
-                            <div v-if="setIndex === 0" class="flex-1">
+                            <!-- Série (nombre de séries) - visible sur toutes les lignes, mais modifiable uniquement sur la première -->
+                            <div class="flex-1">
                                 <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
                                 <Input
                                     type="number"
@@ -264,6 +363,7 @@ const getSetLabel = (setNumber: number) => {
                                     @dragstart.stop
                                     placeholder="Nombre"
                                     class="h-8 text-sm"
+                                    :disabled="setIndex !== 0"
                                     min="1"
                                 />
                             </div>
@@ -274,7 +374,10 @@ const getSetLabel = (setNumber: number) => {
                                 <Input
                                     type="number"
                                     :model-value="set.repetitions"
-                                    @update:model-value="(value: string | number) => updateSet(setIndex, 'repetitions', value ? parseInt(value as string) : null)"
+                                    @update:model-value="(value: string | number) => {
+                                        const numValue = value === '' || value === null || value === undefined ? null : parseInt(value as string);
+                                        updateSet(setIndex, 'repetitions', (numValue !== null && !isNaN(numValue)) ? numValue : null);
+                                    }"
                                     @mousedown.stop
                                     @dragstart.stop
                                     placeholder="10"
@@ -290,7 +393,10 @@ const getSetLabel = (setNumber: number) => {
                                     type="number"
                                     step="0.5"
                                     :model-value="set.weight"
-                                    @update:model-value="(value: string | number) => updateSet(setIndex, 'weight', value ? parseFloat(value as string) : null)"
+                                    @update:model-value="(value: string | number) => {
+                                        const numValue = value === '' || value === null || value === undefined ? null : parseFloat(value as string);
+                                        updateSet(setIndex, 'weight', (numValue !== null && !isNaN(numValue)) ? numValue : null);
+                                    }"
                                     @mousedown.stop
                                     @dragstart.stop
                                     placeholder="20"

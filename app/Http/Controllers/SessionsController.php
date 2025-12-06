@@ -172,7 +172,7 @@ class SessionsController extends Controller
             'exercises.*.description' => ['nullable', 'string'],
             'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
             'exercises.*.order' => ['required', 'integer', 'min:0'],
-            // Nouveaux champs pour Super 7
+            // Nouveaux champs pour Super Set
             'exercises.*.block_id' => ['nullable', 'integer'],
             'exercises.*.block_type' => ['nullable', 'in:standard,set'],
             'exercises.*.position_in_block' => ['nullable', 'integer', 'min:0', 'max:6'],
@@ -248,7 +248,7 @@ class SessionsController extends Controller
     public function show(Session $session): Response
     {
         // Vérifier que la séance appartient à l'utilisateur
-        if ($session->user_id !== Auth::id()) {
+        if ($session->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
             abort(403);
         }
 
@@ -294,6 +294,9 @@ class SessionsController extends Controller
                     'additional_description' => $se->additional_description,
                     'sets_count' => $se->sets_count,
                     'order' => $se->order,
+                    'block_id' => $se->block_id,
+                    'block_type' => $se->block_type,
+                    'position_in_block' => $se->position_in_block,
                     'sets' => $se->sets->map(fn ($set) => [
                         'id' => $set->id,
                         'set_number' => $set->set_number,

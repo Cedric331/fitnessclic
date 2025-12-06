@@ -501,12 +501,118 @@ const removeExerciseFromSession = (index: number) => {
 };
 
 // Mettre à jour un exercice dans la séance
+// Handler pour les mises à jour d'un exercice depuis SessionExerciseItem
+const handleExerciseUpdate = (exerciseId: number | undefined, updates: Partial<SessionExercise>) => {
+    console.log('handleExerciseUpdate called:', { 
+        exerciseId,
+        updates,
+        sessionExercisesRef: sessionExercises,
+        sessionExercisesValue: sessionExercises.value,
+        sessionExercisesLength: sessionExercises.value?.length,
+        sessionExercisesType: typeof sessionExercises.value
+    });
+    
+    // Vérifier que sessionExercises est bien défini et initialisé
+    if (!sessionExercises) {
+        console.error('sessionExercises ref is not defined!');
+        return;
+    }
+    
+    // Initialiser sessionExercises.value s'il est undefined
+    if (!sessionExercises.value) {
+        console.warn('sessionExercises.value is undefined, initializing to empty array');
+        sessionExercises.value = [];
+    }
+    
+    if (!exerciseId) {
+        console.error('Missing exerciseId in handleExerciseUpdate:', { exerciseId });
+        return;
+    }
+    
+    const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === exerciseId);
+    console.log('Searching for exercise:', { exerciseId, index, sessionExercisesIds: sessionExercises.value.map((e: SessionExercise) => e.id) });
+    
+    if (index !== -1) {
+        updateSessionExercise(index, updates);
+    } else {
+        console.error('Exercise not found in handleExerciseUpdate!', {
+            exerciseId,
+            sessionExercisesIds: sessionExercises.value.map((e: SessionExercise) => e.id),
+            sessionExercisesArray: sessionExercises.value
+        });
+    }
+};
+
 const updateSessionExercise = (index: number, updates: Partial<SessionExercise>) => {
-    sessionExercises.value[index] = {
-        ...sessionExercises.value[index],
-        ...updates,
-    };
-    form.exercises = sessionExercises.value;
+    const currentExercise = sessionExercises.value[index];
+    
+    // Debug: afficher les mises à jour
+    console.log('updateSessionExercise called:', { 
+        index, 
+        updates, 
+        currentExercise,
+        updatesHasSets: !!updates.sets,
+        updatesSetsLength: updates.sets?.length || 0,
+        updatesSets: updates.sets
+    });
+    
+    // Si on met à jour les sets, s'assurer qu'ils sont bien initialisés
+    if (updates.sets) {
+        // S'assurer que les sets sont bien un tableau et les copier en profondeur
+        const setsArray = Array.isArray(updates.sets) 
+            ? updates.sets.map(set => ({
+                set_number: set.set_number ?? 1,
+                repetitions: set.repetitions ?? null,
+                weight: set.weight ?? null,
+                rest_time: set.rest_time ?? null,
+                duration: set.duration ?? null,
+                order: set.order ?? 0
+            }))
+            : [];
+        
+        // Créer un nouvel objet sans les sets de updates pour éviter les conflits
+        const { sets: _, ...updatesWithoutSets } = updates;
+        
+        sessionExercises.value[index] = {
+            ...currentExercise,
+            ...updatesWithoutSets,
+            sets: setsArray, // Utiliser directement les sets mis à jour (copie en profondeur)
+        };
+        // Forcer la réactivité en créant une nouvelle référence
+        sessionExercises.value = [...sessionExercises.value];
+    } else {
+        sessionExercises.value[index] = {
+            ...currentExercise,
+            ...updates,
+        };
+        // Forcer la réactivité en créant une nouvelle référence
+        sessionExercises.value = [...sessionExercises.value];
+    }
+    
+    // Debug: afficher l'exercice mis à jour
+    const updatedExercise = sessionExercises.value[index];
+    console.log('Updated exercise:', {
+        id: updatedExercise.id,
+        exercise_id: updatedExercise.exercise_id,
+        setsLength: updatedExercise.sets?.length || 0,
+        sets: updatedExercise.sets,
+        setsArray: updatedExercise.sets ? [...updatedExercise.sets] : [],
+        firstSet: updatedExercise.sets?.[0]
+    });
+    
+    // Vérifier que les sets sont bien sauvegardés
+    if (updates.sets && updatedExercise.sets) {
+        console.log('Sets verification:', {
+            updatesSetsLength: updates.sets.length,
+            savedSetsLength: updatedExercise.sets.length,
+            updatesFirstSet: updates.sets[0],
+            savedFirstSet: updatedExercise.sets[0],
+            areEqual: JSON.stringify(updates.sets) === JSON.stringify(updatedExercise.sets)
+        });
+    }
+    
+    // Ne pas mettre à jour form.exercises ici, il sera formaté lors de la sauvegarde
+    // form.exercises sera mis à jour lors de la sauvegarde avec le bon format
 };
 
 // Réorganiser les exercices (utilisé par les boutons haut/bas et après drag)
@@ -901,28 +1007,60 @@ const saveSession = () => {
     }
     
     // Formater les exercices pour l'envoi au backend
-    form.exercises = sessionExercises.value.map(ex => ({
-        exercise_id: ex.exercise_id,
-        sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
-            set_number: set.set_number || idx + 1,
-            repetitions: set.repetitions ?? null,
-            weight: set.weight ?? null,
-            rest_time: set.rest_time ?? null,
-            duration: set.duration ?? null,
-            order: set.order ?? idx
-        })) : undefined,
-        repetitions: ex.repetitions ?? null,
-        weight: ex.weight ?? null,
-        rest_time: ex.rest_time ?? null,
-        duration: ex.duration ?? null,
-        description: ex.description ?? null,
-        sets_count: ex.sets_count ?? null,
-        order: ex.order,
-        // Champs Super Set
-        block_id: ex.block_id ?? null,
-        block_type: ex.block_type ?? null,
-        position_in_block: ex.position_in_block ?? null,
-    }));
+    form.exercises = sessionExercises.value.map(ex => {
+        // Toujours créer au moins un set si les sets existent, même s'ils sont vides
+        // Convertir le Proxy en tableau normal si nécessaire
+        const setsArray = ex.sets ? (Array.isArray(ex.sets) ? [...ex.sets] : []) : [];
+        const hasSets = setsArray.length > 0;
+        let sets = undefined;
+        
+        if (hasSets) {
+            sets = setsArray.map((set, idx) => {
+                const formattedSet = {
+                    set_number: set.set_number || idx + 1,
+                    repetitions: set.repetitions ?? null,
+                    weight: set.weight ?? null,
+                    rest_time: set.rest_time ?? null,
+                    duration: set.duration ?? null,
+                    order: set.order ?? idx
+                };
+                return formattedSet;
+            });
+        }
+        
+        // Debug: afficher les données avant envoi
+        console.log('Exercise data before formatting:', {
+            exercise_id: ex.exercise_id,
+            sets: ex.sets,
+            setsArray: setsArray,
+            setsArrayLength: setsArray.length,
+            firstSet: setsArray[0],
+            sets_count: ex.sets_count,
+            description: ex.description,
+            hasSets: hasSets,
+            formattedSets: sets
+        });
+        
+        return {
+            exercise_id: ex.exercise_id,
+            sets: sets,
+            // Envoyer les valeurs directes seulement si pas de sets
+            repetitions: hasSets ? null : (ex.repetitions ?? null),
+            weight: hasSets ? null : (ex.weight ?? null),
+            rest_time: hasSets ? null : (ex.rest_time ?? null),
+            duration: hasSets ? null : (ex.duration ?? null),
+            description: ex.description ?? null,
+            sets_count: ex.sets_count ?? null,
+            order: ex.order,
+            // Champs Super Set
+            block_id: ex.block_id ?? null,
+            block_type: ex.block_type ?? null,
+            position_in_block: ex.position_in_block ?? null,
+        };
+    });
+    
+    // Debug: afficher les données formatées
+    console.log('Formatted exercises:', form.exercises);
     
     form.post('/sessions', {
         preserveScroll: false,
@@ -1229,9 +1367,8 @@ const duplicateExercises = computed(() => {
 
 const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0);
 
-// Synchroniser les exercices avec le formulaire et le localStorage
+// Synchroniser les exercices avec le localStorage (sans toucher à form.exercises qui sera formaté lors de la sauvegarde)
 watch(sessionExercises, () => {
-    form.exercises = sessionExercises.value;
     saveExercisesToStorage();
 }, { deep: true });
 </script>
@@ -1444,11 +1581,10 @@ watch(sessionExercises, () => {
                                                 @drop="(event: DragEvent, blockId: number) => handleDropFromLibrary(event, blockId)"
                                                 @remove-exercise="(index: number) => handleRemoveExerciseFromBlock(item, index)"
                                                 @update-exercise="(index: number, updates: Partial<SessionExercise>) => {
-                                                    const blockExercises = sessionExercises.value.filter(
-                                                        (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
-                                                    );
+                                                    if (!sessionExercises.value || !item.block || !item.block.exercises[index]) return;
+                                                    const exercise = item.block.exercises[index];
                                                     const exerciseIndex = sessionExercises.value.findIndex(
-                                                        (ex: SessionExercise) => ex.id === blockExercises[index]?.id
+                                                        (ex: SessionExercise) => ex.id === exercise.id
                                                     );
                                                     if (exerciseIndex !== -1) {
                                                         updateSessionExercise(exerciseIndex, updates);
@@ -1493,14 +1629,7 @@ watch(sessionExercises, () => {
                                                 :index="item.displayIndex"
                                                 :draggable="true"
                                                 :total-count="orderedItems.length"
-                                                @update="(updates: Partial<SessionExercise>) => {
-                                                    if (item.exercise && item.exercise.id && sessionExercises.value) {
-                                                        const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === item.exercise!.id);
-                                                        if (index !== -1) {
-                                                            updateSessionExercise(index, updates);
-                                                        }
-                                                    }
-                                                }"
+                                                @update="(updates: Partial<SessionExercise>) => handleExerciseUpdate(item.exercise?.id, updates)"
                                                 @remove="handleRemoveExercise(item)"
                                                 @move-up="() => {
                                                     const items = orderedItems.value;

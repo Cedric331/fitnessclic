@@ -98,6 +98,9 @@ export interface Session {
         additional_description?: string | null;
         sets_count?: number | null;
         order: number;
+        block_id?: number | null;
+        block_type?: 'standard' | 'set' | null;
+        position_in_block?: number | null;
         sets?: ExerciseSet[];
     }>;
     created_at: string;

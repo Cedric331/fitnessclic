@@ -81,9 +81,9 @@ const handleLogout = () => {
     <Sidebar 
         collapsible="icon" 
         variant="inset" 
-        class="bg-white dark:bg-slate-900 [&_[data-sidebar=sidebar]]:bg-white [&_[data-sidebar=sidebar]]:dark:bg-slate-900"
+        class="bg-slate-900 [&_[data-sidebar=sidebar]]:bg-slate-900"
     >
-        <SidebarHeader class="border-b border-slate-200 dark:border-slate-700">
+        <SidebarHeader class="border-b border-slate-700 pb-4">
             <SidebarMenu>
                 <SidebarMenuItem>
                     <Link
@@ -101,8 +101,8 @@ const handleLogout = () => {
                             />
                         </div>
                         <div class="flex flex-col group-data-[collapsible=icon]:hidden">
-                            <span class="text-lg font-bold text-slate-900 dark:text-white">FitnessClic</span>
-                            <span class="text-xs text-slate-600 dark:text-slate-400"
+                            <span class="text-lg font-bold text-white">FitnessClic</span>
+                            <span class="text-xs text-slate-400"
                                 >créateur de séances</span
                             >
                         </div>
@@ -111,9 +111,9 @@ const handleLogout = () => {
             </SidebarMenu>
         </SidebarHeader>
 
-        <SidebarContent class="px-2">
+        <SidebarContent class="px-2 overflow-hidden">
             <SidebarGroup>
-                <SidebarGroupLabel class="text-xs uppercase text-slate-500 dark:text-slate-400 px-2 py-3 mb-2">
+                <SidebarGroupLabel class="text-xs uppercase text-slate-400 px-2 py-3 mb-2">
                     NAVIGATION
                 </SidebarGroupLabel>
                 <SidebarMenu class="space-y-1.5">
@@ -140,11 +140,11 @@ const handleLogout = () => {
                             as-child
                             :is-active="isCurrentRoute(item.href)"
                             :tooltip="item.title"
-                            class="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 dark:data-[active=true]:bg-blue-600 h-10 px-3"
+                            class="text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 h-10 px-3"
                         >
                             <Link :href="item.href" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-                                <component :is="item.icon" :class="['size-4', isCurrentRoute(item.href) ? 'text-white dark:text-white' : 'text-slate-700 dark:text-white']" />
-                                <span :class="['group-data-[collapsible=icon]:hidden', isCurrentRoute(item.href) ? 'text-white dark:text-white' : 'text-slate-900 dark:text-white']">{{ item.title }}</span>
+                                <component :is="item.icon" :class="['size-4', 'text-white']" />
+                                <span :class="['group-data-[collapsible=icon]:hidden', 'text-white']">{{ item.title }}</span>
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -152,7 +152,7 @@ const handleLogout = () => {
             </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter class="border-t border-slate-200 dark:border-slate-700 px-2 py-4">
+        <SidebarFooter class="border-t border-slate-700 px-2 py-4">
             <SidebarMenu class="space-y-2">
                 <!-- Informations utilisateur -->
                 <SidebarMenuItem class="pb-2">
@@ -163,7 +163,7 @@ const handleLogout = () => {
                             </AvatarFallback>
                         </Avatar>
                         <div class="flex flex-col group-data-[collapsible=icon]:hidden">
-                            <span class="text-sm font-medium text-slate-900 dark:text-white">{{
+                            <span class="text-sm font-medium text-white">{{
                                 user.email
                             }}</span>
                         </div>
@@ -175,11 +175,11 @@ const handleLogout = () => {
                     <SidebarMenuButton
                         as-child
                         :is-active="urlIsActive(edit.url(), page.url)"
-                        class="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 h-10 px-3"
+                        class="text-white hover:bg-slate-800 h-10 px-3"
                     >
                     <Link :href="edit.url()" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-                            <Settings class="size-4 text-slate-700 dark:text-white" />
-                            <span class="text-slate-900 dark:text-white group-data-[collapsible=icon]:hidden">Paramètres</span>
+                            <Settings class="size-4 text-white" />
+                            <span class="text-white group-data-[collapsible=icon]:hidden">Paramètres</span>
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -189,11 +189,11 @@ const handleLogout = () => {
                     <SidebarMenuButton
                         as="button"
                         @click="handleLogout"
-                        class="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 w-full h-10 px-3"
+                        class="text-white hover:bg-slate-800 w-full h-10 px-3"
                     >
                         <div class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-                            <LogOut class="size-4 text-slate-700 dark:text-white" />
-                            <span class="text-slate-900 dark:text-white group-data-[collapsible=icon]:hidden">Déconnexion</span>
+                            <LogOut class="size-4 text-white" />
+                            <span class="text-white group-data-[collapsible=icon]:hidden">Déconnexion</span>
                         </div>
                     </SidebarMenuButton>
                 </SidebarMenuItem>

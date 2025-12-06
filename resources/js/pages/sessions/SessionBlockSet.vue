@@ -256,7 +256,16 @@ const exerciseToRemoveName = computed(() => {
                                             updatedSets[0] = { ...updatedSets[0], repetitions: value ? parseInt(value as string) : null };
                                             updates.sets = updatedSets;
                                         } else {
-                                            updates.repetitions = value ? parseInt(value as string) : null;
+                                            // Créer un set par défaut si les sets n'existent pas
+                                            const defaultSet = {
+                                                set_number: 1,
+                                                repetitions: value ? parseInt(value as string) : null,
+                                                weight: exercise.weight ?? null,
+                                                rest_time: exercise.rest_time ?? null,
+                                                duration: exercise.duration ?? null,
+                                                order: 0
+                                            };
+                                            updates.sets = [defaultSet];
                                         }
                                         updateExercise(index, updates);
                                     }"
@@ -280,7 +289,16 @@ const exerciseToRemoveName = computed(() => {
                                             updatedSets[0] = { ...updatedSets[0], weight: value ? parseFloat(value as string) : null };
                                             updates.sets = updatedSets;
                                         } else {
-                                            updates.weight = value ? parseFloat(value as string) : null;
+                                            // Créer un set par défaut si les sets n'existent pas
+                                            const defaultSet = {
+                                                set_number: 1,
+                                                repetitions: exercise.repetitions ?? null,
+                                                weight: value ? parseFloat(value as string) : null,
+                                                rest_time: exercise.rest_time ?? null,
+                                                duration: exercise.duration ?? null,
+                                                order: 0
+                                            };
+                                            updates.sets = [defaultSet];
                                         }
                                         updateExercise(index, updates);
                                     }"
@@ -303,7 +321,16 @@ const exerciseToRemoveName = computed(() => {
                                             updatedSets[0] = { ...updatedSets[0], rest_time: value };
                                             updates.sets = updatedSets;
                                         } else {
-                                            updates.rest_time = value;
+                                            // Créer un set par défaut si les sets n'existent pas
+                                            const defaultSet = {
+                                                set_number: 1,
+                                                repetitions: exercise.repetitions ?? null,
+                                                weight: exercise.weight ?? null,
+                                                rest_time: value,
+                                                duration: exercise.duration ?? null,
+                                                order: 0
+                                            };
+                                            updates.sets = [defaultSet];
                                         }
                                         updateExercise(index, updates);
                                     }"
