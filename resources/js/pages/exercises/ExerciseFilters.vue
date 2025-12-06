@@ -154,8 +154,8 @@ const handleViewChange = (mode: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8') => {
                 </select>
             </div>
 
-            <!-- Affichage - caché sur mobile, visible à partir de sm -->
-            <div class="hidden flex-col gap-1.5 md:flex w-auto">
+            <!-- Affichage - visible sur tous les écrans -->
+            <div class="flex flex-col gap-1.5 w-auto">
                 <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
                     Affichage
                 </label>

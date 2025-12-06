@@ -13,7 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { X, List, AlertTriangle, GripVertical, ChevronUp, ChevronDown } from 'lucide-vue-next';
+import { X, ArrowLeftRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown } from 'lucide-vue-next';
 import type { SessionBlock, SessionExercise } from './types';
 
 const props = defineProps<{
@@ -117,7 +117,7 @@ const exerciseToRemoveName = computed(() => {
 
 <template>
     <Card 
-        class="relative superset-block"
+        class="relative superset-block transform transition-all duration-200 hover:shadow-lg hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50"
     >
         <!-- Numéro de bloc en haut à gauche -->
         <div v-if="displayIndex !== undefined" class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
@@ -134,7 +134,7 @@ const exerciseToRemoveName = computed(() => {
                     @click.stop="emit('convert-to-standard')"
                     title="Convertir en exercices standard"
                 >
-                    <List class="h-3 w-3 mr-1" />
+                    <ArrowLeftRight class="h-3 w-3 mr-1" />
                     Standard
                 </Button>
                 <!-- Bouton supprimer le bloc entier -->
@@ -206,8 +206,19 @@ const exerciseToRemoveName = computed(() => {
                 <div
                     v-for="(exercise, index) in block.exercises"
                     :key="exercise.id || `ex-${exercise.exercise_id}-${index}`"
-                    class="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg hover:shadow-md transition-shadow"
+                    class="relative flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg hover:shadow-md transition-shadow"
                 >
+                    <!-- Bouton supprimer - en haut à droite -->
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        class="absolute top-2 right-2 h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 z-10"
+                        @click.stop="handleRemoveExerciseClick(index)"
+                        @mousedown.stop
+                    >
+                        <X class="h-3.5 w-3.5" />
+                    </Button>
+
                     <!-- Image de l'exercice -->
                     <div class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-neutral-100">
                         <img
@@ -222,14 +233,14 @@ const exerciseToRemoveName = computed(() => {
                     </div>
                     
                     <!-- Informations de l'exercice et paramètres -->
-                    <div class="flex-1 min-w-0">
+                    <div class="flex-1 min-w-0 pr-8">
                         <!-- Titre de l'exercice -->
                         <h4 class="text-sm font-semibold mb-2 line-clamp-1">
                             {{ exercise.exercise?.title || 'Exercice' }}
                         </h4>
                         
-                        <!-- Ligne avec Serie, Rep, Charge, Repos -->
-                        <div class="grid grid-cols-4 gap-2">
+                        <!-- Ligne avec Serie, Rep, Charge, Repos - 1 colonne sur mobile, 4 sur desktop -->
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
                             <!-- Série -->
                             <div>
                                 <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
@@ -340,17 +351,6 @@ const exerciseToRemoveName = computed(() => {
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Bouton supprimer -->
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        class="flex-shrink-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        @click.stop="handleRemoveExerciseClick(index)"
-                        @mousedown.stop
-                    >
-                        <X class="h-4 w-4" />
-                    </Button>
                 </div>
                 
                 <!-- Placeholder pour indiquer qu'on peut ajouter des exercices (affiché seulement lors du drag over) -->

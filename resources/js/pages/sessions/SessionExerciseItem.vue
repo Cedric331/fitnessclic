@@ -21,7 +21,7 @@ import {
     AlertTriangle,
     Plus,
     Trash2,
-    Grid3x3
+    ArrowLeftRight
 } from 'lucide-vue-next';
 import type { SessionExercise, ExerciseSet } from './types';
 
@@ -211,7 +211,7 @@ const getSetLabel = (setNumber: number) => {
 
 <template>
     <div class="relative group">
-        <Card class="transform transition-all duration-200">
+        <Card class="transform transition-all duration-200 hover:shadow-lg hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50">
             <!-- Numéro d'exercice en haut à gauche -->
             <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
                 {{ (displayIndex !== undefined ? displayIndex : index) + 1 }}
@@ -229,7 +229,7 @@ const getSetLabel = (setNumber: number) => {
                         @dragstart.stop
                         title="Convertir en bloc Super Set"
                     >
-                        <Grid3x3 class="h-3 w-3 mr-1" />
+                        <ArrowLeftRight class="h-3 w-3 mr-1" />
                         Super Set
                     </Button>
                     <!-- Bouton supprimer -->
@@ -345,90 +345,93 @@ const getSetLabel = (setNumber: number) => {
                         <div
                             v-for="(set, setIndex) in (props.sessionExercise.sets && props.sessionExercise.sets.length > 0 ? props.sessionExercise.sets : [{ set_number: 1, repetitions: null, weight: null, rest_time: null, duration: null, order: 0 }])"
                             :key="setIndex"
-                            class="flex items-center gap-2 p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-md"
+                            class="relative p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-md"
                         >
-                            <!-- Numéro de série -->
-                            <div class="flex-shrink-0 w-12 text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                                {{ getSetLabel(set.set_number) }}
-                            </div>
-
-                            <!-- Série (nombre de séries) - visible sur toutes les lignes, mais modifiable uniquement sur la première -->
-                            <div class="flex-1">
-                                <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
-                                <Input
-                                    type="number"
-                                    :model-value="sessionExercise.sets_count"
-                                    @update:model-value="(value: string | number) => updateField('sets_count', value ? parseInt(value as string) : null)"
-                                    @mousedown.stop
-                                    @dragstart.stop
-                                    placeholder="Nombre"
-                                    class="h-8 text-sm"
-                                    :disabled="setIndex !== 0"
-                                    min="1"
-                                />
-                            </div>
-
-                            <!-- Répétitions -->
-                            <div class="flex-1">
-                                <Label class="text-xs text-neutral-500 mb-1 block">Rep</Label>
-                                <Input
-                                    type="number"
-                                    :model-value="set.repetitions"
-                                    @update:model-value="(value: string | number) => {
-                                        const numValue = value === '' || value === null || value === undefined ? null : parseInt(value as string);
-                                        updateSet(setIndex, 'repetitions', (numValue !== null && !isNaN(numValue)) ? numValue : null);
-                                    }"
-                                    @mousedown.stop
-                                    @dragstart.stop
-                                    placeholder="10"
-                                    class="h-8 text-sm"
-                                    min="0"
-                                />
-                            </div>
-
-                            <!-- Charge (poids) -->
-                            <div class="flex-1">
-                                <Label class="text-xs text-neutral-500 mb-1 block">Charge (kg)</Label>
-                                <Input
-                                    type="number"
-                                    step="0.5"
-                                    :model-value="set.weight"
-                                    @update:model-value="(value: string | number) => {
-                                        const numValue = value === '' || value === null || value === undefined ? null : parseFloat(value as string);
-                                        updateSet(setIndex, 'weight', (numValue !== null && !isNaN(numValue)) ? numValue : null);
-                                    }"
-                                    @mousedown.stop
-                                    @dragstart.stop
-                                    placeholder="20"
-                                    class="h-8 text-sm"
-                                    min="0"
-                                />
-                            </div>
-
-                            <!-- Repos -->
-                            <div class="flex-1">
-                                <Label class="text-xs text-neutral-500 mb-1 block">Repos</Label>
-                                <Input
-                                    type="text"
-                                    :model-value="set.rest_time"
-                                    @update:model-value="(value: string) => updateSet(setIndex, 'rest_time', value)"
-                                    @mousedown.stop
-                                    @dragstart.stop
-                                    placeholder="30s"
-                                    class="h-8 text-sm"
-                                />
-                            </div>
-
-                            <!-- Bouton supprimer la série -->
+                            <!-- Bouton supprimer la série - en haut à droite -->
                             <Button
                                 v-if="sets.length > 1"
                                 variant="ghost"
                                 size="sm"
                                 @click="removeSet(setIndex)"
-                                class="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300"
+                                class="absolute top-2 right-2 h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 z-10"
                             >
-                                <Trash2 class="h-3 w-3" />
+                                <X class="h-3.5 w-3.5" />
                             </Button>
+
+                            <!-- Numéro de série -->
+                            <div class="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-2 pr-8">
+                                {{ getSetLabel(set.set_number) }}
+                            </div>
+
+                            <!-- Champs organisés en grille responsive : 2 colonnes sur mobile, 4 sur desktop -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <!-- Série (nombre de séries) - visible sur toutes les lignes, mais modifiable uniquement sur la première -->
+                                <div>
+                                    <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
+                                    <Input
+                                        type="number"
+                                        :model-value="sessionExercise.sets_count"
+                                        @update:model-value="(value: string | number) => updateField('sets_count', value ? parseInt(value as string) : null)"
+                                        @mousedown.stop
+                                        @dragstart.stop
+                                        placeholder="Nombre"
+                                        class="h-8 text-sm"
+                                        :disabled="setIndex !== 0"
+                                        min="1"
+                                    />
+                                </div>
+
+                                <!-- Répétitions -->
+                                <div>
+                                    <Label class="text-xs text-neutral-500 mb-1 block">Rep</Label>
+                                    <Input
+                                        type="number"
+                                        :model-value="set.repetitions"
+                                        @update:model-value="(value: string | number) => {
+                                            const numValue = value === '' || value === null || value === undefined ? null : parseInt(value as string);
+                                            updateSet(setIndex, 'repetitions', (numValue !== null && !isNaN(numValue)) ? numValue : null);
+                                        }"
+                                        @mousedown.stop
+                                        @dragstart.stop
+                                        placeholder="10"
+                                        class="h-8 text-sm"
+                                        min="0"
+                                    />
+                                </div>
+
+                                <!-- Charge (poids) -->
+                                <div>
+                                    <Label class="text-xs text-neutral-500 mb-1 block">Charge (kg)</Label>
+                                    <Input
+                                        type="number"
+                                        step="0.5"
+                                        :model-value="set.weight"
+                                        @update:model-value="(value: string | number) => {
+                                            const numValue = value === '' || value === null || value === undefined ? null : parseFloat(value as string);
+                                            updateSet(setIndex, 'weight', (numValue !== null && !isNaN(numValue)) ? numValue : null);
+                                        }"
+                                        @mousedown.stop
+                                        @dragstart.stop
+                                        placeholder="20"
+                                        class="h-8 text-sm"
+                                        min="0"
+                                    />
+                                </div>
+
+                                <!-- Repos -->
+                                <div>
+                                    <Label class="text-xs text-neutral-500 mb-1 block">Repos</Label>
+                                    <Input
+                                        type="text"
+                                        :model-value="set.rest_time"
+                                        @update:model-value="(value: string) => updateSet(setIndex, 'rest_time', value)"
+                                        @mousedown.stop
+                                        @dragstart.stop
+                                        placeholder="30s"
+                                        class="h-8 text-sm"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

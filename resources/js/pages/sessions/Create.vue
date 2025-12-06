@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -206,7 +206,34 @@ const removeCustomer = (customerId: number) => {
 const searchTerm = ref(props.filters.search || '');
 const localSearchTerm = ref(props.filters.search || ''); // Pour la recherche locale avec debounce
 const selectedCategoryId = ref<number | null>(props.filters.category_id || null);
-const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>('grid-4');
+// Déterminer le mode d'affichage par défaut selon la taille de l'écran
+const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
+    if (typeof window !== 'undefined') {
+        // Sur petit écran (< 640px), utiliser grid-6
+        if (window.innerWidth < 640) {
+            return 'grid-6';
+        }
+    }
+    return 'grid-4';
+};
+
+const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>(getDefaultViewMode());
+
+// Mettre à jour le mode si la taille de l'écran change
+onMounted(() => {
+    const handleResize = () => {
+        if (window.innerWidth < 640 && viewMode.value !== 'grid-6') {
+            viewMode.value = 'grid-6';
+        } else if (window.innerWidth >= 640 && viewMode.value === 'grid-6' && window.innerWidth < 1024) {
+            // Garder grid-6 sur tablette aussi
+            viewMode.value = 'grid-6';
+        }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    // Vérifier aussi au montage
+    handleResize();
+});
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
 const isLibraryOpen = ref(false); // Pour le drawer mobile
@@ -1377,77 +1404,80 @@ watch(sessionExercises, () => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Nouvelle Séance" />
 
-        <div class="flex flex-col h-full">
-            <!-- Container global : aligne tout + espace avec le haut -->
-            <div class="flex flex-col flex-1 p-6 space-y-4">
-                <!-- En-tête aligné + détaché du haut -->
-                <div
-                    class="flex flex-col gap-3 border bg-white dark:bg-neutral-900 px-4 sm:px-6 lg:px-12 py-4 rounded-xl shadow-sm"
-                >
-                    <!-- Titre et date sur la même ligne sur grand écran -->
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <h1 class="text-xl sm:text-2xl font-semibold">Nouvelle Séance</h1>
-                        <div class="flex items-center gap-1 text-sm text-neutral-600 dark:text-neutral-400 w-fit">
-                            <Calendar class="h-4 w-4 flex-shrink-0" />
-                            <input
-                                v-model="form.session_date"
-                                type="date"
-                                class="border-none bg-transparent text-sm focus:outline-none w-auto"
-                            />
-                        </div>
+        <div class="mx-auto flex h-full w-full flex-1 flex-col gap-4 sm:gap-6 rounded-xl px-3 sm:px-6 py-3 sm:py-5">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                <div class="flex flex-col gap-0.5">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                        Nouvelle Séance
+                    </h1>
+                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                        Créez une nouvelle séance d'entraînement personnalisée
+                    </p>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
+                    <div class="flex items-center gap-1 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 border rounded-md px-2 py-1.5 sm:border-none sm:px-0 sm:py-0">
+                        <Calendar class="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                        <input
+                            v-model="form.session_date"
+                            type="date"
+                            class="border-none bg-transparent text-xs sm:text-sm focus:outline-none w-full sm:w-auto"
+                        />
                     </div>
-
-                    <!-- Boutons organisés en grille responsive, alignés à droite sur grand écran -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:items-center lg:justify-end lg:flex-wrap gap-2 sm:gap-3">
+                    <div class="grid grid-cols-2 sm:flex sm:flex-row gap-2">
                         <Button
                             variant="outline"
                             size="sm"
-                            class="w-full lg:w-auto"
+                            class="gap-1.5 sm:gap-2 text-xs sm:text-sm"
                             @click="openClearDialog"
                         >
-                            <Trash2 class="h-4 w-4 sm:mr-2" />
-                            <span class="sm:inline">Effacer</span>
+                            <Trash2 class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span class="hidden sm:inline">Effacer</span>
+                            <span class="sm:hidden">Effacer</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
-                            class="w-full lg:w-auto"
+                            class="gap-1.5 sm:gap-2 text-xs sm:text-sm"
                             @click="generatePDF"
                             :disabled="sessionExercises.length === 0"
                         >
-                            <FileText class="h-4 w-4 sm:mr-2" />
-                            <span class="sm:inline">PDF</span>
+                            <FileText class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span class="hidden sm:inline">PDF</span>
+                            <span class="sm:hidden">PDF</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
-                            class="w-full lg:w-auto"
+                            class="gap-1.5 sm:gap-2 text-xs sm:text-sm"
                             @click="printPDF"
                             :disabled="sessionExercises.length === 0"
                         >
-                            <Printer class="h-4 w-4 sm:mr-2" />
-                            <span class="sm:inline">Imprimer</span>
+                            <Printer class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span class="hidden sm:inline">Imprimer</span>
+                            <span class="sm:hidden">Imprimer</span>
                         </Button>
                         <Button
                             size="sm"
-                            class="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                            class="gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
                             @click="saveSession"
                             :disabled="isSaving || !isFormValid"
                         >
-                            <Save class="h-4 w-4 sm:mr-2" />
-                            <span class="hidden sm:inline">{{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}</span>
-                            <span class="sm:hidden">{{ isSaving ? '...' : 'Enregistrer' }}</span>
+                            <Save class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span>{{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}</span>
                         </Button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Contenu principal, aligné sur le même container -->
-                <div class="flex-1 flex flex-col lg:flex-row overflow-hidden gap-4">
+            <!-- Contenu principal -->
+            <div class="flex-1 flex flex-col xl:flex-row overflow-hidden gap-4">
                     
                     <!-- Panneau gauche -->
-                    <div class="w-full lg:w-3/5 overflow-y-auto rounded-xl">
+                    <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
                         <div class="space-y-6">
-                        <Card>
+                        <Card class="shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
                             <CardHeader>
                                 <CardTitle>Informations de la séance</CardTitle>
                             </CardHeader>
@@ -1514,7 +1544,7 @@ watch(sessionExercises, () => {
                         </Card>
 
                         <!-- Liste des exercices de la séance -->
-                        <Card>
+                        <Card class="shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
                             <CardHeader>
                                 <div class="space-y-2">
                                     <CardTitle class="flex items-center justify-between">
@@ -1659,7 +1689,7 @@ watch(sessionExercises, () => {
                 </div>
 
                     <!-- Panneau droit -->
-                    <div class="hidden lg:block w-full lg:w-2/5 overflow-y-auto rounded-xl">
+                    <div class="hidden xl:block w-full xl:w-2/5 overflow-y-auto rounded-xl min-h-0">
                         <div>
                             <ExerciseLibrary
                                 :exercises="filteredExercises"
@@ -1679,7 +1709,6 @@ watch(sessionExercises, () => {
                     </div>
                 </div>
             </div>
-        </div>
 
         <!-- Modal de sélection des clients -->
         <Dialog v-model:open="showCustomerModal">

@@ -573,6 +573,7 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
                     v-for="exercise in exercises" 
                     :key="exercise.id" 
                     :exercise="exercise"
+                    :view-mode="viewMode"
                     @edit="handleEditExercise"
                     @delete="handleDeleteExercise"
                 />

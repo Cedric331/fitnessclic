@@ -9,6 +9,7 @@ import { Edit, Eye, Trash2 } from 'lucide-vue-next';
 const props = defineProps<{
     exercise: Exercise;
     onEdit?: (exercise: Exercise) => void;
+    viewMode?: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8';
 }>();
 
 const emit = defineEmits<{
@@ -67,14 +68,17 @@ const handleDelete = (event: Event) => {
             <img
                 :src="exercise.image_url"
                 :alt="exercise.name"
-                class="h-full w-full object-contain object-top"
+                :class="[
+                    'h-full w-full object-contain object-top',
+                    (props.viewMode === 'grid-6' || props.viewMode === 'grid-8') ? 'scale-75' : ''
+                ]"
             />
             
             <!-- Overlay au survol avec titre et catégories -->
             <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-4">
                 <div class="flex flex-col items-center gap-3">
                     <h3 class="font-semibold text-base text-white text-center line-clamp-2">
-                        {{ exercise.name }}
+                        {{ exercise.name && exercise.name.length > 10 ? exercise.name.substring(0, 10) + '...' : exercise.name }}
                     </h3>
                     <!-- Catégories -->
                     <div class="flex flex-wrap gap-2 justify-center">

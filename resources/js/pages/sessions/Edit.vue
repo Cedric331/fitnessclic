@@ -27,7 +27,7 @@ import {
     Printer,
     ArrowLeft
 } from 'lucide-vue-next';
-import type { EditSessionProps, Exercise, SessionExercise, Customer, Category, ExerciseSet } from './types';
+import type { EditSessionProps, Exercise, SessionExercise, Customer, Category, ExerciseSet, SessionBlock } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
 import SessionBlockSet from './SessionBlockSet.vue';
 import ExerciseLibrary from './ExerciseLibrary.vue';
@@ -227,7 +227,34 @@ const removeCustomer = (customerId: number) => {
 const searchTerm = ref(props.filters.search || '');
 const localSearchTerm = ref(props.filters.search || '');
 const selectedCategoryId = ref<number | null>(props.filters.category_id || null);
-const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>('grid-4');
+// Déterminer le mode d'affichage par défaut selon la taille de l'écran
+const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
+    if (typeof window !== 'undefined') {
+        // Sur petit écran (< 640px), utiliser grid-6
+        if (window.innerWidth < 640) {
+            return 'grid-6';
+        }
+    }
+    return 'grid-4';
+};
+
+const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>(getDefaultViewMode());
+
+// Mettre à jour le mode si la taille de l'écran change
+onMounted(() => {
+    const handleResize = () => {
+        if (window.innerWidth < 640 && viewMode.value !== 'grid-6') {
+            viewMode.value = 'grid-6';
+        } else if (window.innerWidth >= 640 && viewMode.value === 'grid-6' && window.innerWidth < 1024) {
+            // Garder grid-6 sur tablette aussi
+            viewMode.value = 'grid-6';
+        }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    // Vérifier aussi au montage
+    handleResize();
+});
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
 const isLibraryOpen = ref(false); // Pour le drawer mobile
@@ -630,13 +657,84 @@ const handleDropMain = (e: DragEvent) => {
     }
 };
 
+// Gérer la suppression d'un exercice standard
+const handleRemoveExercise = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }) => {
+    if (!item?.exercise?.id) {
+        return;
+    }
+    const index = sessionExercises.value.findIndex((e: SessionExercise) => e?.id === item.exercise!.id);
+    if (index !== -1) {
+        removeExerciseFromSession(index);
+    }
+};
+
+// Gérer la suppression d'un exercice dans un bloc Super Set
+const handleRemoveExerciseFromBlock = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }, index: number) => {
+    if (!item?.block?.id) {
+        return;
+    }
+    const blockExercises = sessionExercises.value.filter(
+        (ex: SessionExercise) => ex?.block_id === item.block!.id && ex?.block_type === 'set'
+    );
+    if (!blockExercises[index]?.id) {
+        return;
+    }
+    const exerciseIndex = sessionExercises.value.findIndex(
+        (ex: SessionExercise) => ex?.id === blockExercises[index].id
+    );
+    if (exerciseIndex !== -1) {
+        removeExerciseFromSession(exerciseIndex);
+    }
+};
+
+// Gérer la suppression d'un bloc Super Set entier
+const handleRemoveBlock = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }) => {
+    if (!item?.block?.id) {
+        return;
+    }
+    // Supprimer tous les exercices du bloc
+    const blockExercises = sessionExercises.value.filter(
+        (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
+    );
+    // Supprimer en ordre inverse pour éviter les problèmes d'index
+    blockExercises.reverse().forEach((ex: SessionExercise) => {
+        const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === ex.id);
+        if (index !== -1) {
+            removeExerciseFromSession(index);
+        }
+    });
+};
+
 // Supprimer un exercice de la séance
 const removeExerciseFromSession = (index: number) => {
+    if (index < 0 || index >= sessionExercises.value.length) {
+        return;
+    }
+    const exercise = sessionExercises.value[index];
+    if (!exercise) {
+        return;
+    }
+    
+    // Supprimer l'exercice
     sessionExercises.value.splice(index, 1);
+    
+    // Si c'était un exercice dans un bloc Super Set, réorganiser les positions
+    if (exercise?.block_id && exercise?.block_type === 'set') {
+        const blockExercises = sessionExercises.value.filter(
+            ex => ex && ex.block_id === exercise.block_id && ex.block_type === 'set'
+        );
+        blockExercises.forEach((ex, idx) => {
+            ex.position_in_block = idx;
+        });
+    }
+    
+    // Réorganiser les ordres
     sessionExercises.value.forEach((ex, idx) => {
         ex.order = idx;
     });
-    form.exercises = sessionExercises.value;
+    
+    // Mettre à jour le formulaire
+    form.exercises = [...sessionExercises.value];
 };
 
 // Handler pour les mises à jour d'un exercice depuis SessionExerciseItem
@@ -770,23 +868,127 @@ const reorderExercises = (fromIndex: number, toIndex: number) => {
 };
 
 // Réorganiser les exercices après un drag (appelé automatiquement par VueDraggable)
-const onDragEnd = () => {
+const onDragEnd = (event: any) => {
     // Réorganiser les ordres après le drag
-    sessionExercises.value.forEach((ex, idx) => {
-        ex.order = idx;
-    });
-    form.exercises = [...sessionExercises.value];
+    // event.oldIndex et event.newIndex sont les indices dans orderedItems
+    if (event.oldIndex !== undefined && event.newIndex !== undefined) {
+        const items = orderedItems.value;
+        const movedItem = items[event.oldIndex];
+        const targetItem = items[event.newIndex];
+        
+        if (movedItem && targetItem) {
+            reorderItems(movedItem, targetItem);
+        }
+    } else {
+        // Fallback : réorganiser tous les ordres
+        sessionExercises.value.forEach((ex, idx) => {
+            ex.order = idx;
+        });
+        form.exercises = [...sessionExercises.value];
+    }
 };
 
-const handleDropFromLibrary = (event: DragEvent) => {
+// Réorganiser les items (exercices standard ou blocs Super Set)
+const reorderItems = (fromItem: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }, toItem: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }) => {
+    if (fromItem.type === 'standard' && toItem.type === 'standard') {
+        // Deux exercices standard
+        const fromIndex = sessionExercises.value.findIndex(e => e.id === fromItem.exercise!.id);
+        const toIndex = sessionExercises.value.findIndex(e => e.id === toItem.exercise!.id);
+        if (fromIndex !== -1 && toIndex !== -1) {
+            reorderExercises(fromIndex, toIndex);
+        }
+    } else if (fromItem.type === 'set' && toItem.type === 'set') {
+        // Deux blocs Super Set - réorganiser tous les exercices du bloc
+        const fromBlockExercises = sessionExercises.value.filter(
+            (ex: SessionExercise) => ex.block_id === fromItem.block!.id && ex.block_type === 'set'
+        );
+        const toBlockExercises = sessionExercises.value.filter(
+            (ex: SessionExercise) => ex.block_id === toItem.block!.id && ex.block_type === 'set'
+        );
+        
+        if (fromBlockExercises.length > 0 && toBlockExercises.length > 0) {
+            const fromOrder = fromBlockExercises[0].order;
+            const toOrder = toBlockExercises[0].order;
+            
+            // Échanger les ordres
+            fromBlockExercises.forEach(ex => {
+                const index = sessionExercises.value.findIndex(e => e.id === ex.id);
+                if (index !== -1) {
+                    sessionExercises.value[index].order = toOrder;
+                }
+            });
+            toBlockExercises.forEach(ex => {
+                const index = sessionExercises.value.findIndex(e => e.id === ex.id);
+                if (index !== -1) {
+                    sessionExercises.value[index].order = fromOrder;
+                }
+            });
+            
+            // Trier par ordre
+            sessionExercises.value.sort((a, b) => a.order - b.order);
+            form.exercises = [...sessionExercises.value];
+        }
+    } else {
+        // Mélange standard/set - réorganiser en fonction de l'ordre
+        const fromOrder = fromItem.type === 'standard' 
+            ? fromItem.exercise!.order 
+            : sessionExercises.value.find(e => e.block_id === fromItem.block!.id && e.block_type === 'set')?.order || 0;
+        const toOrder = toItem.type === 'standard' 
+            ? toItem.exercise!.order 
+            : sessionExercises.value.find(e => e.block_id === toItem.block!.id && e.block_type === 'set')?.order || 0;
+        
+        if (fromItem.type === 'standard') {
+            // Déplacer un exercice standard
+            const fromIndex = sessionExercises.value.findIndex(e => e.id === fromItem.exercise!.id);
+            if (fromIndex !== -1) {
+                sessionExercises.value[fromIndex].order = toOrder;
+            }
+        } else {
+            // Déplacer un bloc Super Set
+            const fromBlockExercises = sessionExercises.value.filter(
+                (ex: SessionExercise) => ex.block_id === fromItem.block!.id && ex.block_type === 'set'
+            );
+            fromBlockExercises.forEach(ex => {
+                const index = sessionExercises.value.findIndex(e => e.id === ex.id);
+                if (index !== -1) {
+                    sessionExercises.value[index].order = toOrder;
+                }
+            });
+        }
+        
+        if (toItem.type === 'standard') {
+            // Ajuster l'exercice standard cible
+            const toIndex = sessionExercises.value.findIndex(e => e.id === toItem.exercise!.id);
+            if (toIndex !== -1) {
+                sessionExercises.value[toIndex].order = fromOrder;
+            }
+        } else {
+            // Ajuster le bloc Super Set cible
+            const toBlockExercises = sessionExercises.value.filter(
+                (ex: SessionExercise) => ex.block_id === toItem.block!.id && ex.block_type === 'set'
+            );
+            toBlockExercises.forEach(ex => {
+                const index = sessionExercises.value.findIndex(e => e.id === ex.id);
+                if (index !== -1) {
+                    sessionExercises.value[index].order = fromOrder;
+                }
+            });
+        }
+        
+        // Trier par ordre
+        sessionExercises.value.sort((a, b) => a.order - b.order);
+        form.exercises = [...sessionExercises.value];
+    }
+};
+
+// Gestion du drop depuis la bibliothèque
+const handleDropFromLibrary = (event: DragEvent, targetBlockId?: number) => {
     isDraggingOver.value = false;
     if (!event.dataTransfer) return;
     
     // Vérifier que le drop vient bien de la bibliothèque (pas d'un drag interne)
-    // VueDraggable utilise des types différents, donc on vérifie la présence de 'application/json'
     const types = event.dataTransfer.types;
     if (!types.includes('application/json')) {
-        // Ce n'est pas un drop depuis la bibliothèque, ignorer
         return;
     }
     
@@ -794,18 +996,30 @@ const handleDropFromLibrary = (event: DragEvent) => {
         const exerciseData = event.dataTransfer.getData('application/json');
         if (exerciseData) {
             const exercise: Exercise = JSON.parse(exerciseData);
-            addExerciseToSession(exercise);
+            
+            if (targetBlockId) {
+                // Ajouter au bloc Super Set existant
+                addExerciseToSetBlock(exercise, targetBlockId);
+            } else {
+                // Mode standard : créer un nouveau bloc standard (comportement par défaut)
+                addExerciseToSession(exercise);
+            }
         } else {
+            // Fallback: essayer avec l'ID
             const exerciseId = event.dataTransfer.getData('text/plain');
             if (exerciseId) {
                 const exercise = props.exercises.find(ex => ex.id === parseInt(exerciseId));
                 if (exercise) {
-                    addExerciseToSession(exercise);
+                    if (targetBlockId) {
+                        addExerciseToSetBlock(exercise, targetBlockId);
+                    } else {
+                        addExerciseToSession(exercise);
+                    }
                 }
             }
         }
     } catch (error) {
-        // Ignorer silencieusement les erreurs de drop
+        console.error('Erreur lors du drop:', error);
     }
 };
 
@@ -1198,76 +1412,79 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head :title="`Modifier: ${session.name || 'Séance'}`" />
 
-        <div class="flex flex-col h-full">
-            <!-- Container global : aligne tout + espace avec le haut -->
-            <div class="flex flex-col flex-1 p-6 space-y-4">
-                <!-- En-tête aligné + détaché du haut -->
-                <div
-                    class="flex flex-col gap-3 border bg-white dark:bg-neutral-900 px-4 sm:px-6 lg:px-12 py-4 rounded-xl shadow-sm"
-                >
-                    <!-- Titre et date sur la même ligne sur grand écran -->
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <h1 class="text-xl sm:text-2xl font-semibold">Modifier la séance</h1>
-                        <div class="flex items-center gap-1 text-sm text-neutral-600 dark:text-neutral-400 w-fit">
-                            <Calendar class="h-4 w-4 flex-shrink-0" />
-                            <input
-                                v-model="form.session_date"
-                                type="date"
-                                class="border-none bg-transparent text-sm focus:outline-none w-auto"
-                            />
-                        </div>
+        <div class="mx-auto flex h-full w-full flex-1 flex-col gap-4 sm:gap-6 rounded-xl px-3 sm:px-6 py-3 sm:py-5">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                <div class="flex flex-col gap-0.5">
+                    <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                        Modifier la séance
+                    </h1>
+                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                        Modifiez votre séance d'entraînement personnalisée
+                    </p>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
+                    <div class="flex items-center gap-1 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 border rounded-md px-2 py-1.5 sm:border-none sm:px-0 sm:py-0">
+                        <Calendar class="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                        <input
+                            v-model="form.session_date"
+                            type="date"
+                            class="border-none bg-transparent text-xs sm:text-sm focus:outline-none w-full sm:w-auto"
+                        />
                     </div>
-
-                    <!-- Boutons organisés en grille responsive, alignés à droite sur grand écran -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:items-center lg:justify-end lg:flex-wrap gap-2 sm:gap-3">
+                    <div class="grid grid-cols-2 sm:flex sm:flex-row gap-2">
                         <Button
                             variant="outline"
                             size="sm"
-                            class="w-full lg:w-auto"
+                            class="gap-1.5 sm:gap-2 text-xs sm:text-sm"
                             @click="router.visit(`/sessions/${session.id}`)"
                         >
-                            <ArrowLeft class="h-4 w-4 sm:mr-2" />
-                            <span class="sm:inline">Annuler</span>
+                            <ArrowLeft class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span class="hidden sm:inline">Annuler</span>
+                            <span class="sm:hidden">Annuler</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
-                            class="w-full lg:w-auto"
+                            class="gap-1.5 sm:gap-2 text-xs sm:text-sm"
                             @click="generatePDF"
                             :disabled="sessionExercises.length === 0"
                         >
-                            <FileText class="h-4 w-4 sm:mr-2" />
-                            <span class="sm:inline">PDF</span>
+                            <FileText class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span class="hidden sm:inline">PDF</span>
+                            <span class="sm:hidden">PDF</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
-                            class="w-full lg:w-auto"
+                            class="gap-1.5 sm:gap-2 text-xs sm:text-sm"
                             @click="printPDF"
                             :disabled="sessionExercises.length === 0"
                         >
-                            <Printer class="h-4 w-4 sm:mr-2" />
-                            <span class="sm:inline">Imprimer</span>
+                            <Printer class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span class="hidden sm:inline">Imprimer</span>
+                            <span class="sm:hidden">Imprimer</span>
                         </Button>
                         <Button
                             size="sm"
-                            class="w-full lg:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                            class="gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
                             @click="saveSession"
                             :disabled="isSaving || !isFormValid"
                         >
-                            <Save class="h-4 w-4 sm:mr-2" />
-                            <span class="hidden sm:inline">{{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}</span>
-                            <span class="sm:hidden">{{ isSaving ? '...' : 'Enregistrer' }}</span>
+                            <Save class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span>{{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}</span>
                         </Button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Contenu principal, aligné sur le même container -->
-                <div class="flex-1 flex flex-col lg:flex-row overflow-hidden gap-4">
+            <!-- Contenu principal -->
+            <div class="flex-1 flex flex-col xl:flex-row overflow-hidden gap-4">
                     <!-- Panneau gauche -->
-                    <div class="w-full lg:w-3/5 overflow-y-auto rounded-xl">
+                    <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
                         <div class="space-y-6">
-                        <Card>
+                        <Card class="shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
                             <CardHeader>
                                 <CardTitle>Informations de la séance</CardTitle>
                             </CardHeader>
@@ -1332,7 +1549,7 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                         </Card>
 
                         <!-- Liste des exercices de la séance -->
-                        <Card>
+                        <Card class="shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
                             <CardHeader>
                                 <div class="space-y-2">
                                     <CardTitle class="flex items-center justify-between">
@@ -1372,13 +1589,26 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                                         <p class="mb-2">Aucun exercice ajouté</p>
                                         <p class="text-sm">Glissez des exercices depuis la bibliothèque à droite</p>
                                     </div>
-                                    <template v-if="orderedItems.length > 0">
-                                        <template v-for="(item, itemIndex) in orderedItems" :key="item.key">
+                                    <div v-else>
+                                        <!-- Afficher les exercices standard et les blocs Super Set mélangés avec drag and drop -->
+                                        <VueDraggable
+                                            :model-value="orderedItems"
+                                            @update:model-value="() => {}"
+                                            :animation="150"
+                                            handle=".handle"
+                                            class="flex flex-col gap-4"
+                                            ghost-class="fc-ghost"
+                                            drag-class="fc-drag"
+                                            chosen-class="fc-chosen"
+                                            :item-key="(item: any) => item.key"
+                                            @end="onDragEnd"
+                                        >
+                                            <template v-for="(item, itemIndex) in orderedItems" :key="item.key">
                                             <!-- Bloc Super Set -->
                                             <SessionBlockSet
                                                 v-if="item.type === 'set'"
                                                 :block="item.block!"
-                                                :block-index="itemIndex"
+                                                :block-index="item.displayIndex"
                                                 :display-index="item.displayIndex"
                                                 :draggable="true"
                                                 :total-count="orderedItems.length"
@@ -1406,27 +1636,56 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                                                         }
                                                     });
                                                 }"
-                                                @convert-to-standard="() => convertBlockToStandard(item.block!)"
-                                                @remove-block="() => handleRemoveBlock(item)"
-                                                @move-up="() => { if (itemIndex > 0) reorderItems(item, orderedItems[itemIndex - 1]); }"
-                                                @move-down="() => { if (itemIndex < orderedItems.length - 1) reorderItems(item, orderedItems[itemIndex + 1]); }"
+                                                @convert-to-standard="convertBlockToStandard(item.block!)"
+                                                @remove-block="handleRemoveBlock(item)"
+                                                @move-up="() => {
+                                                    const items = orderedItems.value;
+                                                    const currentIndex = items.findIndex((i: any) => i.key === item.key);
+                                                    if (currentIndex > 0) {
+                                                        const prevItem = items[currentIndex - 1];
+                                                        reorderItems(item, prevItem);
+                                                    }
+                                                }"
+                                                @move-down="() => {
+                                                    const items = orderedItems.value;
+                                                    const currentIndex = items.findIndex((i: any) => i.key === item.key);
+                                                    if (currentIndex < items.length - 1) {
+                                                        const nextItem = items[currentIndex + 1];
+                                                        reorderItems(item, nextItem);
+                                                    }
+                                                }"
                                             />
+                                            
                                             <!-- Exercice standard -->
                                             <SessionExerciseItem
-                                                v-else
+                                                v-else-if="item.type === 'standard'"
                                                 :session-exercise="item.exercise!"
-                                                :index="sessionExercises.findIndex(e => e.id === item.exercise!.id)"
-                                                :display-index="item.displayIndex"
+                                                :index="item.displayIndex"
                                                 :draggable="true"
                                                 :total-count="orderedItems.length"
                                                 @update="(updates: Partial<SessionExercise>) => handleExerciseUpdate(item.exercise?.id, updates)"
-                                                @remove="() => handleRemoveExercise(item)"
-                                                @move-up="() => { if (itemIndex > 0) reorderItems(item, orderedItems[itemIndex - 1]); }"
-                                                @move-down="() => { if (itemIndex < orderedItems.length - 1) reorderItems(item, orderedItems[itemIndex + 1]); }"
-                                                @convert-to-set="() => convertExerciseToSet(item.exercise!)"
+                                                @remove="handleRemoveExercise(item)"
+                                                @move-up="() => {
+                                                    const items = orderedItems.value;
+                                                    const currentIndex = items.findIndex((i: any) => i.key === item.key);
+                                                    if (currentIndex > 0) {
+                                                        const prevItem = items[currentIndex - 1];
+                                                        reorderItems(item, prevItem);
+                                                    }
+                                                }"
+                                                @move-down="() => {
+                                                    const items = orderedItems.value;
+                                                    const currentIndex = items.findIndex((i: any) => i.key === item.key);
+                                                    if (currentIndex < items.length - 1) {
+                                                        const nextItem = items[currentIndex + 1];
+                                                        reorderItems(item, nextItem);
+                                                    }
+                                                }"
+                                                @convert-to-set="convertExerciseToSet(item.exercise!)"
                                             />
-                                        </template>
-                                    </template>
+                                            </template>
+                                        </VueDraggable>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -1434,7 +1693,7 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                 </div>
 
                     <!-- Panneau droit -->
-                    <div class="hidden lg:block w-full lg:w-2/5 overflow-y-auto rounded-xl">
+                    <div class="hidden xl:block w-full xl:w-2/5 overflow-y-auto rounded-xl min-h-0">
                         <div>
                             <ExerciseLibrary
                                 :exercises="filteredExercises"
@@ -1454,7 +1713,6 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                     </div>
                 </div>
             </div>
-        </div>
 
         <!-- Modal de sélection des clients -->
         <Dialog v-model:open="showCustomerModal">
