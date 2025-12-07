@@ -169,6 +169,74 @@ const handleCustomerFilterChange = (event: Event) => {
     applyFilters();
 };
 
+const goToPage = (page: number) => {
+    if (page < 1 || page > props.sessions.last_page) {
+        return;
+    }
+    
+    const query: Record<string, string | number> = {
+        page,
+    };
+    
+    if (searchTerm.value.trim()) {
+        query.search = searchTerm.value.trim();
+    }
+    
+    if (customerFilter.value !== null) {
+        query.customer_id = customerFilter.value;
+    }
+    
+    if (sortOrder.value) {
+        query.sort = sortOrder.value;
+    }
+    
+    router.get('/sessions', query, {
+        preserveState: true,
+        preserveScroll: false,
+    });
+};
+
+const getVisiblePages = (): number[] => {
+    const current = props.sessions.current_page;
+    const last = props.sessions.last_page;
+    const pages: number[] = [];
+    
+    if (last <= 7) {
+        // Si 7 pages ou moins, afficher toutes
+        for (let i = 1; i <= last; i++) {
+            pages.push(i);
+        }
+    } else {
+        // Sinon, afficher intelligemment
+        if (current <= 3) {
+            // Début : 1, 2, 3, 4, ..., last
+            for (let i = 1; i <= 4; i++) {
+                pages.push(i);
+            }
+            pages.push(-1); // Ellipsis
+            pages.push(last);
+        } else if (current >= last - 2) {
+            // Fin : 1, ..., last-3, last-2, last-1, last
+            pages.push(1);
+            pages.push(-1); // Ellipsis
+            for (let i = last - 3; i <= last; i++) {
+                pages.push(i);
+            }
+        } else {
+            // Milieu : 1, ..., current-1, current, current+1, ..., last
+            pages.push(1);
+            pages.push(-1); // Ellipsis
+            for (let i = current - 1; i <= current + 1; i++) {
+                pages.push(i);
+            }
+            pages.push(-1); // Ellipsis
+            pages.push(last);
+        }
+    }
+    
+    return pages;
+};
+
 const handleDelete = (session: Session) => {
     sessionToDelete.value = session;
     isDeleteDialogOpen.value = true;
@@ -241,7 +309,7 @@ watch(isDeleteDialogOpen, (open) => {
     <Head title="Mes Séances" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 mx-auto w-full px-6">
+        <div class="flex flex-1 flex-col gap-4 min-h-0 overflow-y-auto rounded-xl p-4 mx-auto w-full px-6">
             <!-- Header -->
             <div class="flex items-start justify-between">
                 <div class="flex flex-col gap-0.5">
@@ -329,6 +397,48 @@ watch(isDeleteDialogOpen, (open) => {
                 @delete="handleDelete"
                 @send-email="handleSendEmail"
             />
+
+            <!-- Pagination -->
+            <div v-if="sessions.last_page > 1" class="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
+                <div class="text-sm text-slate-600 dark:text-slate-400">
+                    Affichage de {{ (sessions.current_page - 1) * sessions.per_page + 1 }} à {{ Math.min(sessions.current_page * sessions.per_page, sessions.total) }} sur {{ sessions.total }} séance{{ sessions.total > 1 ? 's' : '' }}
+                </div>
+                <div class="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="sessions.current_page === 1"
+                        @click="goToPage(sessions.current_page - 1)"
+                    >
+                        Précédent
+                    </Button>
+                    <div class="flex items-center gap-1">
+                        <template v-for="page in getVisiblePages()" :key="page">
+                            <button
+                                v-if="page !== -1"
+                                @click="goToPage(page)"
+                                :class="[
+                                    'px-3 py-1 text-sm rounded-md transition',
+                                    page === sessions.current_page
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                ]"
+                            >
+                                {{ page }}
+                            </button>
+                            <span v-else class="px-2 text-slate-500 dark:text-slate-400">...</span>
+                        </template>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="sessions.current_page === sessions.last_page"
+                        @click="goToPage(sessions.current_page + 1)"
+                    >
+                        Suivant
+                    </Button>
+                </div>
+            </div>
 
             <!-- Modal de suppression -->
             <SessionDeleteDialog

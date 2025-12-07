@@ -175,7 +175,7 @@ const handleLogout = () => {
                     <SidebarMenuButton
                         as-child
                         :is-active="urlIsActive(edit.url(), page.url)"
-                        class="text-white hover:bg-slate-800 h-10 px-3"
+                        class="text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 h-10 px-3"
                     >
                     <Link :href="edit.url()" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
                             <Settings class="size-4 text-white" />
@@ -196,6 +196,13 @@ const handleLogout = () => {
                             <span class="text-white group-data-[collapsible=icon]:hidden">Déconnexion</span>
                         </div>
                     </SidebarMenuButton>
+                </SidebarMenuItem>
+
+                <!-- Support -->
+                <SidebarMenuItem class="pt-2">
+                    <div class="px-3 group-data-[collapsible=icon]:hidden">
+                        <p class="text-xs text-slate-400">Support : fitnessclic@gmail.com</p>
+                    </div>
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarFooter>

@@ -397,26 +397,22 @@ const getSetLabel = (setNumber: number) => {
                                 <X class="h-3.5 w-3.5" />
                             </Button>
 
-                            <!-- Numéro de série -->
-                            <div class="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-2 pr-8">
-                                {{ getSetLabel(set.set_number) }}
-                            </div>
-
-
                             <!-- Champs organisés en grille responsive : 2 colonnes sur mobile, 4 sur desktop -->
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                <!-- Série (nombre de séries) - visible sur toutes les lignes, mais modifiable uniquement sur la première -->
+                                <!-- Numéro de série (éditable pour chaque ligne) -->
                                 <div>
                                     <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
                                     <Input
                                         type="number"
-                                        :model-value="sessionExercise.sets_count"
-                                        @update:model-value="(value: string | number) => updateField('sets_count', value ? parseInt(value as string) : null)"
+                                        :model-value="set.set_number"
+                                        @update:model-value="(value: string | number) => {
+                                            const numValue = value === '' || value === null || value === undefined ? 1 : parseInt(value as string);
+                                            updateSet(setIndex, 'set_number', (numValue !== null && !isNaN(numValue) && numValue > 0) ? numValue : 1);
+                                        }"
                                         @mousedown.stop
                                         @dragstart.stop
-                                        placeholder="Nombre"
+                                        placeholder="1"
                                         class="h-8 text-sm"
-                                        :disabled="setIndex !== 0"
                                         min="1"
                                     />
                                 </div>
