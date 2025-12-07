@@ -241,6 +241,16 @@ const isClearDialogOpen = ref(false); // Pour la modal de confirmation d'effacem
 
 // Liste des exercices dans la séance (avec drag and drop)
 const sessionExercises = ref<SessionExercise[]>([]);
+
+// Fonction helper pour obtenir sessionExercises de manière sécurisée
+const getSessionExercises = (): SessionExercise[] => {
+    if (!sessionExercises.value || !Array.isArray(sessionExercises.value)) {
+        console.warn('sessionExercises.value is not initialized, initializing to empty array');
+        sessionExercises.value = [];
+    }
+    return sessionExercises.value;
+};
+
 // Clé de réactivité pour forcer le re-render des composants
 const exercisesKey = ref(0);
 const isDraggingOver = ref(false);
@@ -844,6 +854,37 @@ const convertExerciseToSet = (exercise: SessionExercise) => {
     sessionExercises.value[index] = updatedExercise;
     form.exercises = [...sessionExercises.value];
     saveExercisesToStorage();
+};
+
+// Gérer la mise à jour de la description d'un bloc Super Set
+const handleUpdateBlockDescription = (blockId: number, description: string) => {
+    console.log('Create.vue: update-block-description called', { description, blockId });
+    // Utiliser la fonction helper pour obtenir sessionExercises de manière sécurisée
+    const exercises = getSessionExercises();
+    if (!exercises || exercises.length === 0) {
+        console.warn('Create.vue: No exercises found, cannot update block description');
+        return;
+    }
+    // Mettre à jour la description pour tous les exercices du bloc
+    const blockExercises = exercises.filter(
+        (ex: SessionExercise) => ex.block_id === blockId && ex.block_type === 'set'
+    );
+    console.log('Create.vue: blockExercises found', { blockExercises, count: blockExercises.length });
+    blockExercises.forEach((ex: SessionExercise) => {
+        const index = exercises.findIndex((e: SessionExercise) => e.id === ex.id);
+        console.log('Create.vue: updating exercise', { index, exerciseId: ex.id, description });
+        if (index !== -1) {
+            updateSessionExercise(index, { description });
+        }
+    });
+    // Forcer la réactivité en mettant à jour form.exercises
+    form.exercises = [...getSessionExercises()];
+    saveExercisesToStorage();
+    console.log('Create.vue: after update, exercises:', getSessionExercises().map(ex => ({ 
+        id: ex.id, 
+        block_id: ex.block_id, 
+        description: ex.description 
+    })));
 };
 
 // Gérer la mise à jour d'un exercice dans un bloc Super Set
@@ -1707,18 +1748,7 @@ watch(sessionExercises, () => {
                                                 @drop="(event: DragEvent, blockId: number) => handleDropFromLibrary(event, blockId)"
                                                 @remove-exercise="(index: number) => handleRemoveExerciseFromBlock(item, index)"
                                                 @update-exercise="(exerciseIdOrIndex: number, updates: Partial<SessionExercise>) => handleUpdateExerciseFromBlock(item, exerciseIdOrIndex, updates)"
-                                                @update-block-description="(description: string) => {
-                                                    // Mettre à jour la description pour tous les exercices du bloc
-                                                    const blockExercises = sessionExercises.value.filter(
-                                                        (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
-                                                    );
-                                                    blockExercises.forEach((ex: SessionExercise) => {
-                                                        const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === ex.id);
-                                                        if (index !== -1) {
-                                                            updateSessionExercise(index, { description });
-                                                        }
-                                                    });
-                                                }"
+                                                @update-block-description="(description: string) => handleUpdateBlockDescription(item.block!.id, description)"
                                                 @convert-to-standard="convertBlockToStandard(item.block!)"
                                                 @remove-block="handleRemoveBlock(item)"
                                                 @move-up="() => {

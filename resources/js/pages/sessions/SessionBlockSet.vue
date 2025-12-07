@@ -35,7 +35,17 @@ const emit = defineEmits<{
     'move-down': [];
 }>();
 
-const blockDescription = computed(() => props.block.block_description || '');
+// Valeur locale pour la description du bloc - permet la réactivité immédiate
+const localBlockDescription = ref<string>(props.block.block_description || '');
+const isEditingBlockDescription = ref(false);
+
+// Synchroniser avec props.block.block_description quand il change (seulement si l'utilisateur n'est pas en train de modifier)
+watch(() => props.block.block_description, (newDescription) => {
+    // Ne mettre à jour que si l'utilisateur n'est pas en train de modifier
+    if (!isEditingBlockDescription.value) {
+        localBlockDescription.value = newDescription || '';
+    }
+}, { immediate: true });
 
 // Computed pour les exercices du bloc pour assurer la réactivité
 // Utiliser directement props.block.exercises pour que Vue détecte les changements
@@ -125,8 +135,27 @@ const handleDragLeave = (event: DragEvent) => {
     }
 };
 
+// Mettre à jour uniquement la valeur locale (pas d'émission d'événement pour éviter les re-renders)
 const updateBlockDescription = (value: string) => {
+    // Mettre à jour la valeur locale immédiatement pour la réactivité (sans re-render du parent)
+    localBlockDescription.value = value;
+    isEditingBlockDescription.value = true;
+    // Ne pas émettre l'événement ici pour éviter les re-renders qui font perdre le focus
+};
+
+// Fonction pour sauvegarder la description (appelée sur blur)
+const saveBlockDescription = (value: string) => {
+    // Mettre à jour la valeur locale
+    localBlockDescription.value = value;
+    isEditingBlockDescription.value = true;
+    
+    // Émettre l'événement pour mettre à jour le parent
     emit('update-block-description', value);
+    
+    // Réinitialiser le flag après un court délai
+    setTimeout(() => {
+        isEditingBlockDescription.value = false;
+    }, 100);
 };
 
 // Trouver l'index de l'exercice dans sessionExercises
@@ -247,8 +276,9 @@ const exerciseToRemoveName = computed(() => {
                 <div class="flex-1">
                     <Label class="text-sm font-medium mb-2 block">Consignes pour l'ensemble du bloc</Label>
                     <Textarea
-                        :model-value="blockDescription"
+                        :model-value="localBlockDescription"
                         @update:model-value="updateBlockDescription"
+                        @blur="(event: FocusEvent) => saveBlockDescription((event.target as HTMLTextAreaElement).value)"
                         placeholder="Ajouter des consignes pour l'ensemble du bloc Super Set..."
                         :rows="2"
                         class="text-sm"

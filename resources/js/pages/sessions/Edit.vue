@@ -261,6 +261,15 @@ const isLibraryOpen = ref(false); // Pour le drawer mobile
 
 // Liste des exercices dans la séance
 const sessionExercises = ref<SessionExercise[]>([]);
+
+// Fonction helper pour obtenir sessionExercises de manière sécurisée
+const getSessionExercises = (): SessionExercise[] => {
+    if (!sessionExercises.value || !Array.isArray(sessionExercises.value)) {
+        console.warn('sessionExercises.value is not initialized, initializing to empty array');
+        sessionExercises.value = [];
+    }
+    return sessionExercises.value;
+};
 // Clé de réactivité pour forcer le re-render des composants
 const exercisesKey = ref(0);
 const isDraggingOver = ref(false);
@@ -352,7 +361,7 @@ const loadSessionExercises = () => {
                 }];
             }
             
-            return {
+            const loadedExercise = {
                 id: se.id || --sessionExerciseIdCounter, // Utiliser l'ID existant ou générer un nouveau
                 exercise_id: se.exercise_id,
                 exercise: exercise,
@@ -373,6 +382,20 @@ const loadSessionExercises = () => {
                 use_duration: se.use_duration !== null && se.use_duration !== undefined ? Boolean(se.use_duration) : false,
                 use_bodyweight: se.use_bodyweight !== null && se.use_bodyweight !== undefined ? Boolean(se.use_bodyweight) : false,
             };
+            
+            // Debug pour les blocs Super Set
+            if (loadedExercise.block_type === 'set' && loadedExercise.block_id) {
+                console.log('Edit.vue: Super Set exercise loaded from backend', {
+                    id: loadedExercise.id,
+                    exercise_id: loadedExercise.exercise_id,
+                    block_id: loadedExercise.block_id,
+                    block_type: loadedExercise.block_type,
+                    additional_description_from_backend: se.additional_description,
+                    description_loaded: loadedExercise.description
+                });
+            }
+            
+            return loadedExercise;
         }).filter((ex: SessionExercise | null) => ex !== null) as SessionExercise[];
         
         // Initialiser nextBlockId avec la valeur maximale des block_id existants
@@ -396,6 +419,10 @@ onMounted(() => {
 });
 
 watch(() => props.session?.sessionExercises, () => {
+    // S'assurer que sessionExercises est initialisé avant de charger
+    if (!sessionExercises.value || !Array.isArray(sessionExercises.value)) {
+        sessionExercises.value = [];
+    }
     loadSessionExercises();
 }, { deep: true, immediate: true });
 
@@ -706,6 +733,36 @@ const handleUpdateExerciseFromBlock = (item: { type: 'standard' | 'set', exercis
             updates
         });
     }
+};
+
+// Gérer la mise à jour de la description d'un bloc Super Set
+const handleUpdateBlockDescription = (blockId: number, description: string) => {
+    console.log('Edit.vue: update-block-description called', { description, blockId });
+    // Utiliser la fonction helper pour obtenir sessionExercises de manière sécurisée
+    const exercises = getSessionExercises();
+    if (!exercises || exercises.length === 0) {
+        console.warn('Edit.vue: No exercises found, cannot update block description');
+        return;
+    }
+    // Mettre à jour la description pour tous les exercices du bloc
+    const blockExercises = exercises.filter(
+        (ex: SessionExercise) => ex.block_id === blockId && ex.block_type === 'set'
+    );
+    console.log('Edit.vue: blockExercises found', { blockExercises, count: blockExercises.length });
+    blockExercises.forEach((ex: SessionExercise) => {
+        const index = exercises.findIndex((e: SessionExercise) => e.id === ex.id);
+        console.log('Edit.vue: updating exercise', { index, exerciseId: ex.id, description });
+        if (index !== -1) {
+            updateSessionExercise(index, { description });
+        }
+    });
+    // Forcer la réactivité en mettant à jour form.exercises
+    form.exercises = [...getSessionExercises()];
+    console.log('Edit.vue: after update, exercises:', getSessionExercises().map(ex => ({ 
+        id: ex.id, 
+        block_id: ex.block_id, 
+        description: ex.description 
+    })));
 };
 
 // Convertir un bloc Super Set en exercices standard
@@ -1270,7 +1327,7 @@ const saveSession = () => {
             formattedSets: sets
         });
         
-        return {
+        const formattedExercise = {
             exercise_id: ex.exercise_id,
             sets: sets,
             // Envoyer les valeurs directes seulement si pas de sets
@@ -1290,10 +1347,33 @@ const saveSession = () => {
             use_duration: ex.use_duration ?? false,
             use_bodyweight: ex.use_bodyweight ?? false,
         };
+        
+        // Debug pour les blocs Super Set
+        if (ex.block_type === 'set' && ex.block_id) {
+            console.log('Edit.vue: Super Set exercise being saved', {
+                exercise_id: ex.exercise_id,
+                block_id: ex.block_id,
+                block_type: ex.block_type,
+                description: ex.description,
+                formattedDescription: formattedExercise.description
+            });
+        }
+        
+        return formattedExercise;
     });
     
     // Debug: afficher les données formatées
     console.log('Formatted exercises (Edit):', form.exercises);
+    
+    // Debug spécifique pour les blocs Super Set
+    const setBlocks = form.exercises.filter((ex: any) => ex.block_type === 'set' && ex.block_id);
+    if (setBlocks.length > 0) {
+        console.log('Edit.vue: Super Set blocks being saved', setBlocks.map((ex: any) => ({
+            exercise_id: ex.exercise_id,
+            block_id: ex.block_id,
+            description: ex.description
+        })));
+    }
     
     form.put(`/sessions/${props.session.id}`, {
         preserveScroll: true,
@@ -1770,18 +1850,7 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                                                 @drop="(event: DragEvent, blockId: number) => handleDropFromLibrary(event, blockId)"
                                                 @remove-exercise="(index: number) => handleRemoveExerciseFromBlock(item, index)"
                                                 @update-exercise="(exerciseIdOrIndex: number, updates: Partial<SessionExercise>) => handleUpdateExerciseFromBlock(item, exerciseIdOrIndex, updates)"
-                                                @update-block-description="(description: string) => {
-                                                    // Mettre à jour la description pour tous les exercices du bloc
-                                                    const blockExercises = sessionExercises.value.filter(
-                                                        (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
-                                                    );
-                                                    blockExercises.forEach((ex: SessionExercise) => {
-                                                        const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === ex.id);
-                                                        if (index !== -1) {
-                                                            updateSessionExercise(index, { description });
-                                                        }
-                                                    });
-                                                }"
+                                                @update-block-description="(description: string) => handleUpdateBlockDescription(item.block!.id, description)"
                                                 @convert-to-standard="convertBlockToStandard(item.block!)"
                                                 @remove-block="handleRemoveBlock(item)"
                                                 @move-up="() => {
