@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Categories\IndexCategoryRequest;
+use App\Http\Requests\Categories\StoreCategoryRequest;
+use App\Http\Requests\Categories\UpdateCategoryRequest;
 use App\Models\Category;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,11 +17,12 @@ class CategoriesController extends Controller
     /**
      * Display the categories dashboard.
      */
-    public function index(Request $request): Response
+    public function index(IndexCategoryRequest $request): Response
     {
-        $searchTerm = trim((string) $request->input('search', ''));
-        $showPrivate = $request->boolean('private', true);
-        $showPublic = $request->boolean('public', true);
+        $validated = $request->validated();
+        $searchTerm = trim((string) ($validated['search'] ?? ''));
+        $showPrivate = $validated['private'] ?? true;
+        $showPublic = $validated['public'] ?? true;
 
         $privateCategories = collect();
         if ($showPrivate && Auth::id()) {
@@ -51,11 +55,9 @@ class CategoriesController extends Controller
     /**
      * Store a new private category.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreCategoryRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         Category::create([
             'name' => $validated['name'],
@@ -70,15 +72,9 @@ class CategoriesController extends Controller
     /**
      * Update a private category owned by the authenticated user.
      */
-    public function update(Request $request, Category $category): RedirectResponse
+    public function update(UpdateCategoryRequest $request, Category $category): RedirectResponse
     {
-        if (!$this->userCanManage($category)) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         $category->update($validated);
 
@@ -91,7 +87,8 @@ class CategoriesController extends Controller
      */
     public function destroy(Category $category): RedirectResponse
     {
-        if (!$this->userCanManage($category)) {
+        // Vérifier que la catégorie est privée et appartient à l'utilisateur
+        if ($category->type !== 'private' || $category->user_id !== Auth::id()) {
             abort(403);
         }
 
@@ -99,14 +96,6 @@ class CategoriesController extends Controller
 
         return redirect()->route('categories.index')
             ->with('success', 'Catégorie supprimée.');
-    }
-
-    /**
-     * Determine whether the current user owns the private category.
-     */
-    private function userCanManage(Category $category): bool
-    {
-        return $category->type === 'private' && $category->user_id === Auth::id();
     }
 }
 

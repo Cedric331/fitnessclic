@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Customers\IndexCustomerRequest;
+use App\Http\Requests\Customers\StoreCustomerRequest;
+use App\Http\Requests\Customers\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -13,16 +16,18 @@ class CustomersController extends Controller
 {
     /**
      * Display a listing of the customers.
-     * @param Request $request
+     * @param IndexCustomerRequest $request
      * @return Response
      */
-    public function index(Request $request): Response
+    public function index(IndexCustomerRequest $request): Response
     {
+        $validated = $request->validated();
+        
         $query = Customer::where('user_id', Auth::id())
             ->withCount('trainingSessions');
 
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
+        if (!empty($validated['search'])) {
+            $search = $validated['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
@@ -40,19 +45,12 @@ class CustomersController extends Controller
 
     /**
      * Create a new customer.
-     * @param Request $request
+     * @param StoreCustomerRequest $request
      * @return RedirectResponse
      */
-    public function store(Request $request)
+    public function store(StoreCustomerRequest $request)
     {
-        $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:255'],
-            'internal_note' => ['nullable', 'string'],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $request->validated();
 
         $customer = Customer::create([
             ...$validated,
@@ -94,28 +92,13 @@ class CustomersController extends Controller
 
     /**
      * Update a customer.
-     * @param Request $request
+     * @param UpdateCustomerRequest $request
      * @param Customer $customer
      * @return RedirectResponse
      */
-    public function update(Request $request, Customer $customer)
+    public function update(UpdateCustomerRequest $request, Customer $customer)
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-
-        if (!$user || !$user->hasCustomer($customer)) {
-            return redirect()->route('client.customers.index')
-                ->with('error', 'Vous n\'avez pas les permissions pour modifier ce client.');
-        }
-        
-        $validated = $request->validate([
-            'first_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:255'],
-            'internal_note' => ['nullable', 'string'],
-            'is_active' => ['boolean'],
-        ]);
+        $validated = $request->validated();
         
         $customer->update($validated);
 

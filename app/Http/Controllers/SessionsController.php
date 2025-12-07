@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Sessions\IndexSessionRequest;
+use App\Http\Requests\Sessions\PdfPreviewSessionRequest;
+use App\Http\Requests\Sessions\SendEmailSessionRequest;
+use App\Http\Requests\Sessions\StoreSessionRequest;
+use App\Http\Requests\Sessions\UpdateSessionRequest;
 use App\Models\Customer;
 use App\Models\Exercise;
 use App\Models\Session;
@@ -21,14 +26,16 @@ class SessionsController extends Controller
     /**
      * Display a listing of the sessions.
      */
-    public function index(Request $request): Response
+    public function index(IndexSessionRequest $request): Response
     {
+        $validated = $request->validated();
+        
         $query = Session::where('user_id', Auth::id())
             ->with(['customers', 'exercises.media'])
             ->withCount('exercises');
 
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
+        if (!empty($validated['search'])) {
+            $search = $validated['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('notes', 'like', "%{$search}%");
@@ -36,14 +43,14 @@ class SessionsController extends Controller
         }
 
         // Filtrer par clients via la relation many-to-many
-        if ($request->has('customer_id') && $request->customer_id) {
-            $query->whereHas('customers', function ($q) use ($request) {
-                $q->where('customers.id', $request->customer_id);
+        if (!empty($validated['customer_id'])) {
+            $query->whereHas('customers', function ($q) use ($validated) {
+                $q->where('customers.id', $validated['customer_id']);
             });
         }
 
         // Gérer le tri par date
-        $sortOrder = $request->input('sort', 'newest');
+        $sortOrder = $validated['sort'] ?? 'newest';
         if ($sortOrder === 'oldest') {
             $query->oldest('session_date')->oldest('created_at');
         } else {
@@ -147,50 +154,12 @@ class SessionsController extends Controller
     /**
      * Store a newly created session.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreSessionRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'customer_ids' => ['nullable', 'array'], // Tableau de clients
-            'customer_ids.*' => ['required', 'integer', 'exists:customers,id'],
-            'session_date' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-            'exercises' => ['required', 'array', 'min:1'],
-            'exercises.*.exercise_id' => ['required', 'exists:exercises,id'],
-            'exercises.*.sets' => ['nullable', 'array'], // Séries multiples
-            'exercises.*.sets.*.set_number' => ['required', 'integer', 'min:1'],
-            'exercises.*.sets.*.repetitions' => ['nullable', 'integer'],
-            'exercises.*.sets.*.weight' => ['nullable', 'numeric'],
-            'exercises.*.sets.*.rest_time' => ['nullable', 'string'],
-            'exercises.*.sets.*.duration' => ['nullable', 'string'],
-            'exercises.*.sets.*.order' => ['required', 'integer', 'min:0'],
-            // Champs pour compatibilité (si pas de séries multiples)
-            'exercises.*.repetitions' => ['nullable', 'integer'],
-            'exercises.*.weight' => ['nullable', 'numeric'],
-            'exercises.*.rest_time' => ['nullable', 'string'],
-            'exercises.*.duration' => ['nullable', 'string'],
-            'exercises.*.description' => ['nullable', 'string'],
-            'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
-            'exercises.*.order' => ['required', 'integer', 'min:0'],
-            // Nouveaux champs pour Super Set
-            'exercises.*.block_id' => ['nullable', 'integer'],
-            'exercises.*.block_type' => ['nullable', 'in:standard,set'],
-            'exercises.*.position_in_block' => ['nullable', 'integer', 'min:0', 'max:6'],
-        ]);
+        $validated = $request->validated();
 
         // Récupérer les IDs des clients
         $customerIds = $validated['customer_ids'] ?? [];
-
-        // Vérifier que tous les clients appartiennent à l'utilisateur
-        if (!empty($customerIds)) {
-            $customers = Customer::whereIn('id', $customerIds)
-                ->where('user_id', Auth::id())
-                ->get();
-            
-            if ($customers->count() !== count($customerIds)) {
-                abort(403, 'Un ou plusieurs clients ne vous appartiennent pas.');
-            }
-        }
 
         $session = Session::create([
             'user_id' => Auth::id(),
@@ -209,10 +178,13 @@ class SessionsController extends Controller
             $sessionExercise = \App\Models\SessionExercise::create([
                 'session_id' => $session->id,
                 'exercise_id' => $exerciseData['exercise_id'],
+                'custom_exercise_name' => $exerciseData['custom_exercise_name'] ?? null,
                 'repetitions' => $exerciseData['repetitions'] ?? null,
                 'weight' => $exerciseData['weight'] ?? null,
                 'rest_time' => $exerciseData['rest_time'] ?? null,
                 'duration' => $exerciseData['duration'] ?? null,
+                'use_duration' => $exerciseData['use_duration'] ?? false,
+                'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
                 'additional_description' => $exerciseData['description'] ?? null,
                 'sets_count' => $exerciseData['sets_count'] ?? null,
                 'order' => $exerciseData['order'],
@@ -287,10 +259,13 @@ class SessionsController extends Controller
                             'name' => $cat->name,
                         ]),
                     ] : null,
+                    'custom_exercise_name' => $se->custom_exercise_name,
                     'repetitions' => $se->repetitions,
                     'weight' => $se->weight,
                     'rest_time' => $se->rest_time,
                     'duration' => $se->duration,
+                    'use_duration' => $se->use_duration ?? false,
+                    'use_bodyweight' => $se->use_bodyweight ?? false,
                     'additional_description' => $se->additional_description,
                     'sets_count' => $se->sets_count,
                     'order' => $se->order,
@@ -404,10 +379,13 @@ class SessionsController extends Controller
                             'name' => $cat->name,
                         ]),
                     ] : null,
+                    'custom_exercise_name' => $se->custom_exercise_name,
                     'repetitions' => $se->repetitions,
                     'weight' => $se->weight,
                     'rest_time' => $se->rest_time,
                     'duration' => $se->duration,
+                    'use_duration' => $se->use_duration ?? false,
+                    'use_bodyweight' => $se->use_bodyweight ?? false,
                     'additional_description' => $se->additional_description,
                     'sets_count' => $se->sets_count,
                     'order' => $se->order,
@@ -444,55 +422,12 @@ class SessionsController extends Controller
     /**
      * Update the specified session.
      */
-    public function update(Request $request, Session $session): RedirectResponse
+    public function update(UpdateSessionRequest $request, Session $session): RedirectResponse
     {
-        // Vérifier que la séance appartient à l'utilisateur
-        if ($session->user_id !== Auth::id()) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'name' => ['nullable', 'string', 'max:255'],
-            'customer_ids' => ['nullable', 'array'], // Tableau de clients
-            'customer_ids.*' => ['required', 'integer', 'exists:customers,id'],
-            'session_date' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-            'exercises' => ['required', 'array', 'min:1'],
-            'exercises.*.exercise_id' => ['required', 'exists:exercises,id'],
-            'exercises.*.sets' => ['nullable', 'array'], // Séries multiples
-            'exercises.*.sets.*.set_number' => ['required', 'integer', 'min:1'],
-            'exercises.*.sets.*.repetitions' => ['nullable', 'integer'],
-            'exercises.*.sets.*.weight' => ['nullable', 'numeric'],
-            'exercises.*.sets.*.rest_time' => ['nullable', 'string'],
-            'exercises.*.sets.*.duration' => ['nullable', 'string'],
-            'exercises.*.sets.*.order' => ['required', 'integer', 'min:0'],
-            // Champs pour compatibilité (si pas de séries multiples)
-            'exercises.*.repetitions' => ['nullable', 'integer'],
-            'exercises.*.weight' => ['nullable', 'numeric'],
-            'exercises.*.rest_time' => ['nullable', 'string'],
-            'exercises.*.duration' => ['nullable', 'string'],
-            'exercises.*.description' => ['nullable', 'string'],
-            'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
-            'exercises.*.order' => ['required', 'integer', 'min:0'],
-            // Nouveaux champs pour Super 7
-            'exercises.*.block_id' => ['nullable', 'integer'],
-            'exercises.*.block_type' => ['nullable', 'in:standard,set'],
-            'exercises.*.position_in_block' => ['nullable', 'integer', 'min:0', 'max:6'],
-        ]);
+        $validated = $request->validated();
 
         // Récupérer les IDs des clients
         $customerIds = $validated['customer_ids'] ?? [];
-
-        // Vérifier que tous les clients appartiennent à l'utilisateur
-        if (!empty($customerIds)) {
-            $customers = Customer::whereIn('id', $customerIds)
-                ->where('user_id', Auth::id())
-                ->get();
-            
-            if ($customers->count() !== count($customerIds)) {
-                abort(403, 'Un ou plusieurs clients ne vous appartiennent pas.');
-            }
-        }
 
         $session->update([
             'name' => $validated['name'] ?? $session->name,
@@ -513,10 +448,13 @@ class SessionsController extends Controller
             $sessionExercise = \App\Models\SessionExercise::create([
                 'session_id' => $session->id,
                 'exercise_id' => $exerciseData['exercise_id'],
+                'custom_exercise_name' => $exerciseData['custom_exercise_name'] ?? null,
                 'repetitions' => $exerciseData['repetitions'] ?? null,
                 'weight' => $exerciseData['weight'] ?? null,
                 'rest_time' => $exerciseData['rest_time'] ?? null,
                 'duration' => $exerciseData['duration'] ?? null,
+                'use_duration' => $exerciseData['use_duration'] ?? false,
+                'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
                 'additional_description' => $exerciseData['description'] ?? null,
                 'sets_count' => $exerciseData['sets_count'] ?? null,
                 'order' => $exerciseData['order'],
@@ -597,38 +535,10 @@ class SessionsController extends Controller
     /**
      * Generate PDF from unsaved session data (from create page).
      */
-    public function pdfPreview(Request $request)
+    public function pdfPreview(PdfPreviewSessionRequest $request)
     {
         try {
-            // Si la requête est en JSON, décoder les données
-            if ($request->isJson() || $request->header('Content-Type') === 'application/json') {
-                $request->merge(json_decode($request->getContent(), true) ?? []);
-            }
-            
-            $validated = $request->validate([
-            'name' => ['nullable', 'string', 'max:255'],
-            'session_date' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-            'exercises' => ['required', 'array', 'min:1'],
-            'exercises.*.exercise_id' => ['required', 'exists:exercises,id'],
-            'exercises.*.sets' => ['nullable', 'array'],
-            'exercises.*.sets.*.set_number' => ['required', 'integer', 'min:1'],
-            'exercises.*.sets.*.repetitions' => ['nullable', 'integer'],
-            'exercises.*.sets.*.weight' => ['nullable', 'numeric'],
-            'exercises.*.sets.*.rest_time' => ['nullable', 'string'],
-            'exercises.*.sets.*.duration' => ['nullable', 'string'],
-            'exercises.*.sets.*.order' => ['required', 'integer', 'min:0'],
-            'exercises.*.repetitions' => ['nullable', 'integer'],
-            'exercises.*.weight' => ['nullable', 'numeric'],
-            'exercises.*.rest_time' => ['nullable', 'string'],
-            'exercises.*.duration' => ['nullable', 'string'],
-            'exercises.*.description' => ['nullable', 'string'],
-            'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
-            'exercises.*.order' => ['required', 'integer', 'min:0'],
-            'exercises.*.block_id' => ['nullable', 'integer'],
-            'exercises.*.block_type' => ['nullable', 'in:standard,set'],
-            'exercises.*.position_in_block' => ['nullable', 'integer', 'min:0'],
-        ]);
+            $validated = $request->validated();
 
         // Charger les exercices avec leurs relations
         $exerciseIds = array_column($validated['exercises'], 'exercise_id');
@@ -651,6 +561,9 @@ class SessionsController extends Controller
 
                 return (object) [
                     'exercise' => $exercise,
+                    'custom_exercise_name' => $exerciseData['custom_exercise_name'] ?? null,
+                    'use_duration' => $exerciseData['use_duration'] ?? false,
+                    'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
                     'sets' => isset($exerciseData['sets']) && is_array($exerciseData['sets']) 
                         ? collect($exerciseData['sets'])->map(fn($set) => (object) $set)->sortBy('order')
                         : collect([(object) [
@@ -695,22 +608,14 @@ class SessionsController extends Controller
     /**
      * Send session by email to a customer.
      */
-    public function sendEmail(Request $request, Session $session): RedirectResponse
+    public function sendEmail(SendEmailSessionRequest $request, Session $session): RedirectResponse
     {
-        // Vérifier que la séance appartient à l'utilisateur
-        if ($session->user_id !== Auth::id()) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'customer_id' => ['required', 'integer', 'exists:customers,id'],
-            'redirect_to_customer' => ['sometimes', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         // Charger la session avec les relations nécessaires
         $session->load(['customers', 'user']);
 
-        // Vérifier que le client est associé à la séance
+        // Récupérer le client (déjà validé dans la Form Request)
         $customer = Customer::where('id', $validated['customer_id'])
             ->where('user_id', Auth::id())
             ->where('is_active', true)
@@ -723,23 +628,6 @@ class SessionsController extends Controller
         $redirectParams = $validated['redirect_to_customer'] ?? false
             ? ['customer' => $validated['customer_id']]
             : [];
-
-        if (!$customer) {
-            return redirect()->route($redirectRoute, $redirectParams)
-                ->with('error', 'Client non trouvé ou inactif.');
-        }
-
-        // Vérifier que le client est bien associé à cette séance
-        if (!$session->customers->contains($customer->id)) {
-            return redirect()->route($redirectRoute, $redirectParams)
-                ->with('error', 'Ce client n\'est pas associé à cette séance.');
-        }
-
-        // Vérifier que le client a une adresse email
-        if (!$customer->email) {
-            return redirect()->route($redirectRoute, $redirectParams)
-                ->with('error', 'Ce client n\'a pas d\'adresse email.');
-        }
 
         try {
             // Envoyer l'email

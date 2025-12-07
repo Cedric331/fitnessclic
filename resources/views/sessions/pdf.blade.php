@@ -360,8 +360,8 @@
                         <th style="width: 8mm;">#</th>
                         <th>Exercice</th>
                         <th style="width: 20mm;">Séries</th>
-                        <th style="width: 18mm;">Répétitions</th>
-                        <th style="width: 15mm;">Charge</th>
+                        <th style="width: 18mm;">Rep/Durée</th>
+                        <th style="width: 15mm;">Charge/Poids</th>
                         <th style="width: 15mm;">Repos</th>
                         <th>Notes</th>
                     </tr>
@@ -382,7 +382,7 @@
                             @if($exercise)
                                 <tr>
                                     <td class="exercise-number">{{ $index + 1 }}</td>
-                                    <td class="exercise-title">{{ $exercise->title }}</td>
+                                    <td class="exercise-title">{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}</td>
                                     <td class="exercise-sets">
                                         @if($sets->count() > 0)
                                             {{ $sets->count() }}
@@ -395,27 +395,39 @@
                                     <td class="exercise-sets">
                                         @if($sets->count() > 0)
                                             @foreach($sets as $set)
-                                                {{ $set->repetitions ?? '-' }}@if(!$loop->last)<br>@endif
+                                                @if($sessionExercise->use_duration ?? false)
+                                                    {{ $set->duration ?? '-' }}@if(!$loop->last)<br>@endif
+                                                @else
+                                                    {{ $set->repetitions ?? '-' }}@if(!$loop->last)<br>@endif
+                                                @endif
                                             @endforeach
                                         @else
-                                            {{ $sessionExercise->repetitions ?? '-' }}
+                                            @if($sessionExercise->use_duration ?? false)
+                                                {{ $sessionExercise->duration ?? '-' }}
+                                            @else
+                                                {{ $sessionExercise->repetitions ?? '-' }}
+                                            @endif
                                         @endif
                                     </td>
                                     <td class="exercise-sets">
-                                        @if($sets->count() > 0)
-                                            @foreach($sets as $set)
-                                                @if(!empty($set->weight))
-                                                    {{ $set->weight }}kg
+                                        @if($sessionExercise->use_bodyweight ?? false)
+                                            Poids de corps
+                                        @else
+                                            @if($sets->count() > 0)
+                                                @foreach($sets as $set)
+                                                    @if(!empty($set->weight))
+                                                        {{ $set->weight }}kg
+                                                    @else
+                                                        -
+                                                    @endif
+                                                    @if(!$loop->last)<br>@endif
+                                                @endforeach
+                                            @else
+                                                @if(!empty($sessionExercise->weight))
+                                                    {{ $sessionExercise->weight }}kg
                                                 @else
                                                     -
                                                 @endif
-                                                @if(!$loop->last)<br>@endif
-                                            @endforeach
-                                        @else
-                                            @if(!empty($sessionExercise->weight))
-                                                {{ $sessionExercise->weight }}kg
-                                            @else
-                                                -
                                             @endif
                                         @endif
                                     </td>
@@ -458,7 +470,7 @@
                                             @endif
                                         </td>
                                         <td class="exercise-title exercise-in-set">
-                                            <strong>{{ $exerciseIndex + 1 }}.</strong> {{ $exercise->title }}
+                                            <strong>{{ $exerciseIndex + 1 }}.</strong> {{ $sessionExercise->custom_exercise_name ?? $exercise->title }}
                                         </td>
                                         <td class="exercise-sets">
                                             @if($sets->count() > 0)
@@ -472,27 +484,39 @@
                                         <td class="exercise-sets">
                                             @if($sets->count() > 0)
                                                 @foreach($sets as $set)
-                                                    {{ $set->repetitions ?? '-' }}@if(!$loop->last)<br>@endif
+                                                    @if($sessionExercise->use_duration ?? false)
+                                                        {{ $set->duration ?? '-' }}@if(!$loop->last)<br>@endif
+                                                    @else
+                                                        {{ $set->repetitions ?? '-' }}@if(!$loop->last)<br>@endif
+                                                    @endif
                                                 @endforeach
                                             @else
-                                                {{ $sessionExercise->repetitions ?? '-' }}
+                                                @if($sessionExercise->use_duration ?? false)
+                                                    {{ $sessionExercise->duration ?? '-' }}
+                                                @else
+                                                    {{ $sessionExercise->repetitions ?? '-' }}
+                                                @endif
                                             @endif
                                         </td>
                                         <td class="exercise-sets">
-                                            @if($sets->count() > 0)
-                                                @foreach($sets as $set)
-                                                    @if(!empty($set->weight))
-                                                        {{ $set->weight }}kg
+                                            @if($sessionExercise->use_bodyweight ?? false)
+                                                Poids de corps
+                                            @else
+                                                @if($sets->count() > 0)
+                                                    @foreach($sets as $set)
+                                                        @if(!empty($set->weight))
+                                                            {{ $set->weight }}kg
+                                                        @else
+                                                            -
+                                                        @endif
+                                                        @if(!$loop->last)<br>@endif
+                                                    @endforeach
+                                                @else
+                                                    @if(!empty($sessionExercise->weight))
+                                                        {{ $sessionExercise->weight }}kg
                                                     @else
                                                         -
                                                     @endif
-                                                    @if(!$loop->last)<br>@endif
-                                                @endforeach
-                                            @else
-                                                @if(!empty($sessionExercise->weight))
-                                                    {{ $sessionExercise->weight }}kg
-                                                @else
-                                                    -
                                                 @endif
                                             @endif
                                         </td>

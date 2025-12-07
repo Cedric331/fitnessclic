@@ -241,6 +241,8 @@ const isClearDialogOpen = ref(false); // Pour la modal de confirmation d'effacem
 
 // Liste des exercices dans la séance (avec drag and drop)
 const sessionExercises = ref<SessionExercise[]>([]);
+// Clé de réactivité pour forcer le re-render des composants
+const exercisesKey = ref(0);
 const isDraggingOver = ref(false);
 // Compteur pour générer des IDs uniques pour les exercices de session
 let sessionExerciseIdCounter = 0;
@@ -600,19 +602,21 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
         // Créer un nouvel objet sans les sets de updates pour éviter les conflits
         const { sets: _, ...updatesWithoutSets } = updates;
         
-        sessionExercises.value[index] = {
-            ...currentExercise,
-            ...updatesWithoutSets,
-            sets: setsArray, // Utiliser directement les sets mis à jour (copie en profondeur)
-        };
-        // Forcer la réactivité en créant une nouvelle référence
+        // Mettre à jour directement les propriétés pour préserver la référence
+        const exercise = sessionExercises.value[index];
+        for (const key in updatesWithoutSets) {
+            (exercise as any)[key] = (updatesWithoutSets as any)[key];
+        }
+        exercise.sets = setsArray;
+        // Forcer la réactivité en créant une nouvelle référence du tableau
         sessionExercises.value = [...sessionExercises.value];
     } else {
-        sessionExercises.value[index] = {
-            ...currentExercise,
-            ...updates,
-        };
-        // Forcer la réactivité en créant une nouvelle référence
+        // Mettre à jour directement les propriétés pour préserver la référence
+        const exercise = sessionExercises.value[index];
+        for (const key in updates) {
+            (exercise as any)[key] = (updates as any)[key];
+        }
+        // Forcer la réactivité en créant une nouvelle référence du tableau
         sessionExercises.value = [...sessionExercises.value];
     }
     
@@ -621,6 +625,7 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
     console.log('Updated exercise:', {
         id: updatedExercise.id,
         exercise_id: updatedExercise.exercise_id,
+        custom_exercise_name: updatedExercise.custom_exercise_name,
         setsLength: updatedExercise.sets?.length || 0,
         sets: updatedExercise.sets,
         setsArray: updatedExercise.sets ? [...updatedExercise.sets] : [],
@@ -638,8 +643,8 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
         });
     }
     
-    // Ne pas mettre à jour form.exercises ici, il sera formaté lors de la sauvegarde
-    // form.exercises sera mis à jour lors de la sauvegarde avec le bon format
+    // Sauvegarder dans le localStorage pour persister les changements
+    saveExercisesToStorage();
 };
 
 // Réorganiser les exercices (utilisé par les boutons haut/bas et après drag)
@@ -841,21 +846,107 @@ const convertExerciseToSet = (exercise: SessionExercise) => {
     saveExercisesToStorage();
 };
 
+// Gérer la mise à jour d'un exercice dans un bloc Super Set
+const handleUpdateExerciseFromBlock = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }, exerciseIdOrIndex: number, updates: Partial<SessionExercise>) => {
+    console.log('Create.vue handleUpdateExerciseFromBlock:', { exerciseIdOrIndex, updates, item, block: item.block, exercises: item.block?.exercises });
+    
+    // Vérifier que sessionExercises.value existe et est un tableau
+    if (!sessionExercises.value || !Array.isArray(sessionExercises.value)) {
+        console.error('sessionExercises.value is not initialized:', { sessionExercises: sessionExercises.value });
+        return;
+    }
+    
+    let exerciseToUpdate: SessionExercise | undefined;
+    
+    if (exerciseIdOrIndex < 0 || exerciseIdOrIndex > 1000) {
+        // C'est probablement un ID (négatif pour nouveaux, ou ID de base de données)
+        // Trouver l'exercice dans sessionExercises par son ID
+        const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === exerciseIdOrIndex);
+        if (index !== -1) {
+            updateSessionExercise(index, updates);
+            return;
+        }
+    } else {
+        // C'est probablement un index dans le bloc, trouver l'exercice dans le bloc
+        if (!item.block || !item.block.exercises[exerciseIdOrIndex]) {
+            console.error('Missing data in handleUpdateExerciseFromBlock:', { 
+                hasItem: !!item, 
+                hasBlock: !!item.block, 
+                hasExercise: !!item.block?.exercises[exerciseIdOrIndex],
+                exercisesLength: item.block?.exercises?.length 
+            });
+            return;
+        }
+        exerciseToUpdate = item.block.exercises[exerciseIdOrIndex];
+    }
+    
+    // Si on a trouvé l'exercice dans le bloc, le trouver dans sessionExercises
+    if (exerciseToUpdate) {
+        // Chercher par ID si disponible, sinon par block_id et position_in_block
+        let index = -1;
+        if (exerciseToUpdate.id) {
+            index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === exerciseToUpdate.id);
+        }
+        
+        // Si pas trouvé par ID, chercher par block_id et position_in_block
+        if (index === -1 && item.block) {
+            const blockExercises = sessionExercises.value.filter(
+                (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
+            );
+            const sortedBlockExercises = blockExercises.sort((a, b) => 
+                (a.position_in_block || 0) - (b.position_in_block || 0)
+            );
+            if (sortedBlockExercises[exerciseIdOrIndex]) {
+                const targetExercise = sortedBlockExercises[exerciseIdOrIndex];
+                index = sessionExercises.value.findIndex((e: SessionExercise) => 
+                    e.block_id === targetExercise.block_id && 
+                    e.position_in_block === targetExercise.position_in_block &&
+                    e.block_type === 'set'
+                );
+            }
+        }
+        
+        if (index !== -1) {
+            updateSessionExercise(index, updates);
+        } else {
+            console.error('Exercise not found in sessionExercises:', { exerciseToUpdate, exerciseIdOrIndex });
+        }
+    }
+};
+
 // Convertir un bloc Super Set en exercices standard
 const convertBlockToStandard = (block: SessionBlock) => {
     const blockExercises = sessionExercises.value.filter(
         (ex: SessionExercise) => ex.block_id === block.id && ex.block_type === 'set'
     );
     
-    blockExercises.forEach((ex: SessionExercise) => {
+    // Trier les exercices par position_in_block pour trouver le premier
+    const sortedExercises = [...blockExercises].sort((a, b) => 
+        (a.position_in_block || 0) - (b.position_in_block || 0)
+    );
+    
+    if (sortedExercises.length === 0) {
+        return;
+    }
+    
+    // Convertir uniquement le premier exercice en standard
+    const firstExercise = sortedExercises[0];
+    const firstIndex = sessionExercises.value.findIndex((e: SessionExercise) => e.id === firstExercise.id);
+    if (firstIndex !== -1) {
+        sessionExercises.value[firstIndex] = {
+            ...firstExercise,
+            block_id: null,
+            block_type: null,
+            position_in_block: null,
+        };
+    }
+    
+    // Supprimer tous les autres exercices du bloc (en ordre inverse pour éviter les problèmes d'index)
+    const exercisesToRemove = sortedExercises.slice(1).reverse();
+    exercisesToRemove.forEach((ex: SessionExercise) => {
         const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === ex.id);
         if (index !== -1) {
-            sessionExercises.value[index] = {
-                ...ex,
-                block_id: null,
-                block_type: null,
-                position_in_block: null,
-            };
+            removeExerciseFromSession(index);
         }
     });
     
@@ -1083,6 +1174,10 @@ const saveSession = () => {
             block_id: ex.block_id ?? null,
             block_type: ex.block_type ?? null,
             position_in_block: ex.position_in_block ?? null,
+            // Nom personnalisé et options d'exercice
+            custom_exercise_name: ex.custom_exercise_name ?? null,
+            use_duration: ex.use_duration ?? false,
+            use_bodyweight: ex.use_bodyweight ?? false,
         };
     });
     
@@ -1603,6 +1698,7 @@ watch(sessionExercises, () => {
                                             <!-- Bloc Super Set -->
                                             <SessionBlockSet
                                                 v-if="item.type === 'set'"
+                                                :key="`block-${item.block!.id}`"
                                                 :block="item.block!"
                                                 :block-index="item.displayIndex"
                                                 :display-index="item.displayIndex"
@@ -1610,16 +1706,7 @@ watch(sessionExercises, () => {
                                                 :total-count="orderedItems.length"
                                                 @drop="(event: DragEvent, blockId: number) => handleDropFromLibrary(event, blockId)"
                                                 @remove-exercise="(index: number) => handleRemoveExerciseFromBlock(item, index)"
-                                                @update-exercise="(index: number, updates: Partial<SessionExercise>) => {
-                                                    if (!sessionExercises.value || !item.block || !item.block.exercises[index]) return;
-                                                    const exercise = item.block.exercises[index];
-                                                    const exerciseIndex = sessionExercises.value.findIndex(
-                                                        (ex: SessionExercise) => ex.id === exercise.id
-                                                    );
-                                                    if (exerciseIndex !== -1) {
-                                                        updateSessionExercise(exerciseIndex, updates);
-                                                    }
-                                                }"
+                                                @update-exercise="(exerciseIdOrIndex: number, updates: Partial<SessionExercise>) => handleUpdateExerciseFromBlock(item, exerciseIdOrIndex, updates)"
                                                 @update-block-description="(description: string) => {
                                                     // Mettre à jour la description pour tous les exercices du bloc
                                                     const blockExercises = sessionExercises.value.filter(

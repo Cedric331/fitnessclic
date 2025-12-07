@@ -26,10 +26,13 @@ class SessionExercise extends Model
     protected $fillable = [
         'session_id',
         'exercise_id',
+        'custom_exercise_name',
         'repetitions',
         'rest_time',
         'duration',
         'weight',
+        'use_duration',
+        'use_bodyweight',
         'additional_description',
         'order',
         'sets_count',

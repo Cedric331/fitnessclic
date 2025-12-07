@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Exercises\IndexExerciseRequest;
+use App\Http\Requests\Exercises\StoreExerciseRequest;
+use App\Http\Requests\Exercises\UpdateExerciseRequest;
+use App\Http\Requests\Exercises\UploadFilesExerciseRequest;
 use App\Models\Category;
 use App\Models\Exercise;
 use Illuminate\Http\Request;
@@ -15,12 +19,13 @@ class ExercisesController extends Controller
     /**
      * Display the exercises library.
      */
-    public function index(Request $request): Response
+    public function index(IndexExerciseRequest $request): Response
     {
-        $searchTerm = trim((string) $request->input('search', ''));
-        $categoryId = $request->input('category_id');
-        $sortOrder = $request->input('sort', 'newest');
-        $viewMode = $request->input('view', 'grid-6');
+        $validated = $request->validated();
+        $searchTerm = trim((string) ($validated['search'] ?? ''));
+        $categoryId = $validated['category_id'] ?? null;
+        $sortOrder = $validated['sort'] ?? 'newest';
+        $viewMode = $validated['view'] ?? 'grid-6';
 
         $exercisesQuery = Exercise::query()
             ->where('is_shared', true) // Seulement les exercices visibles (non cachés par l'admin)
@@ -76,16 +81,9 @@ class ExercisesController extends Controller
     /**
      * Store a newly created exercise.
      */
-    public function store(Request $request)
+    public function store(StoreExerciseRequest $request)
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'suggested_duration' => ['nullable', 'string', 'max:255'],
-            'category_ids' => ['required', 'array', 'min:1'],
-            'category_ids.*' => ['required', 'exists:categories,id'],
-            'image' => ['required', 'image', 'max:5120'], // 5MB max
-        ]);
+        $validated = $request->validated();
 
         $exercise = Exercise::create([
             'user_id' => Auth::id(),
@@ -115,25 +113,9 @@ class ExercisesController extends Controller
     /**
      * Update the specified exercise.
      */
-    public function update(Request $request, Exercise $exercise)
+    public function update(UpdateExerciseRequest $request, Exercise $exercise)
     {
-        /** @var \App\Models\User|null $user */
-        $user = Auth::user();
-        
-        // Vérifier que l'utilisateur peut modifier cet exercice
-        if ($exercise->user_id !== Auth::id() && (!$user || !$user->isAdmin())) {
-            return redirect()->route('exercises.index')
-                ->with('error', 'Vous n\'avez pas les permissions pour modifier cet exercice.');
-        }
-
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'suggested_duration' => ['nullable', 'string', 'max:255'],
-            'category_ids' => ['required', 'array', 'min:1'],
-            'category_ids.*' => ['required', 'exists:categories,id'],
-            'image' => ['nullable', 'image', 'max:5120'], // 5MB max, nullable pour l'édition
-        ]);
+        $validated = $request->validated();
 
         $exercise->update([
             'title' => $validated['title'],
@@ -239,14 +221,9 @@ class ExercisesController extends Controller
      * Upload multiple files to create exercises.
      * Each file will create an exercise with the filename (without extension) as the title.
      */
-    public function uploadFiles(Request $request)
+    public function uploadFiles(UploadFilesExerciseRequest $request)
     {
-        $validated = $request->validate([
-            'files' => ['required', 'array', 'min:1'],
-            'files.*' => ['required', 'image', 'max:5120'], // 5MB max per file
-            'category_ids' => ['required', 'array', 'min:1'],
-            'category_ids.*' => ['required', 'exists:categories,id'],
-        ]);
+        $validated = $request->validated();
 
         $userId = Auth::id();
         $createdCount = 0;

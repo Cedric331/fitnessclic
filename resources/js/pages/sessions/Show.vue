@@ -430,58 +430,82 @@ const sortedExercises = computed(() => {
                                             <div class="flex-1 space-y-2">
                                                 <div>
                                                     <h3 class="font-semibold text-slate-900 dark:text-white text-sm">
-                                                        {{ sessionExercise.exercise?.title || 'Exercice inconnu' }}
+                                                        {{ sessionExercise.custom_exercise_name || sessionExercise.exercise?.title || 'Exercice inconnu' }}
                                                     </h3>
                                                 </div>
 
                                                 <!-- Détails des sets -->
-                                                <div v-if="sessionExercise.sets && sessionExercise.sets.length > 0" class="space-y-1">
+                                                <div v-if="sessionExercise.sets && sessionExercise.sets.length > 0" class="space-y-2">
                                                     <div
                                                         v-for="(set, setIndex) in sessionExercise.sets"
                                                         :key="set.id || `set-${item.block.id}-${exerciseIndex}-${setIndex}`"
-                                                        class="flex flex-wrap gap-2 text-xs"
+                                                        class="flex flex-wrap gap-2"
                                                     >
                                                         <Badge
                                                             variant="outline"
-                                                            class="text-xs border-blue-300"
+                                                            class="text-xs border-blue-300 bg-blue-50 dark:bg-blue-900/20"
                                                         >
-                                                            Série {{ set.set_number }}:
-                                                            <span v-if="set.repetitions">{{ set.repetitions }} répétitions</span>
-                                                            <span v-if="set.weight"> · {{ set.weight }} kg</span>
-                                                            <span v-if="set.duration"> · Durée: {{ set.duration }}</span>
-                                                            <span v-if="set.rest_time"> · Repos: {{ set.rest_time }}</span>
+                                                            <span class="font-semibold">Série {{ set.set_number }}</span>
+                                                        </Badge>
+                                                        <Badge
+                                                            v-if="sessionExercise.use_duration ? set.duration : set.repetitions"
+                                                            variant="outline"
+                                                            class="text-xs border-slate-300"
+                                                        >
+                                                            {{ sessionExercise.use_duration ? `Durée: ${set.duration}` : `${set.repetitions} répétitions` }}
+                                                        </Badge>
+                                                        <Badge
+                                                            v-if="sessionExercise.use_bodyweight"
+                                                            variant="outline"
+                                                            class="text-xs border-slate-300"
+                                                        >
+                                                            Poids de corps
+                                                        </Badge>
+                                                        <Badge
+                                                            v-else-if="set.weight"
+                                                            variant="outline"
+                                                            class="text-xs border-slate-300"
+                                                        >
+                                                            {{ set.weight }} kg
+                                                        </Badge>
+                                                        <Badge
+                                                            v-if="set.rest_time"
+                                                            variant="outline"
+                                                            class="text-xs border-slate-300"
+                                                        >
+                                                            Repos: {{ set.rest_time }}
                                                         </Badge>
                                                     </div>
                                                 </div>
                                                 <!-- Fallback pour les anciennes données (sans sets) -->
-                                                <div v-else-if="sessionExercise.repetitions || sessionExercise.duration || sessionExercise.rest_time || sessionExercise.weight" class="flex flex-wrap gap-2">
+                                                <div v-else-if="sessionExercise.repetitions || sessionExercise.duration || sessionExercise.rest_time || sessionExercise.weight || sessionExercise.use_bodyweight" class="flex flex-wrap gap-2">
                                                     <Badge
-                                                        v-if="sessionExercise.repetitions"
+                                                        v-if="sessionExercise.use_duration ? sessionExercise.duration : sessionExercise.repetitions"
                                                         variant="outline"
-                                                        class="text-xs border-blue-300"
+                                                        class="text-xs border-slate-300"
                                                     >
-                                                        {{ sessionExercise.repetitions }} répétitions
+                                                        {{ sessionExercise.use_duration ? `Durée: ${sessionExercise.duration}` : `${sessionExercise.repetitions} répétitions` }}
                                                     </Badge>
                                                     <Badge
-                                                        v-if="sessionExercise.weight"
+                                                        v-if="sessionExercise.use_bodyweight"
                                                         variant="outline"
-                                                        class="text-xs border-blue-300"
+                                                        class="text-xs border-slate-300"
+                                                    >
+                                                        Poids de corps
+                                                    </Badge>
+                                                    <Badge
+                                                        v-else-if="sessionExercise.weight"
+                                                        variant="outline"
+                                                        class="text-xs border-slate-300"
                                                     >
                                                         {{ sessionExercise.weight }} kg
                                                     </Badge>
                                                     <Badge
-                                                        v-if="sessionExercise.duration"
-                                                        variant="outline"
-                                                        class="text-xs border-blue-300"
-                                                    >
-                                                        Durée : {{ sessionExercise.duration }}
-                                                    </Badge>
-                                                    <Badge
                                                         v-if="sessionExercise.rest_time"
                                                         variant="outline"
-                                                        class="text-xs border-blue-300"
+                                                        class="text-xs border-slate-300"
                                                     >
-                                                        Repos : {{ sessionExercise.rest_time }}
+                                                        Repos: {{ sessionExercise.rest_time }}
                                                     </Badge>
                                                 </div>
 
@@ -531,58 +555,82 @@ const sortedExercises = computed(() => {
                                     <div class="flex-1 space-y-2">
                                         <div>
                                             <h3 class="font-semibold text-slate-900 dark:text-white">
-                                                {{ item.exercise.exercise?.title || 'Exercice inconnu' }}
+                                                {{ item.exercise.custom_exercise_name || item.exercise.exercise?.title || 'Exercice inconnu' }}
                                             </h3>
                                         </div>
 
                                         <!-- Détails des sets -->
-                                        <div v-if="item.exercise.sets && item.exercise.sets.length > 0" class="space-y-1">
+                                        <div v-if="item.exercise.sets && item.exercise.sets.length > 0" class="space-y-2">
                                             <div
                                                 v-for="(set, setIndex) in item.exercise.sets"
                                                 :key="set.id || `set-${item.exercise.id}-${setIndex}`"
-                                                class="flex flex-wrap gap-2 text-sm"
+                                                class="flex flex-wrap gap-2"
                                             >
                                                 <Badge
                                                     variant="outline"
-                                                    class="text-xs"
+                                                    class="text-xs border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                                                 >
-                                                    Série {{ set.set_number }}:
-                                                    <span v-if="set.repetitions">{{ set.repetitions }} répétitions</span>
-                                                    <span v-if="set.weight"> · {{ set.weight }} kg</span>
-                                                    <span v-if="set.duration"> · Durée: {{ set.duration }}</span>
-                                                    <span v-if="set.rest_time"> · Repos: {{ set.rest_time }}</span>
+                                                    <span class="font-semibold">Série {{ set.set_number }}</span>
+                                                </Badge>
+                                                <Badge
+                                                    v-if="item.exercise.use_duration ? set.duration : set.repetitions"
+                                                    variant="outline"
+                                                    class="text-xs border-slate-300"
+                                                >
+                                                    {{ item.exercise.use_duration ? `Durée: ${set.duration}` : `${set.repetitions} répétitions` }}
+                                                </Badge>
+                                                <Badge
+                                                    v-if="item.exercise.use_bodyweight"
+                                                    variant="outline"
+                                                    class="text-xs border-slate-300"
+                                                >
+                                                    Poids de corps
+                                                </Badge>
+                                                <Badge
+                                                    v-else-if="set.weight"
+                                                    variant="outline"
+                                                    class="text-xs border-slate-300"
+                                                >
+                                                    {{ set.weight }} kg
+                                                </Badge>
+                                                <Badge
+                                                    v-if="set.rest_time"
+                                                    variant="outline"
+                                                    class="text-xs border-slate-300"
+                                                >
+                                                    Repos: {{ set.rest_time }}
                                                 </Badge>
                                             </div>
                                         </div>
                                         <!-- Fallback pour les anciennes données (sans sets) -->
-                                        <div v-else-if="item.exercise.repetitions || item.exercise.duration || item.exercise.rest_time || item.exercise.weight" class="flex flex-wrap gap-2">
+                                        <div v-else-if="item.exercise.repetitions || item.exercise.duration || item.exercise.rest_time || item.exercise.weight || item.exercise.use_bodyweight" class="flex flex-wrap gap-2">
                                             <Badge
-                                                v-if="item.exercise.repetitions"
+                                                v-if="item.exercise.use_duration ? item.exercise.duration : item.exercise.repetitions"
                                                 variant="outline"
-                                                class="text-xs"
+                                                class="text-xs border-slate-300"
                                             >
-                                                {{ item.exercise.repetitions }} répétitions
+                                                {{ item.exercise.use_duration ? `Durée: ${item.exercise.duration}` : `${item.exercise.repetitions} répétitions` }}
                                             </Badge>
                                             <Badge
-                                                v-if="item.exercise.weight"
+                                                v-if="item.exercise.use_bodyweight"
                                                 variant="outline"
-                                                class="text-xs"
+                                                class="text-xs border-slate-300"
+                                            >
+                                                Poids de corps
+                                            </Badge>
+                                            <Badge
+                                                v-else-if="item.exercise.weight"
+                                                variant="outline"
+                                                class="text-xs border-slate-300"
                                             >
                                                 {{ item.exercise.weight }} kg
                                             </Badge>
                                             <Badge
-                                                v-if="item.exercise.duration"
-                                                variant="outline"
-                                                class="text-xs"
-                                            >
-                                                Durée : {{ item.exercise.duration }}
-                                            </Badge>
-                                            <Badge
                                                 v-if="item.exercise.rest_time"
                                                 variant="outline"
-                                                class="text-xs"
+                                                class="text-xs border-slate-300"
                                             >
-                                                Repos : {{ item.exercise.rest_time }}
+                                                Repos: {{ item.exercise.rest_time }}
                                             </Badge>
                                         </div>
 

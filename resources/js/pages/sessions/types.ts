@@ -25,12 +25,15 @@ export interface SessionExercise {
     id?: number;
     exercise_id: number;
     exercise?: Exercise;
+    custom_exercise_name?: string | null; // Nom personnalisé de l'exercice (spécifique à la séance)
     sets?: ExerciseSet[]; // Séries multiples
     // Champs pour compatibilité avec l'ancien système (si pas de séries multiples)
     repetitions?: number | null;
     weight?: number | null;
     rest_time?: string | null;
     duration?: string | null;
+    use_duration?: boolean; // true = utiliser durée, false = utiliser répétitions
+    use_bodyweight?: boolean; // true = poids de corps, false = charge (weight)
     description?: string | null; // Notes/commentaires
     sets_count?: number | null; // Nombre de séries
     order: number;

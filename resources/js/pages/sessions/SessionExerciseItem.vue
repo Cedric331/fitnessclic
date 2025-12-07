@@ -21,7 +21,9 @@ import {
     AlertTriangle,
     Plus,
     Trash2,
-    ArrowLeftRight
+    ArrowLeftRight,
+    RotateCw,
+    Pencil
 } from 'lucide-vue-next';
 import type { SessionExercise, ExerciseSet } from './types';
 
@@ -42,6 +44,7 @@ const emit = defineEmits<{
 }>();
 
 const showRemoveDialog = ref(false);
+const isEditingName = ref(false);
 const exercise = computed(() => props.sessionExercise.exercise);
 
 // Initialiser les séries si elles n'existent pas
@@ -306,9 +309,45 @@ const getSetLabel = (setNumber: number) => {
 
                     <!-- Nom de l'exercice -->
                     <div class="flex-1 min-w-0">
-                        <h3 class="font-semibold text-base mb-2">
-                            {{ exercise?.title || 'Exercice' }}
-                        </h3>
+                        <!-- Nom personnalisé de l'exercice -->
+                        <div class="mb-2">
+                            <div v-if="!isEditingName" class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    @click.stop="isEditingName = true"
+                                    class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors flex-shrink-0"
+                                    title="Modifier le nom"
+                                >
+                                    <Pencil class="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
+                                </button>
+                                <h3 class="text-sm font-semibold flex-1">
+                                    {{ sessionExercise.custom_exercise_name || exercise?.title || 'Exercice' }}
+                                </h3>
+                            </div>
+                            <div v-else class="flex items-center gap-2">
+                                <Input
+                                    :model-value="sessionExercise.custom_exercise_name || exercise?.title || 'Exercice'"
+                                    @update:model-value="(value: string) => {
+                                        updateField('custom_exercise_name', value || null);
+                                        if (!value) isEditingName = false;
+                                    }"
+                                    @blur="isEditingName = false"
+                                    @keydown.enter="isEditingName = false"
+                                    @mousedown.stop
+                                    @dragstart.stop
+                                    placeholder="Nom de l'exercice"
+                                    class="text-sm font-semibold flex-1"
+                                    autofocus
+                                />
+                                <button
+                                    type="button"
+                                    @click.stop="isEditingName = false"
+                                    class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors flex-shrink-0"
+                                >
+                                    <X class="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
+                                </button>
+                            </div>
+                        </div>
                         
                         <!-- Commentaires/Consignes de réalisationn -->
                         <div class="mb-2">
@@ -363,6 +402,7 @@ const getSetLabel = (setNumber: number) => {
                                 {{ getSetLabel(set.set_number) }}
                             </div>
 
+
                             <!-- Champs organisés en grille responsive : 2 colonnes sur mobile, 4 sur desktop -->
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 <!-- Série (nombre de séries) - visible sur toutes les lignes, mais modifiable uniquement sur la première -->
@@ -381,10 +421,23 @@ const getSetLabel = (setNumber: number) => {
                                     />
                                 </div>
 
-                                <!-- Répétitions -->
+                                <!-- Répétitions ou Durée (selon le switch) -->
                                 <div>
-                                    <Label class="text-xs text-neutral-500 mb-1 block">Rep</Label>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <Label class="text-xs text-neutral-500">
+                                            {{ sessionExercise.use_duration ? 'Durée (seconde)' : 'Rep' }}
+                                        </Label>
+                                        <button
+                                            type="button"
+                                            @click.stop="updateField('use_duration', !sessionExercise.use_duration)"
+                                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
+                                            title="Basculer entre Rep et Durée"
+                                        >
+                                            <RotateCw class="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
+                                        </button>
+                                    </div>
                                     <Input
+                                        v-if="!sessionExercise.use_duration"
                                         type="number"
                                         :model-value="set.repetitions"
                                         @update:model-value="(value: string | number) => {
@@ -397,12 +450,35 @@ const getSetLabel = (setNumber: number) => {
                                         class="h-8 text-sm"
                                         min="0"
                                     />
+                                    <Input
+                                        v-else
+                                        type="text"
+                                        :model-value="set.duration"
+                                        @update:model-value="(value: string) => updateSet(setIndex, 'duration', value || null)"
+                                        @mousedown.stop
+                                        @dragstart.stop
+                                        placeholder="30s"
+                                        class="h-8 text-sm"
+                                    />
                                 </div>
 
-                                <!-- Charge (poids) -->
+                                <!-- Charge (poids) ou Poids de corps (selon le switch) -->
                                 <div>
-                                    <Label class="text-xs text-neutral-500 mb-1 block">Charge (kg)</Label>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <Label class="text-xs text-neutral-500">
+                                            {{ sessionExercise.use_bodyweight ? 'Poids de corps' : 'Charge (kg)' }}
+                                        </Label>
+                                        <button
+                                            type="button"
+                                            @click.stop="updateField('use_bodyweight', !sessionExercise.use_bodyweight)"
+                                            class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
+                                            title="Basculer entre Charge et Poids de corps"
+                                        >
+                                            <RotateCw class="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
+                                        </button>
+                                    </div>
                                     <Input
+                                        v-if="!sessionExercise.use_bodyweight"
                                         type="number"
                                         step="0.5"
                                         :model-value="set.weight"
@@ -415,7 +491,14 @@ const getSetLabel = (setNumber: number) => {
                                         placeholder="20"
                                         class="h-8 text-sm"
                                         min="0"
+                                        :disabled="sessionExercise.use_bodyweight"
                                     />
+                                    <div
+                                        v-else
+                                        class="h-8 flex items-center justify-center text-sm text-neutral-500 bg-neutral-100 dark:bg-neutral-800 rounded-md border border-input"
+                                    >
+                                        Poids de corps
+                                    </div>
                                 </div>
 
                                 <!-- Repos -->

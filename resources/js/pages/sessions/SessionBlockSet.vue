@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { X, ArrowLeftRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown } from 'lucide-vue-next';
+import { X, ArrowLeftRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown, RotateCw, Pencil } from 'lucide-vue-next';
 import type { SessionBlock, SessionExercise } from './types';
 
 const props = defineProps<{
@@ -36,10 +36,68 @@ const emit = defineEmits<{
 }>();
 
 const blockDescription = computed(() => props.block.block_description || '');
+
+// Computed pour les exercices du bloc pour assurer la réactivité
+// Utiliser directement props.block.exercises pour que Vue détecte les changements
+const blockExercises = computed(() => {
+    // Retourner directement les exercices du bloc pour maintenir la réactivité
+    console.log('SessionBlockSet: blockExercises computed recalculated:', { exercises: props.block.exercises, editingExerciseNameIds: editingExerciseNameIds.value });
+    return props.block.exercises;
+});
+
+// Watcher pour préserver l'état d'édition lors des changements de props.block.exercises
+watch(() => props.block.exercises, (newExercises, oldExercises) => {
+    console.log('SessionBlockSet: props.block.exercises changed:', { 
+        newExercises, 
+        oldExercises, 
+        editingExerciseNameIds: editingExerciseNameIds.value,
+        editingExerciseNameIdsRef: editingExerciseNameIds
+    });
+    
+    // Préserver l'état d'édition pour les exercices qui existent toujours
+    if (oldExercises && editingExerciseNameIds.value) {
+        const preservedState: Record<number, boolean> = {};
+        newExercises.forEach((newEx: SessionExercise) => {
+            const oldEx = oldExercises.find((old: SessionExercise) => old.id === newEx.id);
+            if (oldEx && editingExerciseNameIds.value[oldEx.id || -1]) {
+                preservedState[newEx.id || -1] = true;
+            }
+        });
+        // Mettre à jour l'état préservé
+        Object.keys(preservedState).forEach(key => {
+            editingExerciseNameIds.value[Number(key)] = true;
+        });
+    }
+}, { deep: true });
 const isDraggingOver = ref(false);
 const showRemoveExerciseDialog = ref(false);
 const showRemoveBlockDialog = ref(false);
 const exerciseToRemoveIndex = ref<number | null>(null);
+// Utiliser un objet réactif pour stocker les IDs des exercices en cours d'édition
+// Cela persiste même après les re-renders et Vue détecte les changements
+const editingExerciseNameIds = ref<Record<number, boolean>>({});
+
+// Computed pour exposer la valeur du ref dans le template
+const editingExerciseNameIdsValue = computed({
+    get: () => {
+        if (!editingExerciseNameIds.value) {
+            editingExerciseNameIds.value = {};
+        }
+        return editingExerciseNameIds.value;
+    },
+    set: (value) => {
+        editingExerciseNameIds.value = value;
+    }
+});
+
+// Valeurs locales pour l'édition de nom (par ID d'exercice) - évite les re-renders à chaque frappe
+const editingNameValues = ref<Record<number, string>>({});
+
+// Valeurs locales pour les champs de saisie (par ID d'exercice) - évite les re-renders à chaque frappe
+const editingRepetitionsValues = ref<Record<number, string>>({});
+const editingDurationValues = ref<Record<number, string>>({});
+const editingWeightValues = ref<Record<number, string>>({});
+const editingRestTimeValues = ref<Record<number, string>>({});
 
 const handleDrop = (event: DragEvent) => {
     event.stopPropagation(); // Empêcher la propagation vers le parent
@@ -78,7 +136,15 @@ const findExerciseIndex = (exercise: SessionExercise): number => {
 
 // Mettre à jour un exercice du bloc
 const updateExercise = (exerciseIndex: number, updates: Partial<SessionExercise>) => {
-    emit('update-exercise', exerciseIndex, updates);
+    const exercise = props.block.exercises[exerciseIndex];
+    console.log('SessionBlockSet updateExercise:', { exerciseIndex, updates, currentExercise: exercise, exerciseId: exercise?.id });
+    // Passer l'ID de l'exercice au lieu de l'index pour éviter les problèmes de tri
+    if (exercise?.id) {
+        emit('update-exercise', exercise.id, updates);
+    } else {
+        // Fallback sur l'index si pas d'ID
+        emit('update-exercise', exerciseIndex, updates);
+    }
 };
 
 // Gérer le clic sur le bouton de suppression d'un exercice
@@ -204,9 +270,11 @@ const exerciseToRemoveName = computed(() => {
             >
                 <!-- Exercices du bloc -->
                 <div
-                    v-for="(exercise, index) in block.exercises"
-                    :key="exercise.id || `ex-${exercise.exercise_id}-${index}`"
+                    v-for="(exercise, index) in props.block.exercises"
+                    :key="`exercise-${exercise.id}-${exercise.use_duration}-${exercise.use_bodyweight}-${exercise.custom_exercise_name}`"
                     class="relative flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg hover:shadow-md transition-shadow"
+                    @mousedown.stop
+                    @click.stop
                 >
                     <!-- Bouton supprimer - en haut à droite -->
                     <Button
@@ -234,10 +302,93 @@ const exerciseToRemoveName = computed(() => {
                     
                     <!-- Informations de l'exercice et paramètres -->
                     <div class="flex-1 min-w-0 pr-8">
-                        <!-- Titre de l'exercice -->
-                        <h4 class="text-sm font-semibold mb-2 line-clamp-1">
-                            {{ exercise.exercise?.title || 'Exercice' }}
-                        </h4>
+                        <!-- Nom personnalisé de l'exercice -->
+                        <div class="mb-2">
+                            <div v-if="!editingExerciseNameIdsValue[exercise.id || index]" class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    @click.stop="() => {
+                                        const exerciseId = exercise.id || index;
+                                        console.log('SessionBlockSet: Opening edit mode for exercise:', { exerciseId, exercise, editingExerciseNameIds: editingExerciseNameIds.value, editingExerciseNameIdsRef: editingExerciseNameIds });
+                                        // S'assurer que editingExerciseNameIds.value est un objet
+                                        if (!editingExerciseNameIds.value) {
+                                            editingExerciseNameIds.value = {};
+                                        }
+                                        // Initialiser la valeur locale avec la valeur actuelle
+                                        editingNameValues[exerciseId] = exercise.custom_exercise_name || exercise.exercise?.title || 'Exercice';
+                                        editingExerciseNameIdsValue[exerciseId] = true;
+                                        console.log('SessionBlockSet: After setting to true:', { exerciseId, editingExerciseNameIds: editingExerciseNameIds.value });
+                                    }"
+                                    @mousedown.stop
+                                    class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors flex-shrink-0"
+                                    title="Modifier le nom"
+                                >
+                                    <Pencil class="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
+                                </button>
+                                <h4 class="text-sm font-semibold flex-1 line-clamp-1">
+                                    {{ exercise.custom_exercise_name || exercise.exercise?.title || 'Exercice' }}
+                                </h4>
+                            </div>
+                            <div v-else class="flex items-center gap-2">
+                                <Input
+                                    :model-value="editingNameValues[exercise.id || index] ?? (exercise.custom_exercise_name || exercise.exercise?.title || 'Exercice')"
+                                    @update:model-value="(value: string) => {
+                                        const exerciseId = exercise.id || index;
+                                        // Mettre à jour la valeur locale uniquement - pas de re-render du parent
+                                        editingNameValues[exerciseId] = value;
+                                    }"
+                                    @blur="() => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingNameValues[exerciseId];
+                                        // Mettre à jour le parent uniquement sur blur - évite les re-renders à chaque frappe
+                                        if (value !== undefined) {
+                                            updateExercise(index, { custom_exercise_name: value || null });
+                                            // Nettoyer la valeur locale après la mise à jour
+                                            delete editingNameValues[exerciseId];
+                                        }
+                                        // Fermer le mode édition
+                                        if (editingExerciseNameIds.value) {
+                                            editingExerciseNameIdsValue[exerciseId] = false;
+                                        }
+                                    }"
+                                    @keydown.enter="(event: KeyboardEvent) => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingNameValues[exerciseId];
+                                        // Mettre à jour le parent sur Enter
+                                        if (value !== undefined) {
+                                            updateExercise(index, { custom_exercise_name: value || null });
+                                            // Nettoyer la valeur locale après la mise à jour
+                                            delete editingNameValues[exerciseId];
+                                        }
+                                        // Fermer le mode édition
+                                        if (editingExerciseNameIds.value) {
+                                            editingExerciseNameIdsValue[exerciseId] = false;
+                                        }
+                                        // Empêcher le comportement par défaut
+                                        event.preventDefault();
+                                    }"
+                                    @mousedown.stop
+                                    @click.stop
+                                    placeholder="Nom de l'exercice"
+                                    class="text-sm font-semibold h-8 flex-1"
+                                    autofocus
+                                />
+                                <button
+                                    type="button"
+                                    @click.stop="() => {
+                                        const exerciseId = exercise.id || index;
+                                        console.log('SessionBlockSet: Cancel button clicked:', { exerciseId, editingExerciseNameIds: editingExerciseNameIds.value });
+                                        if (editingExerciseNameIds.value) {
+                                            editingExerciseNameIdsValue[exerciseId] = false;
+                                        }
+                                    }"
+                                    @mousedown.stop
+                                    class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors flex-shrink-0"
+                                >
+                                    <X class="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
+                                </button>
+                            </div>
+                        </div>
                         
                         <!-- Ligne avec Serie, Rep, Charge, Repos - 1 colonne sur mobile, 4 sur desktop -->
                         <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
@@ -248,75 +399,243 @@ const exerciseToRemoveName = computed(() => {
                                     type="number"
                                     :model-value="exercise.sets_count"
                                     @update:model-value="(value: string | number) => updateExercise(index, { sets_count: value ? parseInt(value as string) : null })"
+                                    @mousedown.stop
+                                    @click.stop
                                     placeholder="Nombre"
                                     class="h-8 text-sm"
                                     min="1"
                                 />
                             </div>
                             
-                            <!-- Répétitions -->
+                            <!-- Répétitions ou Durée (selon le switch) -->
                             <div>
-                                <Label class="text-xs text-neutral-500 mb-1 block">Rep</Label>
+                                <div class="flex items-center justify-between mb-1">
+                                    <Label class="text-xs text-neutral-500">
+                                        {{ (exercise.use_duration ?? false) ? 'Durée (seconde)' : 'Rep' }}
+                                    </Label>
+                                    <button
+                                        type="button"
+                                        @click.stop.prevent="updateExercise(index, { use_duration: !(exercise.use_duration ?? false) })"
+                                        @mousedown.stop
+                                        class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
+                                        title="Basculer entre Rep et Durée"
+                                    >
+                                        <RotateCw class="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
+                                    </button>
+                                </div>
                                 <Input
+                                    v-if="!(exercise.use_duration ?? false)"
                                     type="number"
-                                    :model-value="exercise.sets?.[0]?.repetitions ?? exercise.repetitions"
+                                    :model-value="editingRepetitionsValues[exercise.id || index] ?? (exercise.sets?.[0]?.repetitions ?? exercise.repetitions ?? '')"
                                     @update:model-value="(value: string | number) => {
-                                        const updates: Partial<SessionExercise> = {};
-                                        if (exercise.sets && exercise.sets.length > 0) {
-                                            const updatedSets = [...exercise.sets];
-                                            updatedSets[0] = { ...updatedSets[0], repetitions: value ? parseInt(value as string) : null };
-                                            updates.sets = updatedSets;
-                                        } else {
-                                            // Créer un set par défaut si les sets n'existent pas
-                                            const defaultSet = {
-                                                set_number: 1,
-                                                repetitions: value ? parseInt(value as string) : null,
-                                                weight: exercise.weight ?? null,
-                                                rest_time: exercise.rest_time ?? null,
-                                                duration: exercise.duration ?? null,
-                                                order: 0
-                                            };
-                                            updates.sets = [defaultSet];
-                                        }
-                                        updateExercise(index, updates);
+                                        const exerciseId = exercise.id || index;
+                                        editingRepetitionsValues[exerciseId] = value ? String(value) : '';
                                     }"
+                                    @blur="() => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingRepetitionsValues[exerciseId];
+                                        if (value !== undefined) {
+                                            const updates: Partial<SessionExercise> = {};
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                const updatedSets = [...exercise.sets];
+                                                updatedSets[0] = { ...updatedSets[0], repetitions: value ? parseInt(value) : null };
+                                                updates.sets = updatedSets;
+                                            } else {
+                                                const defaultSet = {
+                                                    set_number: 1,
+                                                    repetitions: value ? parseInt(value) : null,
+                                                    weight: exercise.weight ?? null,
+                                                    rest_time: exercise.rest_time ?? null,
+                                                    duration: exercise.duration ?? null,
+                                                    order: 0
+                                                };
+                                                updates.sets = [defaultSet];
+                                            }
+                                            updateExercise(index, updates);
+                                            delete editingRepetitionsValues[exerciseId];
+                                        }
+                                    }"
+                                    @keydown.enter="(event: KeyboardEvent) => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingRepetitionsValues[exerciseId];
+                                        if (value !== undefined) {
+                                            const updates: Partial<SessionExercise> = {};
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                const updatedSets = [...exercise.sets];
+                                                updatedSets[0] = { ...updatedSets[0], repetitions: value ? parseInt(value) : null };
+                                                updates.sets = updatedSets;
+                                            } else {
+                                                const defaultSet = {
+                                                    set_number: 1,
+                                                    repetitions: value ? parseInt(value) : null,
+                                                    weight: exercise.weight ?? null,
+                                                    rest_time: exercise.rest_time ?? null,
+                                                    duration: exercise.duration ?? null,
+                                                    order: 0
+                                                };
+                                                updates.sets = [defaultSet];
+                                            }
+                                            updateExercise(index, updates);
+                                            delete editingRepetitionsValues[exerciseId];
+                                        }
+                                        (event.target as HTMLInputElement).blur();
+                                    }"
+                                    @mousedown.stop
+                                    @click.stop
                                     placeholder="10"
                                     class="h-8 text-sm"
                                     min="0"
                                 />
+                                <Input
+                                    v-else
+                                    type="text"
+                                    :model-value="editingDurationValues[exercise.id || index] ?? (exercise.sets?.[0]?.duration ?? exercise.duration ?? '')"
+                                    @update:model-value="(value: string) => {
+                                        const exerciseId = exercise.id || index;
+                                        editingDurationValues[exerciseId] = value;
+                                    }"
+                                    @blur="() => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingDurationValues[exerciseId];
+                                        if (value !== undefined) {
+                                            const updates: Partial<SessionExercise> = {};
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                const updatedSets = [...exercise.sets];
+                                                updatedSets[0] = { ...updatedSets[0], duration: value || null };
+                                                updates.sets = updatedSets;
+                                            } else {
+                                                const defaultSet = {
+                                                    set_number: 1,
+                                                    repetitions: exercise.repetitions ?? null,
+                                                    weight: exercise.weight ?? null,
+                                                    rest_time: exercise.rest_time ?? null,
+                                                    duration: value || null,
+                                                    order: 0
+                                                };
+                                                updates.sets = [defaultSet];
+                                            }
+                                            updateExercise(index, updates);
+                                            delete editingDurationValues[exerciseId];
+                                        }
+                                    }"
+                                    @keydown.enter="(event: KeyboardEvent) => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingDurationValues[exerciseId];
+                                        if (value !== undefined) {
+                                            const updates: Partial<SessionExercise> = {};
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                const updatedSets = [...exercise.sets];
+                                                updatedSets[0] = { ...updatedSets[0], duration: value || null };
+                                                updates.sets = updatedSets;
+                                            } else {
+                                                const defaultSet = {
+                                                    set_number: 1,
+                                                    repetitions: exercise.repetitions ?? null,
+                                                    weight: exercise.weight ?? null,
+                                                    rest_time: exercise.rest_time ?? null,
+                                                    duration: value || null,
+                                                    order: 0
+                                                };
+                                                updates.sets = [defaultSet];
+                                            }
+                                            updateExercise(index, updates);
+                                            delete editingDurationValues[exerciseId];
+                                        }
+                                        (event.target as HTMLInputElement).blur();
+                                    }"
+                                    @mousedown.stop
+                                    @click.stop
+                                    placeholder="30s"
+                                    class="h-8 text-sm"
+                                />
                             </div>
                             
-                            <!-- Charge (poids) -->
+                            <!-- Charge (poids) ou Poids de corps (selon le switch) -->
                             <div>
-                                <Label class="text-xs text-neutral-500 mb-1 block">Charge (kg)</Label>
+                                <div class="flex items-center justify-between mb-1">
+                                    <Label class="text-xs text-neutral-500">
+                                        {{ (exercise.use_bodyweight ?? false) ? 'Poids de corps' : 'Charge (kg)' }}
+                                    </Label>
+                                    <button
+                                        type="button"
+                                        @click.stop.prevent="updateExercise(index, { use_bodyweight: !(exercise.use_bodyweight ?? false) })"
+                                        @mousedown.stop
+                                        class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
+                                        title="Basculer entre Charge et Poids de corps"
+                                    >
+                                        <RotateCw class="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
+                                    </button>
+                                </div>
                                 <Input
+                                    v-if="!(exercise.use_bodyweight ?? false)"
                                     type="number"
                                     step="0.5"
-                                    :model-value="exercise.sets?.[0]?.weight ?? exercise.weight"
+                                    :model-value="editingWeightValues[exercise.id || index] ?? (exercise.sets?.[0]?.weight ?? exercise.weight ?? '')"
                                     @update:model-value="(value: string | number) => {
-                                        const updates: Partial<SessionExercise> = {};
-                                        if (exercise.sets && exercise.sets.length > 0) {
-                                            const updatedSets = [...exercise.sets];
-                                            updatedSets[0] = { ...updatedSets[0], weight: value ? parseFloat(value as string) : null };
-                                            updates.sets = updatedSets;
-                                        } else {
-                                            // Créer un set par défaut si les sets n'existent pas
-                                            const defaultSet = {
-                                                set_number: 1,
-                                                repetitions: exercise.repetitions ?? null,
-                                                weight: value ? parseFloat(value as string) : null,
-                                                rest_time: exercise.rest_time ?? null,
-                                                duration: exercise.duration ?? null,
-                                                order: 0
-                                            };
-                                            updates.sets = [defaultSet];
-                                        }
-                                        updateExercise(index, updates);
+                                        const exerciseId = exercise.id || index;
+                                        editingWeightValues[exerciseId] = value ? String(value) : '';
                                     }"
+                                    @blur="() => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingWeightValues[exerciseId];
+                                        if (value !== undefined) {
+                                            const updates: Partial<SessionExercise> = {};
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                const updatedSets = [...exercise.sets];
+                                                updatedSets[0] = { ...updatedSets[0], weight: value ? parseFloat(value) : null };
+                                                updates.sets = updatedSets;
+                                            } else {
+                                                const defaultSet = {
+                                                    set_number: 1,
+                                                    repetitions: exercise.repetitions ?? null,
+                                                    weight: value ? parseFloat(value) : null,
+                                                    rest_time: exercise.rest_time ?? null,
+                                                    duration: exercise.duration ?? null,
+                                                    order: 0
+                                                };
+                                                updates.sets = [defaultSet];
+                                            }
+                                            updateExercise(index, updates);
+                                            delete editingWeightValues[exerciseId];
+                                        }
+                                    }"
+                                    @keydown.enter="(event: KeyboardEvent) => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingWeightValues[exerciseId];
+                                        if (value !== undefined) {
+                                            const updates: Partial<SessionExercise> = {};
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                const updatedSets = [...exercise.sets];
+                                                updatedSets[0] = { ...updatedSets[0], weight: value ? parseFloat(value) : null };
+                                                updates.sets = updatedSets;
+                                            } else {
+                                                const defaultSet = {
+                                                    set_number: 1,
+                                                    repetitions: exercise.repetitions ?? null,
+                                                    weight: value ? parseFloat(value) : null,
+                                                    rest_time: exercise.rest_time ?? null,
+                                                    duration: exercise.duration ?? null,
+                                                    order: 0
+                                                };
+                                                updates.sets = [defaultSet];
+                                            }
+                                            updateExercise(index, updates);
+                                            delete editingWeightValues[exerciseId];
+                                        }
+                                        (event.target as HTMLInputElement).blur();
+                                    }"
+                                    @mousedown.stop
+                                    @click.stop
                                     placeholder="20"
                                     class="h-8 text-sm"
                                     min="0"
                                 />
+                                <div
+                                    v-else
+                                    class="h-8 flex items-center justify-center text-sm text-neutral-500 bg-neutral-100 dark:bg-neutral-800 rounded-md border border-input"
+                                >
+                                    Poids de corps
+                                </div>
                             </div>
                             
                             <!-- Repos -->
@@ -324,27 +643,64 @@ const exerciseToRemoveName = computed(() => {
                                 <Label class="text-xs text-neutral-500 mb-1 block">Repos</Label>
                                 <Input
                                     type="text"
-                                    :model-value="exercise.sets?.[0]?.rest_time ?? exercise.rest_time"
+                                    :model-value="editingRestTimeValues[exercise.id || index] ?? (exercise.sets?.[0]?.rest_time ?? exercise.rest_time ?? '')"
                                     @update:model-value="(value: string) => {
-                                        const updates: Partial<SessionExercise> = {};
-                                        if (exercise.sets && exercise.sets.length > 0) {
-                                            const updatedSets = [...exercise.sets];
-                                            updatedSets[0] = { ...updatedSets[0], rest_time: value };
-                                            updates.sets = updatedSets;
-                                        } else {
-                                            // Créer un set par défaut si les sets n'existent pas
-                                            const defaultSet = {
-                                                set_number: 1,
-                                                repetitions: exercise.repetitions ?? null,
-                                                weight: exercise.weight ?? null,
-                                                rest_time: value,
-                                                duration: exercise.duration ?? null,
-                                                order: 0
-                                            };
-                                            updates.sets = [defaultSet];
-                                        }
-                                        updateExercise(index, updates);
+                                        const exerciseId = exercise.id || index;
+                                        editingRestTimeValues[exerciseId] = value;
                                     }"
+                                    @blur="() => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingRestTimeValues[exerciseId];
+                                        if (value !== undefined) {
+                                            const updates: Partial<SessionExercise> = {};
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                const updatedSets = [...exercise.sets];
+                                                updatedSets[0] = { ...updatedSets[0], rest_time: value };
+                                                updates.sets = updatedSets;
+                                            } else {
+                                                // Créer un set par défaut si les sets n'existent pas
+                                                const defaultSet = {
+                                                    set_number: 1,
+                                                    repetitions: exercise.repetitions ?? null,
+                                                    weight: exercise.weight ?? null,
+                                                    rest_time: value,
+                                                    duration: exercise.duration ?? null,
+                                                    order: 0
+                                                };
+                                                updates.sets = [defaultSet];
+                                            }
+                                            updateExercise(index, updates);
+                                            delete editingRestTimeValues[exerciseId];
+                                        }
+                                    }"
+                                    @keydown.enter="(event: KeyboardEvent) => {
+                                        const exerciseId = exercise.id || index;
+                                        const value = editingRestTimeValues[exerciseId];
+                                        if (value !== undefined) {
+                                            const updates: Partial<SessionExercise> = {};
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                const updatedSets = [...exercise.sets];
+                                                updatedSets[0] = { ...updatedSets[0], rest_time: value };
+                                                updates.sets = updatedSets;
+                                            } else {
+                                                // Créer un set par défaut si les sets n'existent pas
+                                                const defaultSet = {
+                                                    set_number: 1,
+                                                    repetitions: exercise.repetitions ?? null,
+                                                    weight: exercise.weight ?? null,
+                                                    rest_time: value,
+                                                    duration: exercise.duration ?? null,
+                                                    order: 0
+                                                };
+                                                updates.sets = [defaultSet];
+                                            }
+                                            updateExercise(index, updates);
+                                            delete editingRestTimeValues[exerciseId];
+                                        }
+                                        (event.target as HTMLInputElement).blur();
+                                    }"
+                                    @mousedown.stop
+                                    @click.stop
                                     placeholder="30s"
                                     class="h-8 text-sm"
                                 />
