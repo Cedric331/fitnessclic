@@ -57,25 +57,75 @@ const handleDelete = (event: Event) => {
     event.stopPropagation();
     emit('delete', props.exercise);
 };
+
+// Classes pour ajuster la taille des images selon le mode d'affichage
+// Pour les modes avec plusieurs colonnes, on ne réduit pas l'image car object-cover remplit tout l'espace
+const imageScaleClass = computed(() => {
+    if (!props.viewMode) return '';
+    
+    // Seulement pour grid-2, on peut avoir besoin d'ajustements
+    // Pour les autres modes, object-cover remplit tout l'espace sans besoin de scale
+    return '';
+});
+
+// Afficher le contenu texte uniquement pour grid-2 (1-2 par ligne)
+const showContent = computed(() => {
+    return props.viewMode === 'grid-2';
+});
+
+// Afficher l'overlay au survol uniquement pour grid-2 (1-2 par ligne)
+const showOverlay = computed(() => {
+    return props.viewMode === 'grid-2';
+});
+
+// Rendre l'image cliquable pour ouvrir la page show (sauf pour grid-2 où on a déjà les boutons)
+const handleImageClick = () => {
+    if (props.viewMode !== 'grid-2') {
+        handleView();
+    }
+};
+
+// Classes pour l'object-fit selon le mode d'affichage
+const imageObjectFit = computed(() => {
+    if (!props.viewMode) return 'object-contain';
+    
+    // Pour grid-2, on garde object-contain pour voir l'image complète
+    // Pour les autres modes, on utilise object-cover pour remplir tout l'espace
+    return props.viewMode === 'grid-2' ? 'object-contain' : 'object-cover';
+});
 </script>
 
 <template>
     <article
         class="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700"
+        :class="{
+            'cursor-pointer': !showOverlay
+        }"
     >
         <!-- Image qui remplit tout le cadre -->
-        <div class="relative aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+        <div 
+            class="relative aspect-square w-full overflow-hidden"
+            :class="{
+                'bg-neutral-100 dark:bg-neutral-800': showOverlay,
+            }"
+            @click="handleImageClick"
+        >
             <img
                 :src="exercise.image_url"
                 :alt="exercise.name"
                 :class="[
-                    'h-full w-full object-contain object-top',
-                    (props.viewMode === 'grid-6' || props.viewMode === 'grid-8') ? 'scale-75' : ''
+                    'absolute inset-0 h-full w-full',
+                    imageObjectFit,
+                    props.viewMode === 'grid-2' ? 'object-top' : 'object-center',
+                    !showOverlay ? 'cursor-pointer' : ''
                 ]"
             />
             
-            <!-- Overlay au survol avec titre et catégories -->
-            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-4">
+            <!-- Overlay au survol avec titre et catégories - uniquement pour grid-2 -->
+            <div 
+                v-if="showOverlay"
+                class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-4"
+            >
                 <div class="flex flex-col items-center gap-3">
                     <h3 class="font-semibold text-base text-white text-center line-clamp-2">
                         {{ exercise.name && exercise.name.length > 10 ? exercise.name.substring(0, 10) + '...' : exercise.name }}
@@ -101,8 +151,11 @@ const handleDelete = (event: Event) => {
                 </div>
             </div>
             
-            <!-- Boutons d'action en bas au survol -->
-            <div class="absolute bottom-0 left-0 right-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex items-center justify-between p-3">
+            <!-- Boutons d'action en bas au survol - uniquement pour grid-2 -->
+            <div 
+                v-if="showOverlay"
+                class="absolute bottom-0 left-0 right-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex items-center justify-between p-3"
+            >
                 <p class="text-xs text-white">
                     {{ formattedDate }}
                 </p>
@@ -140,8 +193,8 @@ const handleDelete = (event: Event) => {
             </div>
         </div>
 
-        <!-- Contenu visible uniquement sur mobile -->
-        <div class="flex flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-4 md:hidden">
+        <!-- Contenu visible uniquement pour grid-2 (1-2 par ligne) -->
+        <div v-if="showContent" class="flex flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-4 md:hidden">
             <!-- Titre et badge -->
             <div class="flex flex-col gap-1.5">
                 <h3

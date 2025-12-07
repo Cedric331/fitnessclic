@@ -258,11 +258,11 @@ const sortedExercises = computed(() => {
                         </span>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="grid grid-cols-2 sm:flex sm:flex-row gap-2">
                     <Button
                         variant="outline"
                         size="sm"
-                        class="inline-flex items-center gap-2"
+                        class="inline-flex items-center gap-2 w-full sm:w-auto"
                         @click="router.visit('/sessions')"
                     >
                         <ArrowLeft class="size-4" />
@@ -271,7 +271,7 @@ const sortedExercises = computed(() => {
                     <Button
                         variant="outline"
                         size="sm"
-                        class="inline-flex items-center gap-2"
+                        class="inline-flex items-center gap-2 w-full sm:w-auto"
                         @click="handleDownloadPdf"
                     >
                         <Download class="size-4" />
@@ -280,7 +280,7 @@ const sortedExercises = computed(() => {
                     <Button
                         variant="outline"
                         size="sm"
-                        class="inline-flex items-center gap-2"
+                        class="inline-flex items-center gap-2 w-full sm:w-auto"
                         @click="handleEdit"
                     >
                         <Edit class="size-4" />
@@ -289,7 +289,7 @@ const sortedExercises = computed(() => {
                     <Button
                         variant="outline"
                         size="sm"
-                        class="inline-flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        class="inline-flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 w-full sm:w-auto"
                         @click="handleDelete"
                     >
                         <Trash2 class="size-4" />

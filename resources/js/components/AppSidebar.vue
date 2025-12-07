@@ -81,7 +81,7 @@ const handleLogout = () => {
     <Sidebar 
         collapsible="icon" 
         variant="inset" 
-        class="bg-slate-900 [&_[data-sidebar=sidebar]]:bg-slate-900"
+        class="bg-slate-900 [&_[data-sidebar=sidebar]]:bg-slate-900 [&_[data-mobile=true]]:bg-slate-900"
     >
         <SidebarHeader class="border-b border-slate-700 pb-4">
             <SidebarMenu>

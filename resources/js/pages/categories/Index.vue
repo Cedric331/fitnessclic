@@ -149,8 +149,7 @@ const startDeleteCategory = (category: Category) => {
                     </p>
                     <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Gérer les catégories</h1>
                     <p class="text-sm text-slate-600 dark:text-slate-400">
-                        Classez vos types de séances privés et découvrez les catégories publiques validées par
-                        l’administration.
+                        Gérez vos catégories pour organiser vos exercices
                     </p>
                 </div>
                 <CategoryCreateDialog v-model:open="isCreateDialogOpen" triggerLabel="Nouvelle catégorie" />

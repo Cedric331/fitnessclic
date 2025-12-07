@@ -1552,7 +1552,7 @@ watch(sessionExercises, () => {
                     </p>
                 </div>
                 
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
+                <div class="flex flex-row items-center gap-2">
                     <div class="flex items-center gap-1 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 border rounded-md px-2 py-1.5 sm:border-none sm:px-0 sm:py-0">
                         <Calendar class="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                         <input
@@ -1561,47 +1561,44 @@ watch(sessionExercises, () => {
                             class="border-none bg-transparent text-xs sm:text-sm focus:outline-none w-full sm:w-auto"
                         />
                     </div>
-                    <div class="grid grid-cols-2 sm:flex sm:flex-row gap-2">
+                    <div class="flex flex-row gap-2">
                         <Button
                             variant="outline"
                             size="sm"
-                            class="gap-1.5 sm:gap-2 text-xs sm:text-sm"
+                            class="sm:gap-2 text-xs sm:text-sm aspect-square sm:aspect-auto"
                             @click="openClearDialog"
                         >
                             <Trash2 class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             <span class="hidden sm:inline">Effacer</span>
-                            <span class="sm:hidden">Effacer</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
-                            class="gap-1.5 sm:gap-2 text-xs sm:text-sm"
+                            class="sm:gap-2 text-xs sm:text-sm aspect-square sm:aspect-auto"
                             @click="generatePDF"
                             :disabled="sessionExercises.length === 0"
                         >
                             <FileText class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             <span class="hidden sm:inline">PDF</span>
-                            <span class="sm:hidden">PDF</span>
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
-                            class="gap-1.5 sm:gap-2 text-xs sm:text-sm"
+                            class="sm:gap-2 text-xs sm:text-sm aspect-square sm:aspect-auto"
                             @click="printPDF"
                             :disabled="sessionExercises.length === 0"
                         >
                             <Printer class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             <span class="hidden sm:inline">Imprimer</span>
-                            <span class="sm:hidden">Imprimer</span>
                         </Button>
                         <Button
                             size="sm"
-                            class="gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
+                            class="sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm aspect-square sm:aspect-auto"
                             @click="saveSession"
                             :disabled="isSaving || !isFormValid"
                         >
                             <Save class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            <span>{{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}</span>
+                            <span class="hidden sm:inline">{{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}</span>
                         </Button>
                     </div>
                 </div>
@@ -1719,7 +1716,7 @@ watch(sessionExercises, () => {
                                 >
                                     <div v-if="sessionExercises.length === 0" class="text-center py-12 text-neutral-500">
                                         <p class="mb-2">Aucun exercice ajouté</p>
-                                        <p class="text-sm">Glissez des exercices depuis la bibliothèque à droite</p>
+                                        <p class="text-sm">Glissez des exercices depuis la bibliothèque</p>
                                     </div>
                                     <div v-else>
                                         <!-- Afficher les exercices standard et les blocs Super Set mélangés avec drag and drop -->

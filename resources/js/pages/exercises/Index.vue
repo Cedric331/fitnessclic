@@ -432,15 +432,19 @@ onUnmounted(() => {
 const gridColsClass = computed(() => {
     switch (viewMode.value) {
         case 'grid-2':
+            // 1 colonne sur mobile, 2 sur sm+
             return 'grid-cols-1 sm:grid-cols-2';
         case 'grid-4':
-            return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+            // 2 colonnes sur mobile, 2 sur sm, 4 sur lg+
+            return 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4';
         case 'grid-6':
-            return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6';
+            // 3 colonnes sur mobile, 3 sur md, 6 sur lg+
+            return 'grid-cols-3 md:grid-cols-3 lg:grid-cols-6';
         case 'grid-8':
-            return 'grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8';
+            // 4 colonnes sur mobile, 4 sur sm, 6 sur md, 8 sur lg+
+            return 'grid-cols-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8';
         default:
-            return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+            return 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4';
     }
 });
 
@@ -527,21 +531,22 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex h-full w-full flex-1 flex-col gap-6 rounded-xl px-6 py-5">
             <div class="flex flex-col gap-2">
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">Bibliothèque d'Exercices</h1>
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div class="flex-1">
+                        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Bibliothèque d'Exercices</h1>
                         <p class="text-sm text-slate-600 dark:text-slate-400">
-                            Gérez vos exercices personnalisés en un clin d'œil.
+                            Gérez vos exercices personnalisés en un clin d'œil
                         </p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <Button variant="outline" size="sm" class="gap-2" @click="isImportDialogOpen = true">
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:flex-shrink-0">
+                        <Button variant="outline" size="sm" class="gap-2 w-full sm:w-auto" @click="isImportDialogOpen = true">
                             <Upload class="size-4" />
                             <span>Importer</span>
                         </Button>
-                        <Button size="sm" class="gap-2 bg-blue-600 hover:bg-blue-700 text-white" @click="isExerciseDialogOpen = true">
+                        <Button size="sm" class="gap-2 bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" @click="isExerciseDialogOpen = true">
                             <Plus class="size-4" />
-                            <span>Ajouter un exercice</span>
+                            <span class="hidden sm:inline">Ajouter un exercice</span>
+                            <span class="sm:hidden">Ajouter</span>
                         </Button>
                     </div>
                 </div>

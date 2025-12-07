@@ -274,12 +274,12 @@ const exerciseToRemoveName = computed(() => {
                 </div>
                 <!-- Consignes -->
                 <div class="flex-1">
-                    <Label class="text-sm font-medium mb-2 block">Consignes pour l'ensemble du bloc</Label>
+                    <Label class="text-sm font-medium mb-2 block">Consignes d'exécution</Label>
                     <Textarea
                         :model-value="localBlockDescription"
                         @update:model-value="updateBlockDescription"
                         @blur="(event: FocusEvent) => saveBlockDescription((event.target as HTMLTextAreaElement).value)"
-                        placeholder="Ajouter des consignes pour l'ensemble du bloc Super Set..."
+                        placeholder="Ajouter des consignes..."
                         :rows="2"
                         class="text-sm"
                     />
