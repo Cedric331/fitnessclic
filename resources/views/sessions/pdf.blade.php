@@ -1,551 +1,733 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Séance - {{ $session->name ?? 'Nouvelle Séance' }}</title>
-    <style>
-        @page {
-            margin: 12mm 12mm 16mm 12mm;
-        }
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <title>Séance - {{ $session->name ?? 'Nouvelle Séance' }}</title>
+  <style>
+    @page {
+      margin: 20px 20px 0 0;
+    }
+    
+    body {
+      font-family: DejaVu Sans, sans-serif;
+      font-size: 12px;
+      color: #212121;
+      margin: 0;
+      padding: 20px 20px 70px 20px;
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    table {
+      border-collapse: collapse;
+    }
 
-        body {
-            font-family: 'DejaVu Sans', sans-serif;
-            font-size: 8pt;
-            margin: 0;
-            padding: 0 0 16mm 0;
-            color: #111827;
-        }
+    .container {
+      width: 100%;
+    }
 
-        /* HEADER -------------------------------------------------- */
-        .pdf-header {
-            margin-bottom: 5mm;
-            padding-bottom: 4mm;
-            border-bottom: 1px solid #e5e7eb;
-        }
+    /* Header */
+    .header-table {
+      width: 100%;
+      margin-bottom: 8px;
+    }
 
-        .header-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 3mm;
-        }
+    .header-logo-cell {
+      vertical-align: top;
+      padding-right: 12px;
+    }
 
-        .logo-container {
-            flex-shrink: 0;
-        }
+    .header-logo {
+        height: 40px;              
+        width: auto;
+        display: block;
+    }
 
-        .logo-container img {
-            height: 60px;
-            width: auto;
-            max-width: 100%;
-        }
+    .header-title {
+      font-size: 28px;
+      font-weight: bold;
+      color: #212121;
+      vertical-align: top;
+    }
 
-        .header-bottom {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 8mm;
-        }
+    .header-date {
+      font-size: 12px;
+      text-align: right;
+      vertical-align: top;
+    }
 
-        .header-notes {
-            font-size: 7.5pt;
-            color: #111827;
-            flex: 1;
-            line-height: 1.4;
-        }
+    .calendar-icon {
+      display: inline-block;
+      width: 15px;
+      height: 13px;
+      margin-left: 8px;
+      vertical-align: middle;
+      position: relative;
+      border: 1.2px solid #212121;
+      border-radius: 1px;
+      background-color: transparent;
+      box-sizing: border-box;
+    }
 
-        .header-notes strong {
-            display: inline;
-            font-size: 7.5pt;
-            font-weight: 700;
-            color: #111827;
-            margin-right: 2mm;
-        }
+    .calendar-icon::before {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: 2px;
+      width: 2.5px;
+      height: 2.5px;
+      border: 1.2px solid #212121;
+      border-radius: 50%;
+      background-color: transparent;
+    }
 
-        .header-info {
-            text-align: right;
-            font-size: 7.5pt;
-            color: #4b5563;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-        }
+    .calendar-icon::after {
+      content: '';
+      position: absolute;
+      top: -4px;
+      right: 2px;
+      width: 2.5px;
+      height: 2.5px;
+      border: 1.2px solid #212121;
+      border-radius: 50%;
+      background-color: transparent;
+    }
 
-        .header-info > div {
-            margin-bottom: 2px;
-        }
+    .calendar-line {
+      display: block;
+      width: 85%;
+      height: 1px;
+      background-color: #212121;
+      margin: 2.5px auto 0;
+    }
 
-        .header-info strong {
-            font-weight: 600;
-            color: #111827;
-        }
+    .header-line {
+      border-bottom: 2px solid #212121;
+      margin: 10px 0 12px 0;
+    }
 
-        /* TITRE DE SEANCE ----------------------------------------- */
-        .session-title {
-            margin-bottom: 5mm;
-        }
+    .header-info-table {
+      width: 100%;
+      margin-bottom: 50px;
+    }
 
-        .session-title h1 {
-            font-size: 12pt;
-            font-weight: 700;
-            margin: 0 0 2mm 0;
-            color: #111827;
-        }
+    .header-info-table td {
+      font-size: 12px;
+      padding: 0;
+      border: none;
+      margin-bottom: 10px;
+    }
 
-        .session-meta {
-            font-size: 7.5pt;
-            color: #6b7280;
-        }
+    .note-label {
+      font-weight: bold;
+    }
 
-        /* EXERCICES ----------------------------------------------- */
-        .exercises-section {
-            margin-top: 3mm;
-        }
+    /* Exercise Section */
+    .exercise-table {
+      width: 100%;
+      margin-top: 24px;
+      background-color: #f7f7f7;  
+      padding: 6px;               
+      border-radius: 4px;         
+    }
 
-        .exercises-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 7pt;
-            margin-bottom: 2mm;
-        }
+    .exercise-number-cell {
+      width: 40px;
+      vertical-align: top;
+      border-left: 2px solid #212121;
+      padding-left: 8px;
+      padding-top: 4px;
+    }
 
-        .exercises-table thead {
-            background: #2563eb;
-            color: white;
-        }
+    .exercise-number {
+      font-size: 28px;
+      font-weight: bold;
+      color: #212121;
+    }
 
-        .exercises-table th {
-            padding: 2mm 1.5mm;
-            text-align: left;
-            font-weight: 600;
-            font-size: 7pt;
-            border: 1px solid #1e40af;
-        }
+    .exercise-content-cell {
+      vertical-align: top;
+      padding-left: 12px;
+    }
 
-        .exercises-table td {
-            padding: 1.5mm;
-            border: 1px solid #d1d5db;
-            vertical-align: top;
-            font-size: 6.5pt;
-        }
+    /* Exercise Header */
+    .exercise-header-table {
+      width: 100%;
+    }
 
-        .exercises-table tbody tr {
-            page-break-inside: avoid;
-        }
+    .exercise-image-cell {
+      width: 100px;
+      vertical-align: top;
+    }
 
-        .exercises-table tbody tr:nth-child(even) {
-            background: #f9fafb;
-        }
+    .exercise-image {
+      width: 100px;
+      height: 70px;
+      background-color: #f3f4f6;
+      text-align: center;
+      line-height: 70px;
+      font-size: 10px;
+      color: #9ca3af;
+    }
 
-        .exercise-number {
-            text-align: center;
-            font-weight: bold;
-            width: 8mm;
-            color: #2563eb;
-        }
+    .exercise-image-small {
+      width: 80px;
+      height: 55px;
+      background-color: #f3f4f6;
+      text-align: center;
+      line-height: 55px;
+      font-size: 10px;
+      color: #9ca3af;
+    }
 
-        .exercise-title {
-            font-weight: 600;
-            color: #111827;
-            min-width: 40mm;
-        }
+    .exercise-details-cell {
+      vertical-align: top;
+      padding-left: 16px;
+    }
 
-        .exercise-sets {
-            font-size: 6pt;
-            color: #4b5563;
-            line-height: 1.4;
-        }
+    .exercise-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
 
-        .super-set-row {
-            background: #eff6ff !important;
-            border-left: 3px solid #2563eb !important;
-        }
+    .exercise-title-small {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
 
-        .super-set-header {
-            background: #dbeafe !important;
-            font-weight: 700;
-            color: #1e40af;
-        }
+    .exercise-description {
+      font-size: 12px;
+      line-height: 1.4;
+    }
 
-        .super-set-badge {
-            display: inline-block;
-            background: #2563eb;
-            color: white;
-            padding: 1px 4px;
-            border-radius: 3px;
-            font-size: 6pt;
-            font-weight: 600;
-            margin-right: 2mm;
-        }
+    /* Data Tables */
+    .data-table {
+        margin-top: 8px;
+        width: 100%;
+        border-collapse: collapse;
+        border-left: 1px solid #d1d5db;   
+        border-right: 1px solid #d1d5db;  
+    }
 
-        .exercise-in-set {
-            padding-left: 4mm;
-            font-size: 6pt;
-            color: #4b5563;
-        }
+    .data-table th {
+        background-color: #e0f4fc;
+        color: #212121;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 6px 12px;
+        text-align: center;
+        border-top: 1px solid #d1d5db;    
+        border-bottom: 1px solid #d1d5db; 
+        border-left: none;                 
+        border-right: none;
+    }
 
-        /* === FOOTER GLOBAL === */
-        .pdf-footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 10mm;
-            padding-top: 3mm;
-            border-top: 1px solid #e5e7eb;
-            background: #ffffff;
-            text-align: center;
-            color: #6b7280;
-            font-size: 7pt;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
+    .data-table td {
+        font-size: 12px;
+        padding: 6px 12px;
+        text-align: center;
+        border-top: 1px solid #d1d5db;    
+        border-bottom: 1px solid #d1d5db; 
+        border-left: none;                 
+        border-right: none;
+    }
 
-        .pdf-footer strong {
-            color: #111827;
-        }
-    </style>
+    .data-table-small {
+      margin-top: 8px;
+    }
+
+    .data-table-small th {
+      background-color: #e0f4fc;
+      color: #212121;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 4px 8px;
+      text-align: center;
+      border: 1px solid #d1d5db;
+    }
+
+    .data-table-small td {
+      font-size: 10px;
+      padding: 4px 8px;
+      text-align: center;
+      border: 1px solid #d1d5db;
+    }
+
+    .bold {
+      font-weight: bold;
+    }
+
+    /* Super Set */
+    .superset-label {
+      text-align: right;
+      margin-bottom: 12px;
+      margin-right: 25px;
+      font-size: 12px;
+    }
+
+    .superset-label-bold {
+      font-weight: bold;
+    }
+
+    .sub-exercise-table {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    .sub-exercise-image-cell {
+      width: 80px;
+      vertical-align: top;
+    }
+
+    .sub-exercise-content-cell {
+      vertical-align: top;
+      padding-left: 12px;
+    }
+
+    /* Footer */
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      background-color: #d5f5f5;
+      padding: 12px 15px;
+      z-index: 1000;
+      margin: 0;
+    }
+
+    .footer-table {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .footer-text-cell {
+        display: flex !important;
+        align-items: center;          
+        justify-content: center;      
+        text-align: center;
+        font-size: 10px; 
+    }
+
+    .footer-text {
+      font-size: 10px;
+    }
+
+    .footer-text-bold {
+      font-weight: bold;
+    }
+
+    .footer-image-cell {
+      width: 200px;
+      text-align: right;
+      vertical-align: middle;
+      padding-left: 20px;
+    }
+
+    .footer-image {
+      width: 80px;
+      height: 50px;
+      background-color: transparent;
+      text-align: center;
+      line-height: 50px;
+      font-size: 10px;
+      color: #9ca3af;
+    }
+
+    .footer-image img {
+      width: 100px;
+      height: auto;
+      max-height: 50px;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
 </head>
 <body>
-    @php
-        $sessionExercises = $session->sessionExercises ?? collect();
-        if (is_array($sessionExercises)) {
-            $sessionExercises = collect($sessionExercises);
-        }
-        // Convertir en collection si ce n'est pas déjà le cas
-        if (!($sessionExercises instanceof \Illuminate\Support\Collection)) {
-            $sessionExercises = collect($sessionExercises);
-        }
-        // Trier par ordre pour respecter l'ordre de la liste
-        $sessionExercises = $sessionExercises->sortBy('order')->values();
-        $exerciseCount = $sessionExercises->count();
-        
-        // Debug: vérifier que les champs block_id, block_type sont présents
-        // (à retirer en production)
-        // \Log::info('PDF Debug - Total exercises: ' . $sessionExercises->count());
-        // foreach ($sessionExercises->take(5) as $se) {
-        //     \Log::info('PDF Debug Exercise', [
-        //         'id' => $se->id ?? 'no-id', 
-        //         'block_id' => $se->block_id ?? 'null', 
-        //         'block_type' => $se->block_type ?? 'null', 
-        //         'position_in_block' => $se->position_in_block ?? 'null',
-        //         'order' => $se->order ?? 'no-order'
-        //     ]);
-        // }
-    @endphp
+@php
+    function formatDuration($duration) {
+        if (empty($duration) || $duration === '-') return '-';
+        if (strpos($duration, 'minute') !== false || strpos($duration, 'seconde') !== false) return $duration;
 
-    <!-- HEADER -->
-    <div class="pdf-header">
-        <div class="header-top">
-            <div class="logo-container">
+        $totalSeconds = 0;
+        if (preg_match('/(\d+)\s*min/i', $duration, $m)) $totalSeconds += intval($m[1]) * 60;
+        if (preg_match('/(\d+)\s*s/i', $duration, $m))   $totalSeconds += intval($m[1]);
+        if ($totalSeconds === 0 && preg_match('/^(\d+)$/', $duration, $m)) {
+            $totalSeconds = intval($m[1]);
+        }
+        if ($totalSeconds === 0) return $duration;
+
+        $minutes = floor($totalSeconds / 60);
+        $seconds = $totalSeconds % 60;
+        $result = '';
+        if ($minutes > 0) $result .= $minutes.' minute'.($minutes > 1 ? 's' : '');
+        if ($seconds > 0) {
+            if ($minutes > 0) $result .= ' ';
+            $result .= $seconds.' seconde'.($seconds > 1 ? 's' : '');
+        }
+        return $result ?: $duration;
+    }
+
+    function formatRestTime($restTime) {
+        if (empty($restTime) || $restTime === '-') return '-';
+        if (strpos($restTime, 'seconde') !== false || strpos($restTime, 'minute') !== false) return $restTime;
+        if (preg_match('/^(\d+)$/', $restTime, $m)) {
+            $seconds = intval($m[1]);
+            return $seconds.' seconde'.($seconds > 1 ? 's' : '');
+        }
+        return $restTime;
+    }
+
+    $sessionExercises = $session->sessionExercises ?? collect();
+    if (is_array($sessionExercises)) $sessionExercises = collect($sessionExercises);
+    if (!($sessionExercises instanceof \Illuminate\Support\Collection)) $sessionExercises = collect($sessionExercises);
+    $sessionExercises = $sessionExercises->sortBy('order')->values();
+    $exerciseCount = $sessionExercises->count();
+
+    // Grouper les exercices en blocs
+    $setBlocks = [];
+    $standardExercises = [];
+
+    foreach ($sessionExercises as $sessionExercise) {
+        $blockId = $sessionExercise->block_id ?? null;
+        $blockType = $sessionExercise->block_type ?? null;
+        $order = $sessionExercise->order ?? 0;
+
+        if ($blockType === 'set' && $blockId !== null) {
+            if (!isset($setBlocks[$blockId])) {
+                $setBlocks[$blockId] = [
+                    'blockId'   => $blockId,
+                    'order'     => $order,
+                    'exercises' => [],
+                ];
+            }
+            $setBlocks[$blockId]['exercises'][] = $sessionExercise;
+        } else {
+            $standardExercises[] = [
+                'order'    => $order,
+                'exercise' => $sessionExercise,
+            ];
+        }
+    }
+
+    foreach ($setBlocks as $blockId => &$block) {
+        usort($block['exercises'], function($a, $b) {
+            $posA = $a->position_in_block ?? 0;
+            $posB = $b->position_in_block ?? 0;
+            return $posA <=> $posB;
+        });
+        $block['type'] = 'set';
+    }
+    unset($block);
+
+    $allItems = [];
+    foreach ($setBlocks as $block) $allItems[] = $block;
+    foreach ($standardExercises as $ex) {
+        $allItems[] = [
+            'type'     => 'standard',
+            'order'    => $ex['order'],
+            'exercise' => $ex['exercise'],
+        ];
+    }
+
+    usort($allItems, function($a, $b) {
+        $orderA = $a['order'] ?? 0;
+        $orderB = $b['order'] ?? 0;
+        return $orderA <=> $orderB;
+    });
+
+    $orderedItems   = $allItems;
+    $sectionNumber  = 1;
+@endphp
+
+  <div class="container">
+    <!-- Header -->
+    <table class="header-table">
+      <tr>
+        <td class="header-title">{{ $session->name ?? 'Nouvelle Séance' }}</td>
+        <td class="header-date">
+          {{ $session->session_date ? \Carbon\Carbon::parse($session->session_date)->format('d/m/Y') : 'Non définie' }}
+          <span class="calendar-icon">
+            <span class="calendar-line"></span>
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <div class="header-line"></div>
+
+    <table class="header-info-table">
+      <tr>
+        <td style="width: 33%;">
+          @if(isset($session->user))
+            {{ strtoupper($session->user->name) }}
+          @endif
+        </td>
+        <td style="width: 34%; text-align: center;">
+          @if($session->notes ?? null)
+            <span class="note-label">Note :</span> {{ $session->notes }}
+          @endif
+        </td>
+        <td style="width: 33%; text-align: right; font-weight: bold;">{{ $exerciseCount }} exercice{{ $exerciseCount > 1 ? 's' : '' }}</td>
+      </tr>
+    </table>
+
+    <!-- Exercises -->
+    @if($exerciseCount > 0)
+      @foreach($orderedItems as $item)
+        <table class="exercise-table" style="margin-top: 30px;">
+          <tr style="margin: 15px;">
+            <td class="exercise-number-cell">
+              <span class="exercise-number">{{ $sectionNumber }}</span>
+            </td>
+            <td class="exercise-content-cell">
+              @if($item['type'] === 'standard')
                 @php
-                    $logoPath = public_path('assets/logo_fitnessclic.png');
-                    $logoUrl = file_exists($logoPath)
-                        ? $logoPath
-                        : asset('assets/logo_fitnessclic.png');
-                @endphp
-                <img src="{{ $logoUrl }}" alt="FitnessClic">
-            </div>
-        </div>
+                  $sessionExercise = $item['exercise'];
+                  $exercise = $sessionExercise->exercise ?? null;
+                  $sets = $sessionExercise->sets ?? collect();
+                  if (is_array($sets)) $sets = collect($sets);
+                  $sets = $sets->sortBy('order');
 
-        <div class="header-bottom">
-            @if($session->notes ?? null)
-                <div class="header-notes">
-                    <strong>Notes :</strong>{{ $session->notes }}
+                  $exerciseImage = null;
+                  if ($exercise) {
+                    $firstMedia = $exercise->getFirstMedia('exercise_image');
+                    if ($firstMedia) {
+                      $imagePath = $firstMedia->getPath();
+                      if (file_exists($imagePath)) {
+                        $exerciseImage = $imagePath;
+                      } else {
+                        $publicPath = public_path('storage/' . $firstMedia->getPathRelativeToRoot());
+                        if (file_exists($publicPath)) $exerciseImage = $publicPath;
+                      }
+                    }
+                  }
+
+                  $setsCount    = $sets->count() > 0 ? $sets->count() : ($sessionExercise->sets_count ?? 1);
+                  $useDuration  = $sessionExercise->use_duration ?? false;
+                  $useBodyweight= $sessionExercise->use_bodyweight ?? false;
+
+                  $durationOrReps = '-';
+                  if ($sets->count() > 0) {
+                    $firstSet = $sets->first();
+                    if ($useDuration) {
+                      $rawDuration   = $firstSet->duration ?? $sessionExercise->duration ?? '-';
+                      $durationOrReps= formatDuration($rawDuration);
+                    } else {
+                      $durationOrReps= $firstSet->repetitions ?? $sessionExercise->repetitions ?? '-';
+                    }
+                  } else {
+                    if ($useDuration) {
+                      $rawDuration   = $sessionExercise->duration ?? '-';
+                      $durationOrReps= formatDuration($rawDuration);
+                    } else {
+                      $durationOrReps= $sessionExercise->repetitions ?? '-';
+                    }
+                  }
+
+                  $charge = '-';
+                  if ($useBodyweight) {
+                    $charge = 'poids de corps';
+                  } else {
+                    if ($sets->count() > 0) {
+                      $firstSet = $sets->first();
+                      $charge   = !empty($firstSet->weight) ? $firstSet->weight.' kg' : ($sessionExercise->weight ?? '-');
+                    } else {
+                      $charge   = !empty($sessionExercise->weight) ? $sessionExercise->weight.' kg' : '-';
+                    }
+                  }
+
+                  $rest = '-';
+                  if ($sets->count() > 0) {
+                    $firstSet = $sets->first();
+                    $rawRest  = $firstSet->rest_time ?? $sessionExercise->rest_time ?? '-';
+                    $rest     = formatRestTime($rawRest);
+                  } else {
+                    $rawRest  = $sessionExercise->rest_time ?? '-';
+                    $rest     = formatRestTime($rawRest);
+                  }
+                @endphp
+
+                @if($exercise)
+                  <table class="exercise-header-table">
+                    <tr>
+                      <td class="exercise-image-cell">
+                        @if($exerciseImage)
+                          <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="width: 100px; height: 70px; object-fit: contain;">
+                        @else
+                          <div class="exercise-image">🏋️</div>
+                        @endif
+                      </td>
+                      <td class="exercise-details-cell">
+                        <div class="exercise-title">{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}</div>
+                        @if($sessionExercise->additional_description ?? $exercise->description ?? null)
+                          <div class="exercise-description">{{ $sessionExercise->additional_description ?? $exercise->description }}</div>
+                        @endif
+                      </td>
+                    </tr>
+                  </table>
+                  <table class="data-table">
+                    <tr>
+                      <th style="width: 70px;">série(s)</th>
+                      <th>{{ $useDuration ? 'durée' : 'repets' }}</th>
+                      <th>Charge</th>
+                      <th>repos</th>
+                    </tr>
+                    <tr>
+                      <td class="bold">{{ $setsCount }}</td>
+                      <td>{{ $durationOrReps }}</td>
+                      <td>{{ $charge }}</td>
+                      <td>{{ $rest }}</td>
+                    </tr>
+                  </table>
+                @endif
+              @else
+                @php
+                  $blockExercises   = $item['exercises'];
+                  $firstExercise    = $blockExercises[0];
+                  $blockDescription = $firstExercise->description ?? $firstExercise->additional_description ?? '';
+                @endphp
+
+            @if($blockDescription)
+                <div class="superset-label">
+                  <span class="superset-label-bold">Super set :</span> {{ $blockDescription }}
                 </div>
-            @else
-                <div></div>
             @endif
 
-            <div class="header-info">
-                @if(isset($session->user))
-                    <div><strong>Coach :</strong> {{ $session->user->name }}</div>
-                @endif
-                <div>
-                    <strong>Date :</strong>
-                    {{ $session->session_date ? \Carbon\Carbon::parse($session->session_date)->format('d/m/Y') : 'Non définie' }}
-                </div>
-            </div>
-        </div>
-    </div>
+                @foreach($blockExercises as $sessionExercise)
+                  @php
+                    $exercise = $sessionExercise->exercise ?? null;
+                    $sets = $sessionExercise->sets ?? collect();
+                    if (is_array($sets)) $sets = collect($sets);
+                    $sets = $sets->sortBy('order');
 
-    <!-- TITRE SEANCE -->
-    <div class="session-title">
-        <h1>{{ $session->name ?? 'Nouvelle Séance' }}</h1>
-        <div class="session-meta">
-            {{ $exerciseCount }} exercice{{ $exerciseCount > 1 ? 's' : '' }}
-        </div>
-    </div>
-
-    <!-- EXERCICES -->
-    @if($exerciseCount > 0)
-        <div class="exercises-section">
-            @php
-                // Créer une liste mixte qui respecte l'ordre de la liste
-                $orderedItems = [];
-                $displayIndex = 0;
-                
-                // D'abord, grouper tous les exercices par block_id pour les Super Set
-                $setBlocks = [];
-                $standardExercises = [];
-                
-                foreach ($sessionExercises as $sessionExercise) {
-                    $blockId = $sessionExercise->block_id ?? null;
-                    $blockType = $sessionExercise->block_type ?? null;
-                    $order = $sessionExercise->order ?? 0;
-                    
-                    // Vérifier si c'est un exercice dans un bloc Super Set
-                    if ($blockType === 'set' && $blockId !== null) {
-                        // Grouper par block_id
-                        if (!isset($setBlocks[$blockId])) {
-                            $setBlocks[$blockId] = [
-                                'blockId' => $blockId,
-                                'order' => $order,
-                                'exercises' => [],
-                            ];
+                    $exerciseImage = null;
+                    if ($exercise) {
+                      $firstMedia = $exercise->getFirstMedia('exercise_image');
+                      if ($firstMedia) {
+                        $imagePath = $firstMedia->getPath();
+                        if (file_exists($imagePath)) {
+                          $exerciseImage = $imagePath;
+                        } else {
+                          $publicPath = public_path('storage/' . $firstMedia->getPathRelativeToRoot());
+                          if (file_exists($publicPath)) $exerciseImage = $publicPath;
                         }
-                        $setBlocks[$blockId]['exercises'][] = $sessionExercise;
-                    } else {
-                        // Exercice standard
-                        $standardExercises[] = [
-                            'order' => $order,
-                            'exercise' => $sessionExercise,
-                        ];
+                      }
                     }
-                }
-                
-                // Trier les exercices dans chaque bloc Super Set par position_in_block
-                foreach ($setBlocks as $blockId => &$block) {
-                    usort($block['exercises'], function($a, $b) {
-                        $posA = $a->position_in_block ?? 0;
-                        $posB = $b->position_in_block ?? 0;
-                        return $posA <=> $posB;
-                    });
-                    $block['type'] = 'set';
-                }
-                unset($block);
-                
-                // Créer la liste ordonnée en mélangeant les blocs Super Set et les exercices standard
-                $allItems = [];
-                foreach ($setBlocks as $block) {
-                    $allItems[] = $block;
-                }
-                foreach ($standardExercises as $ex) {
-                    $allItems[] = [
-                        'type' => 'standard',
-                        'order' => $ex['order'],
-                        'exercise' => $ex['exercise'],
-                    ];
-                }
-                
-                // Trier par ordre pour respecter l'ordre de la liste
-                usort($allItems, function($a, $b) {
-                    $orderA = $a['order'] ?? 0;
-                    $orderB = $b['order'] ?? 0;
-                    return $orderA <=> $orderB;
-                });
-                
-                $orderedItems = $allItems;
-            @endphp
-            
-            <table class="exercises-table">
-                <thead>
-                    <tr>
-                        <th style="width: 8mm;">#</th>
-                        <th>Exercice</th>
-                        <th style="width: 20mm;">Séries</th>
-                        <th style="width: 18mm;">Rep/Durée</th>
-                        <th style="width: 15mm;">Charge/Poids</th>
-                        <th style="width: 15mm;">Repos</th>
-                        <th>Notes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($orderedItems as $item)
-                        @if($item['type'] === 'standard')
-                            @php
-                                $sessionExercise = $item['exercise'];
-                                $index = $displayIndex++;
-                                $exercise = $sessionExercise->exercise ?? null;
-                                $sets = $sessionExercise->sets ?? collect();
-                                if (is_array($sets)) {
-                                    $sets = collect($sets);
-                                }
-                                $sets = $sets->sortBy('order');
-                            @endphp
-                            @if($exercise)
-                                <tr>
-                                    <td class="exercise-number">{{ $index + 1 }}</td>
-                                    <td class="exercise-title">{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}</td>
-                                    <td class="exercise-sets">
-                                        @if($sets->count() > 0)
-                                            {{ $sets->count() }}
-                                        @elseif($sessionExercise->sets_count ?? null)
-                                            {{ $sessionExercise->sets_count }}
-                                        @else
-                                            -
-                                        @endif
-                                    </td>
-                                    <td class="exercise-sets">
-                                        @if($sets->count() > 0)
-                                            @foreach($sets as $set)
-                                                @if($sessionExercise->use_duration ?? false)
-                                                    {{ $set->duration ?? '-' }}@if(!$loop->last)<br>@endif
-                                                @else
-                                                    {{ $set->repetitions ?? '-' }}@if(!$loop->last)<br>@endif
-                                                @endif
-                                            @endforeach
-                                        @else
-                                            @if($sessionExercise->use_duration ?? false)
-                                                {{ $sessionExercise->duration ?? '-' }}
-                                            @else
-                                                {{ $sessionExercise->repetitions ?? '-' }}
-                                            @endif
-                                        @endif
-                                    </td>
-                                    <td class="exercise-sets">
-                                        @if($sessionExercise->use_bodyweight ?? false)
-                                            Poids de corps
-                                        @else
-                                            @if($sets->count() > 0)
-                                                @foreach($sets as $set)
-                                                    @if(!empty($set->weight))
-                                                        {{ $set->weight }}kg
-                                                    @else
-                                                        -
-                                                    @endif
-                                                    @if(!$loop->last)<br>@endif
-                                                @endforeach
-                                            @else
-                                                @if(!empty($sessionExercise->weight))
-                                                    {{ $sessionExercise->weight }}kg
-                                                @else
-                                                    -
-                                                @endif
-                                            @endif
-                                        @endif
-                                    </td>
-                                    <td class="exercise-sets">
-                                        @if($sets->count() > 0)
-                                            @foreach($sets as $set)
-                                                {{ $set->rest_time ?? '-' }}@if(!$loop->last)<br>@endif
-                                            @endforeach
-                                        @else
-                                            {{ $sessionExercise->rest_time ?? '-' }}
-                                        @endif
-                                    </td>
-                                    <td class="exercise-sets" style="font-size: 6pt;">
-                                        {{ $sessionExercise->additional_description ?? '-' }}
-                                    </td>
-                                </tr>
-                            @endif
-                        @else
-                            @php
-                                $blockExercises = $item['exercises'];
-                                $blockIndex = $displayIndex++;
-                                $firstExercise = true;
-                            @endphp
-                            @foreach($blockExercises as $exerciseIndex => $sessionExercise)
-                                @php
-                                    $exercise = $sessionExercise->exercise ?? null;
-                                    $sets = $sessionExercise->sets ?? collect();
-                                    if (is_array($sets)) {
-                                        $sets = collect($sets);
-                                    }
-                                    $sets = $sets->sortBy('order');
-                                @endphp
-                                @if($exercise)
-                                    <tr class="super-set-row">
-                                        <td class="exercise-number">
-                                            @if($firstExercise)
-                                                <span class="super-set-badge">SS</span><br>
-                                                {{ $blockIndex + 1 }}
-                                                @php $firstExercise = false; @endphp
-                                            @endif
-                                        </td>
-                                        <td class="exercise-title exercise-in-set">
-                                            <strong>{{ $exerciseIndex + 1 }}.</strong> {{ $sessionExercise->custom_exercise_name ?? $exercise->title }}
-                                        </td>
-                                        <td class="exercise-sets">
-                                            @if($sets->count() > 0)
-                                                {{ $sets->count() }}
-                                            @elseif($sessionExercise->sets_count ?? null)
-                                                {{ $sessionExercise->sets_count }}
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                        <td class="exercise-sets">
-                                            @if($sets->count() > 0)
-                                                @foreach($sets as $set)
-                                                    @if($sessionExercise->use_duration ?? false)
-                                                        {{ $set->duration ?? '-' }}@if(!$loop->last)<br>@endif
-                                                    @else
-                                                        {{ $set->repetitions ?? '-' }}@if(!$loop->last)<br>@endif
-                                                    @endif
-                                                @endforeach
-                                            @else
-                                                @if($sessionExercise->use_duration ?? false)
-                                                    {{ $sessionExercise->duration ?? '-' }}
-                                                @else
-                                                    {{ $sessionExercise->repetitions ?? '-' }}
-                                                @endif
-                                            @endif
-                                        </td>
-                                        <td class="exercise-sets">
-                                            @if($sessionExercise->use_bodyweight ?? false)
-                                                Poids de corps
-                                            @else
-                                                @if($sets->count() > 0)
-                                                    @foreach($sets as $set)
-                                                        @if(!empty($set->weight))
-                                                            {{ $set->weight }}kg
-                                                        @else
-                                                            -
-                                                        @endif
-                                                        @if(!$loop->last)<br>@endif
-                                                    @endforeach
-                                                @else
-                                                    @if(!empty($sessionExercise->weight))
-                                                        {{ $sessionExercise->weight }}kg
-                                                    @else
-                                                        -
-                                                    @endif
-                                                @endif
-                                            @endif
-                                        </td>
-                                        <td class="exercise-sets">
-                                            @if($sets->count() > 0)
-                                                @foreach($sets as $set)
-                                                    {{ $set->rest_time ?? '-' }}@if(!$loop->last)<br>@endif
-                                                @endforeach
-                                            @else
-                                                {{ $sessionExercise->rest_time ?? '-' }}
-                                            @endif
-                                        </td>
-                                        <td class="exercise-sets" style="font-size: 6pt;">
-                                            {{ $sessionExercise->additional_description ?? '-' }}
-                                        </td>
-                                    </tr>
-                                @endif
-                            @endforeach
-                        @endif
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
 
-    <!-- FOOTER -->
-    <div class="pdf-footer">
-        <div>Téléchargez et gérez vos séances sur <strong>fitnessclic.com</strong></div>
-        <div>Création de séances personnalisées en quelques clics</div>
-    </div>
+                    $setsCount    = $sets->count() > 0 ? $sets->count() : ($sessionExercise->sets_count ?? 1);
+                    $useDuration  = $sessionExercise->use_duration ?? false;
+                    $useBodyweight= $sessionExercise->use_bodyweight ?? false;
+
+                    $durationOrReps = '-';
+                    if ($sets->count() > 0) {
+                      $firstSet = $sets->first();
+                      if ($useDuration) {
+                        $rawDuration   = $firstSet->duration ?? $sessionExercise->duration ?? '-';
+                        $durationOrReps= formatDuration($rawDuration);
+                      } else {
+                        $durationOrReps= $firstSet->repetitions ?? $sessionExercise->repetitions ?? '-';
+                      }
+                    } else {
+                      if ($useDuration) {
+                        $rawDuration   = $sessionExercise->duration ?? '-';
+                        $durationOrReps= formatDuration($rawDuration);
+                      } else {
+                        $durationOrReps= $sessionExercise->repetitions ?? '-';
+                      }
+                    }
+
+                    $charge = '-';
+                    if ($useBodyweight) {
+                      $charge = 'poids de corps';
+                    } else {
+                      if ($sets->count() > 0) {
+                        $firstSet = $sets->first();
+                        $charge   = !empty($firstSet->weight) ? $firstSet->weight.' kg' : ($sessionExercise->weight ?? '-');
+                      } else {
+                        $charge   = !empty($sessionExercise->weight) ? $sessionExercise->weight.' kg' : '-';
+                      }
+                    }
+
+                    $rest = '-';
+                    if ($sets->count() > 0) {
+                      $firstSet = $sets->first();
+                      $rawRest  = $firstSet->rest_time ?? $sessionExercise->rest_time ?? '-';
+                      $rest     = formatRestTime($rawRest);
+                    } else {
+                      $rawRest  = $sessionExercise->rest_time ?? '-';
+                      $rest     = formatRestTime($rawRest);
+                    }
+                  @endphp
+
+                  @if($exercise)
+                    <table class="sub-exercise-table">
+                      <tr>
+                        <td class="sub-exercise-image-cell">
+                          @if($exerciseImage)
+                            <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="width: 80px; height: 55px; object-fit: contain;">
+                          @endif
+                        </td>
+                        <td class="sub-exercise-content-cell">
+                          <div class="exercise-title-small">{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}</div>
+                          <table class="data-table">
+                            <tr>
+                              <th style="width: 70px;">série(s)</th>
+                              <th>{{ $useDuration ? 'durée' : 'repets' }}</th>
+                              <th>{{ $useBodyweight ? 'poids de corps' : 'charge' }}</th>
+                              <th>repos</th>
+                            </tr>
+                            <tr>
+                              <td class="bold">{{ $setsCount }}</td>
+                              <td>{{ $durationOrReps }}</td>
+                              <td>{{ $charge }}</td>
+                              <td>{{ $rest }}</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  @endif
+                @endforeach
+              @endif
+            </td>
+          </tr>
+        </table>
+        @php $sectionNumber++; @endphp
+      @endforeach
+    @endif
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <table class="footer-table">
+      <tr>
+        <td class="footer-text-cell">
+          <span style="font-weight: bold;">Fitnessclic.com</span> <span>création de séances personnalisées en quelques clics.</span>
+          @php
+          $logoPath = '/var/www/fitnessclic/public/assets/logo_fitnessclic.png';
+          if (!file_exists($logoPath)) {
+            $logoPath = public_path('assets/logo_fitnessclic.png');
+          }
+          if (!file_exists($logoPath)) {
+            $logoPath = base_path('public/assets/logo_fitnessclic.png');
+          }
+          if (!file_exists($logoPath)) {
+            $logoPath = storage_path('app/public/assets/logo_fitnessclic.png');
+          }
+        @endphp
+          @if(file_exists($logoPath))
+              <img src="{{ $logoPath }}" alt="FitnessClic" class="header-logo">
+          @endif
+        </td>
+      </tr>
+    </table>
+  </div>  
 </body>
 </html>

@@ -517,7 +517,7 @@ class SessionsController extends Controller
 
         $pdf = Pdf::loadView('sessions.pdf', [
             'session' => $session,
-        ]);
+        ])->setOption('enable-local-file-access', true);
         
         $fileName = $session->name ?: "seance-{$session->id}";
         $fileName = Str::slug($fileName) . '.pdf';
@@ -587,7 +587,7 @@ class SessionsController extends Controller
 
             $pdf = Pdf::loadView('sessions.pdf', [
                 'session' => (object) $sessionData,
-            ]);
+            ])->setOption('enable-local-file-access', true);
             
             $fileName = $sessionData['name'] ? Str::slug($sessionData['name']) : 'nouvelle-seance';
             $fileName .= '.pdf';
