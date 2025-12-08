@@ -218,38 +218,11 @@ const exerciseToRemoveName = computed(() => {
         <div v-if="displayIndex !== undefined" class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
             {{ displayIndex + 1 }}
         </div>
-        <CardContent class="p-4">
-            <!-- En-tête du bloc avec boutons en haut à droite -->
-            <div class="flex items-center justify-end gap-2 mb-3">
-                <!-- Toggle Standard -->
-                <Button
-                    variant="outline"
-                    size="sm"
-                    class="text-xs"
-                    @click.stop="emit('convert-to-standard')"
-                    title="Convertir en exercices standard"
-                >
-                    <ArrowLeftRight class="h-3 w-3 mr-1" />
-                    Standard
-                </Button>
-                <!-- Bouton supprimer le bloc entier -->
-                <Button
-                    v-if="draggable"
-                    variant="ghost"
-                    size="sm"
-                    class="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-                    @click.stop="handleRemoveBlockClick"
-                    @mousedown.stop
-                    title="Supprimer le bloc entier"
-                >
-                    <X class="h-4 w-4" />
-                </Button>
-            </div>
-            
+        <CardContent class="p-1.5">
             <!-- Consignes pour l'ensemble du bloc avec icônes de drag and drop alignées -->
-            <div class="mb-4 flex items-start gap-3">
+            <div class="mb-2 flex items-start gap-2">
                 <!-- Poignée de drag et boutons de déplacement (si draggable) -->
-                <div v-if="draggable" class="flex flex-col items-center gap-1 flex-shrink-0 pt-6">
+                <div v-if="draggable" class="flex flex-col items-center gap-0.5 flex-shrink-0 pt-0.5">
                     <button
                         type="button"
                         @click.stop.prevent="emit('move-up')"
@@ -272,27 +245,84 @@ const exerciseToRemoveName = computed(() => {
                         <ChevronDown class="h-3 w-3" />
                     </button>
                 </div>
-                <!-- Consignes -->
-                <div class="flex-1">
-                    <Label class="text-sm font-medium mb-2 block">Consignes d'exécution</Label>
+                <!-- Consignes avec boutons Standard et Supprimer -->
+                <div class="flex-1 min-w-0">
+                    <!-- Sur mobile: boutons en haut à gauche -->
+                    <div class="flex flex-row sm:hidden items-center gap-2 mb-1.5">
+                        <!-- Toggle Standard -->
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            class="text-xs h-7"
+                            @click.stop="emit('convert-to-standard')"
+                            title="Convertir en exercices standard"
+                        >
+                            <ArrowLeftRight class="h-3 w-3 mr-1" />
+                            Standard
+                        </Button>
+                        <!-- Bouton supprimer le bloc entier -->
+                        <Button
+                            v-if="draggable"
+                            variant="ghost"
+                            size="sm"
+                            class="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                            @click.stop="handleRemoveBlockClick"
+                            @mousedown.stop
+                            title="Supprimer le bloc entier"
+                        >
+                            <X class="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <!-- Label et boutons sur desktop -->
+                    <div class="hidden sm:flex items-center justify-between mb-1.5">
+                        <Label class="text-sm font-medium">Consignes d'exécution</Label>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <!-- Toggle Standard -->
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="text-xs h-7"
+                                @click.stop="emit('convert-to-standard')"
+                                title="Convertir en exercices standard"
+                            >
+                                <ArrowLeftRight class="h-3 w-3 mr-1" />
+                                Standard
+                            </Button>
+                            <!-- Bouton supprimer le bloc entier -->
+                            <Button
+                                v-if="draggable"
+                                variant="ghost"
+                                size="sm"
+                                class="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                                @click.stop="handleRemoveBlockClick"
+                                @mousedown.stop
+                                title="Supprimer le bloc entier"
+                            >
+                                <X class="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                    <!-- Label sur mobile -->
+                    <Label class="text-sm font-medium mb-1.5 block sm:hidden">Consignes d'exécution</Label>
+                    <!-- Textarea prend toute la largeur -->
                     <Textarea
                         :model-value="localBlockDescription"
                         @update:model-value="updateBlockDescription"
                         @blur="(event: FocusEvent) => saveBlockDescription((event.target as HTMLTextAreaElement).value)"
                         placeholder="Ajouter des consignes..."
                         :rows="2"
-                        class="text-sm"
+                        class="text-sm w-full"
                     />
                 </div>
             </div>
             
             <!-- Zone de drop pour ajouter des exercices -->
             <div
-                class="space-y-2 p-2 border-2 border-dashed rounded-lg transition-colors"
+                class="space-y-1.5 p-1.5 border-2 border-dashed rounded-lg transition-colors"
                 :class="{ 
                     'border-blue-500 bg-blue-50': isDraggingOver, 
                     'border-neutral-300': !isDraggingOver,
-                    'min-h-[100px]': block.exercises.length === 0 || isDraggingOver
+                    'min-h-[80px]': block.exercises.length === 0 || isDraggingOver
                 }"
                 @dragover="handleDragOver"
                 @dragleave="handleDragLeave"
@@ -302,7 +332,7 @@ const exerciseToRemoveName = computed(() => {
                 <div
                     v-for="(exercise, index) in props.block.exercises"
                     :key="`exercise-${exercise.id}-${exercise.use_duration}-${exercise.use_bodyweight}-${exercise.custom_exercise_name}`"
-                    class="relative flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg hover:shadow-md transition-shadow"
+                    class="relative flex items-center gap-2 p-2 bg-white border border-neutral-200 rounded-lg hover:shadow-md transition-shadow"
                     @mousedown.stop
                     @click.stop
                 >
@@ -318,7 +348,7 @@ const exerciseToRemoveName = computed(() => {
                     </Button>
 
                     <!-- Image de l'exercice -->
-                    <div class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-neutral-100">
+                    <div class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-neutral-100">
                         <img
                             v-if="exercise.exercise?.image_url"
                             :src="exercise.exercise.image_url"
@@ -331,9 +361,9 @@ const exerciseToRemoveName = computed(() => {
                     </div>
                     
                     <!-- Informations de l'exercice et paramètres -->
-                    <div class="flex-1 min-w-0 pr-8">
+                    <div class="flex-1 min-w-0 pr-6">
                         <!-- Nom personnalisé de l'exercice -->
-                        <div class="mb-2">
+                        <div class="mb-1.5">
                             <div v-if="!editingExerciseNameIdsValue[exercise.id || index]" class="flex items-center gap-2">
                                 <button
                                     type="button"
@@ -421,10 +451,10 @@ const exerciseToRemoveName = computed(() => {
                         </div>
                         
                         <!-- Ligne avec Serie, Rep, Charge, Repos - 1 colonne sur mobile, 4 sur desktop -->
-                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-1.5">
                             <!-- Série -->
                             <div>
-                                <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
+                                <Label class="text-xs text-neutral-500 mb-0.5 block">Série</Label>
                                 <Input
                                     type="number"
                                     :model-value="exercise.sets_count"
@@ -439,7 +469,7 @@ const exerciseToRemoveName = computed(() => {
                             
                             <!-- Répétitions ou Durée (selon le switch) -->
                             <div>
-                                <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center justify-between mb-0.5">
                                     <Label class="text-xs text-neutral-500">
                                         {{ (exercise.use_duration ?? false) ? 'Durée (seconde)' : 'Rep' }}
                                     </Label>
@@ -582,7 +612,7 @@ const exerciseToRemoveName = computed(() => {
                             
                             <!-- Charge (poids) ou Poids de corps (selon le switch) -->
                             <div>
-                                <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center justify-between mb-0.5">
                                     <Label class="text-xs text-neutral-500">
                                         {{ (exercise.use_bodyweight ?? false) ? 'Poids de corps' : 'Charge (kg)' }}
                                     </Label>
@@ -670,7 +700,7 @@ const exerciseToRemoveName = computed(() => {
                             
                             <!-- Repos -->
                             <div>
-                                <Label class="text-xs text-neutral-500 mb-1 block">Repos</Label>
+                                <Label class="text-xs text-neutral-500 mb-0.5 block">Repos</Label>
                                 <Input
                                     type="text"
                                     :model-value="editingRestTimeValues[exercise.id || index] ?? (exercise.sets?.[0]?.rest_time ?? exercise.rest_time ?? '')"

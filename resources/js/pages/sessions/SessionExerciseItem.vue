@@ -219,41 +219,12 @@ const getSetLabel = (setNumber: number) => {
             <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
                 {{ (displayIndex !== undefined ? displayIndex : index) + 1 }}
             </div>
-            <CardContent class="p-2">
-                <!-- En-tête avec boutons en haut à droite -->
-                <div class="flex items-center justify-end gap-2 mb-3">
-                    <!-- Toggle Super Set -->
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        class="text-xs"
-                        @click.stop="emit('convertToSet')"
-                        @mousedown.stop
-                        @dragstart.stop
-                        title="Convertir en bloc Super Set"
-                    >
-                        <ArrowLeftRight class="h-3 w-3 mr-1" />
-                        Super Set
-                    </Button>
-                    <!-- Bouton supprimer -->
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        class="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-                        @click.stop="handleRemoveClick"
-                        @mousedown.stop
-                        @dragstart.stop
-                        title="Retirer l'exercice"
-                    >
-                        <X class="h-4 w-4" />
-                    </Button>
-                </div>
-                
+            <CardContent class="p-1.5">
                 <!-- Contenu principal : Image, nom, commentaires avec icônes de drag and drop alignées -->
-                <div class="flex items-start gap-3 mb-3">
+                <div class="flex items-start gap-2 mb-2">
                     <!-- Poignée de drag et boutons de déplacement -->
                     <div 
-                        class="flex flex-col items-center gap-1 flex-shrink-0 pt-1"
+                        class="flex flex-col items-center gap-0.5 flex-shrink-0 pt-0.5"
                     >
                         <button
                             type="button"
@@ -290,7 +261,7 @@ const getSetLabel = (setNumber: number) => {
 
                     <!-- Image de l'exercice -->
                     <div 
-                        class="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800"
+                        class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800"
                     >
                         <img
                             v-if="exercise?.image_url"
@@ -309,8 +280,37 @@ const getSetLabel = (setNumber: number) => {
 
                     <!-- Nom de l'exercice -->
                     <div class="flex-1 min-w-0">
-                        <!-- Nom personnalisé de l'exercice -->
-                        <div class="mb-2">
+                        <!-- Boutons au-dessus sur petit écran -->
+                        <div class="flex flex-row sm:hidden items-center gap-2 mb-1.5">
+                            <!-- Toggle Super Set -->
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                class="text-xs h-7"
+                                @click.stop="emit('convertToSet')"
+                                @mousedown.stop
+                                @dragstart.stop
+                                title="Convertir en bloc Super Set"
+                            >
+                                <ArrowLeftRight class="h-3 w-3 mr-1" />
+                                Super Set
+                            </Button>
+                            <!-- Bouton supprimer -->
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                class="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                                @click.stop="handleRemoveClick"
+                                @mousedown.stop
+                                @dragstart.stop
+                                title="Retirer l'exercice"
+                            >
+                                <X class="h-4 w-4" />
+                            </Button>
+                        </div>
+                        
+                        <!-- Nom personnalisé de l'exercice avec boutons Super Set et suppression -->
+                        <div class="mb-1.5">
                             <div v-if="!isEditingName" class="flex items-center gap-2">
                                 <button
                                     type="button"
@@ -320,9 +320,34 @@ const getSetLabel = (setNumber: number) => {
                                 >
                                     <Pencil class="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
                                 </button>
-                                <h3 class="text-sm font-semibold flex-1">
+                                <h3 class="text-sm font-semibold flex-1 min-w-0 truncate">
                                     {{ sessionExercise.custom_exercise_name || exercise?.title || 'Exercice' }}
                                 </h3>
+                                <!-- Toggle Super Set - Desktop uniquement -->
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    class="hidden sm:flex text-xs h-7 flex-shrink-0"
+                                    @click.stop="emit('convertToSet')"
+                                    @mousedown.stop
+                                    @dragstart.stop
+                                    title="Convertir en bloc Super Set"
+                                >
+                                    <ArrowLeftRight class="h-3 w-3 mr-1" />
+                                    Super Set
+                                </Button>
+                                <!-- Bouton supprimer - Desktop uniquement -->
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    class="hidden sm:flex h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                                    @click.stop="handleRemoveClick"
+                                    @mousedown.stop
+                                    @dragstart.stop
+                                    title="Retirer l'exercice"
+                                >
+                                    <X class="h-4 w-4" />
+                                </Button>
                             </div>
                             <div v-else class="flex items-center gap-2">
                                 <Input
@@ -350,7 +375,7 @@ const getSetLabel = (setNumber: number) => {
                         </div>
                         
                         <!-- Commentaires/Consignes de réalisationn -->
-                        <div class="mb-2">
+                        <div class="mb-1.5">
                             <Textarea
                                 :model-value="sessionExercise.description || ''"
                                 @update:model-value="(value: string) => updateField('description', value)"
@@ -358,15 +383,15 @@ const getSetLabel = (setNumber: number) => {
                                 @dragstart.stop
                                 placeholder="Consignes de réalisation..."
                                 :rows="2"
-                                class="text-sm"
+                                class="text-sm w-full"
                             />
                         </div>
                     </div>
                 </div>
 
                 <!-- Séries multiples -->
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between mb-2">
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between mb-1.5">
                         <Label class="text-sm font-medium">Lignes</Label>
                         <Button
                             variant="ghost"
@@ -379,7 +404,7 @@ const getSetLabel = (setNumber: number) => {
                         </Button>
                     </div>
 
-                    <div class="space-y-2">
+                    <div class="space-y-1.5">
                         <!-- Afficher les sets réels de l'exercice, ou un set par défaut si vide -->
                         <div
                             v-for="(set, setIndex) in (props.sessionExercise.sets && props.sessionExercise.sets.length > 0 ? props.sessionExercise.sets : [{ set_number: 1, repetitions: null, weight: null, rest_time: null, duration: null, order: 0 }])"
