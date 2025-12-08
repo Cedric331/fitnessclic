@@ -167,11 +167,12 @@ const findExerciseIndex = (exercise: SessionExercise): number => {
 const updateExercise = (exerciseIndex: number, updates: Partial<SessionExercise>) => {
     const exercise = props.block.exercises[exerciseIndex];
     console.log('SessionBlockSet updateExercise:', { exerciseIndex, updates, currentExercise: exercise, exerciseId: exercise?.id });
-    // Passer l'ID de l'exercice au lieu de l'index pour éviter les problèmes de tri
-    if (exercise?.id) {
+    // Passer l'ID de l'exercice seulement s'il est valide (positif), sinon utiliser l'index
+    // Les IDs négatifs sont des IDs temporaires pour les nouveaux exercices et ne sont pas uniques
+    if (exercise?.id && exercise.id > 0) {
         emit('update-exercise', exercise.id, updates);
     } else {
-        // Fallback sur l'index si pas d'ID
+        // Fallback sur l'index si pas d'ID valide (ou ID temporaire négatif)
         emit('update-exercise', exerciseIndex, updates);
     }
 };
@@ -336,17 +337,6 @@ const exerciseToRemoveName = computed(() => {
                     @mousedown.stop
                     @click.stop
                 >
-                    <!-- Bouton supprimer - en haut à droite -->
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        class="absolute top-2 right-2 h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 z-10"
-                        @click.stop="handleRemoveExerciseClick(index)"
-                        @mousedown.stop
-                    >
-                        <X class="h-3.5 w-3.5" />
-                    </Button>
-
                     <!-- Image de l'exercice -->
                     <div class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-neutral-100">
                         <img
@@ -360,6 +350,17 @@ const exerciseToRemoveName = computed(() => {
                         </div>
                     </div>
                     
+                    <!-- Bouton supprimer - en haut à droite -->
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        class="absolute top-2 right-2 h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 z-10"
+                        @click.stop="handleRemoveExerciseClick(index)"
+                        @mousedown.stop
+                    >
+                        <X class="h-3.5 w-3.5" />
+                    </Button>
+
                     <!-- Informations de l'exercice et paramètres -->
                     <div class="flex-1 min-w-0 pr-6">
                         <!-- Nom personnalisé de l'exercice -->

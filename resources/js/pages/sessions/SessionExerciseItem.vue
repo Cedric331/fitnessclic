@@ -411,19 +411,33 @@ const getSetLabel = (setNumber: number) => {
                             :key="setIndex"
                             class="relative p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-md"
                         >
-                            <!-- Bouton supprimer la série - en haut à droite -->
+                            <!-- Bouton supprimer la série - fixe en haut à gauche sur mobile, dans la grille sur desktop -->
                             <Button
                                 v-if="sets.length > 1"
                                 variant="ghost"
                                 size="sm"
                                 @click="removeSet(setIndex)"
-                                class="absolute top-2 right-2 h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 z-10"
+                                class="absolute -top-2 -left-1 sm:hidden h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 z-10"
+                                title="Supprimer cette ligne"
                             >
                                 <X class="h-3.5 w-3.5" />
                             </Button>
-
-                            <!-- Champs organisés en grille responsive : 2 colonnes sur mobile, 4 sur desktop -->
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            
+                            <!-- Champs organisés en grille responsive : 2 colonnes sur mobile, 5 sur desktop (avec bouton supprimer) -->
+                            <div class="grid grid-cols-2 sm:grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 items-end">
+                                <!-- Bouton supprimer la série - tout à gauche sur desktop uniquement -->
+                                <div class="hidden sm:flex items-end">
+                                    <Button
+                                        v-if="sets.length > 1"
+                                        variant="ghost"
+                                        size="sm"
+                                        @click="removeSet(setIndex)"
+                                        class="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 flex-shrink-0"
+                                        title="Supprimer cette ligne"
+                                    >
+                                        <X class="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
                                 <!-- Numéro de série (éditable pour chaque ligne) -->
                                 <div>
                                     <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>

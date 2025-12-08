@@ -923,27 +923,36 @@ const handleUpdateExerciseFromBlock = (item: { type: 'standard' | 'set', exercis
     
     // Si on a trouvé l'exercice dans le bloc, le trouver dans sessionExercises
     if (exerciseToUpdate) {
-        // Chercher par ID si disponible, sinon par block_id et position_in_block
+        // Chercher par ID si disponible et valide (positif), sinon par block_id et position_in_block
         let index = -1;
-        if (exerciseToUpdate.id) {
+        if (exerciseToUpdate.id && exerciseToUpdate.id > 0) {
             index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === exerciseToUpdate.id);
         }
         
-        // Si pas trouvé par ID, chercher par block_id et position_in_block
+        // Si pas trouvé par ID (ou ID temporaire négatif), chercher par block_id et position_in_block
         if (index === -1 && item.block) {
-            const blockExercises = sessionExercises.value.filter(
-                (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
+            // Utiliser la position_in_block de l'exercice trouvé dans le bloc
+            const targetPositionInBlock = exerciseToUpdate.position_in_block ?? exerciseIdOrIndex;
+            index = sessionExercises.value.findIndex((e: SessionExercise) => 
+                e.block_id === item.block!.id && 
+                e.position_in_block === targetPositionInBlock &&
+                e.block_type === 'set'
             );
-            const sortedBlockExercises = blockExercises.sort((a, b) => 
-                (a.position_in_block || 0) - (b.position_in_block || 0)
-            );
-            if (sortedBlockExercises[exerciseIdOrIndex]) {
-                const targetExercise = sortedBlockExercises[exerciseIdOrIndex];
-                index = sessionExercises.value.findIndex((e: SessionExercise) => 
-                    e.block_id === targetExercise.block_id && 
-                    e.position_in_block === targetExercise.position_in_block &&
-                    e.block_type === 'set'
+            
+            // Si toujours pas trouvé, essayer avec l'index comme fallback
+            if (index === -1) {
+                const blockExercises = sessionExercises.value.filter(
+                    (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
                 );
+                const sortedBlockExercises = blockExercises.sort((a, b) => 
+                    (a.position_in_block || 0) - (b.position_in_block || 0)
+                );
+                if (sortedBlockExercises[exerciseIdOrIndex]) {
+                    const targetExercise = sortedBlockExercises[exerciseIdOrIndex];
+                    index = sessionExercises.value.findIndex((e: SessionExercise) => 
+                        e.id === targetExercise.id
+                    );
+                }
             }
         }
         
