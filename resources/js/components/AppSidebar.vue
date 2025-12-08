@@ -111,7 +111,7 @@ const handleLogout = () => {
             </SidebarMenu>
         </SidebarHeader>
 
-        <SidebarContent class="px-2 overflow-hidden">
+        <SidebarContent class="px-2 overflow-y-auto">
             <SidebarGroup>
                 <SidebarGroupLabel class="text-xs uppercase text-slate-400 px-2 py-3 mb-2">
                     NAVIGATION
