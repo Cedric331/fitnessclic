@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Http\Controllers\WebhookController as CashierController;
@@ -42,6 +43,57 @@ class StripeWebhookController extends CashierController
             // Retourner 200 pour éviter que Stripe réessaie indéfiniment
             return response()->json(['error' => $e->getMessage()], 200);
         }
+    }
+
+    /**
+     * Handle invoice payment failed.
+     * 
+     * @param  array  $payload
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    protected function handleInvoicePaymentFailed(array $payload)
+    {
+        $invoice = $payload['data']['object'];
+        $stripeCustomerId = $invoice['customer'];
+        
+        // Récupérer l'utilisateur par son Stripe ID
+        $user = User::where('stripe_id', $stripeCustomerId)->first();
+
+        if ($user) {
+            Log::warning('Échec de paiement pour l\'utilisateur', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'invoice_id' => $invoice['id'],
+                'amount' => $invoice['amount_due'] / 100,
+            ]);
+        }
+
+        return parent::handleInvoicePaymentFailed($payload);
+    }
+
+    /**
+     * Handle customer subscription deleted.
+     * 
+     * @param  array  $payload
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    protected function handleCustomerSubscriptionDeleted(array $payload)
+    {
+        $subscription = $payload['data']['object'];
+        $stripeCustomerId = $subscription['customer'];
+        
+        // Récupérer l'utilisateur par son Stripe ID
+        $user = User::where('stripe_id', $stripeCustomerId)->first();
+
+        if ($user) {
+            Log::info('Abonnement supprimé pour l\'utilisateur', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'subscription_id' => $subscription['id'],
+            ]);
+        }
+
+        return parent::handleCustomerSubscriptionDeleted($payload);
     }
 }
 

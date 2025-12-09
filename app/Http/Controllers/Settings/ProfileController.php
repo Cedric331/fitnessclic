@@ -52,20 +52,6 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        // Annuler l'abonnement Stripe si l'utilisateur en a un
-        try {
-            if ($user->hasStripeId() && $user->subscribed('default')) {
-                // Annuler immédiatement l'abonnement
-                $user->subscription('default')->cancelNow();
-            }
-        } catch (\Exception $e) {
-            // Logger l'erreur mais continuer la suppression du compte
-            Log::error('Erreur lors de l\'annulation de l\'abonnement Stripe lors de la suppression du compte', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
         Auth::logout();
 
         $user->delete();
