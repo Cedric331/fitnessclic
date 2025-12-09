@@ -32,6 +32,7 @@ export default defineConfig({
             'vue-router',
             '@vueuse/core',
             'lucide-vue-next',
+            'es-errors',
         ],
         exclude: ['@tailwindcss/vite'],
     },
@@ -59,7 +60,15 @@ export default defineConfig({
             output: {
                 manualChunks: undefined, // Laisser Vite gérer automatiquement
             },
+            external: [], // S'assurer que toutes les dépendances sont bundle
         },
+        commonjsOptions: {
+            include: [/node_modules/],
+            transformMixedEsModules: true,
+        },
+    },
+    resolve: {
+        dedupe: ['vue', '@inertiajs/vue3'],
     },
     // Désactiver certaines vérifications en développement
     esbuild: {
