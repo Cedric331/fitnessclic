@@ -50,6 +50,9 @@ class SessionEmail extends Mailable
             ? $this->session->session_date->format('d/m/Y')
             : 'Non définie';
 
+        // Générer le lien sécurisé vers la séance publique
+        $publicUrl = route('public.session.show', ['shareToken' => $this->session->share_token]);
+
         return new Content(
             view: 'emails.session',
             with: [
@@ -58,6 +61,7 @@ class SessionEmail extends Mailable
                 'sessionName' => $sessionName,
                 'sessionDate' => $sessionDate,
                 'sessionNotes' => $this->session->notes,
+                'publicUrl' => $publicUrl,
             ],
         );
     }

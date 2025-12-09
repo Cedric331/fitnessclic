@@ -97,6 +97,16 @@
 
             <p>Vous trouverez en pièce jointe le PDF détaillé de votre séance avec tous les exercices, séries et répétitions à effectuer.</p>
 
+            <p style="text-align: center; margin: 15px 0;">
+                <a href="{{ $publicUrl }}" class="button" style="display: inline-block; padding: 6px 12px; background-color:rgb(7, 39, 90); color: #ffffff; text-decoration: none; border-radius: 6px;">
+                    Consulter la séance en ligne
+                </a>
+            </p>
+
+            <p style="font-size: 12px; color: #6b7280; text-align: center;">
+                Vous pouvez également consulter cette séance directement sur le site web en cliquant sur le bouton ci-dessus.
+            </p>
+
             <p>Bonne séance ! 💪</p>
         </div>
 

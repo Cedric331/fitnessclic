@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Session extends Model
 {
@@ -29,6 +30,7 @@ class Session extends Model
         'name',
         'notes',
         'session_date',
+        'share_token',
     ];
 
     /**
@@ -78,5 +80,19 @@ class Session extends Model
     public function sessionExercises(): HasMany
     {
         return $this->hasMany(SessionExercise::class, 'session_id')->orderBy('order');
+    }
+
+    /**
+     * Boot the model.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function ($session) {
+            if (empty($session->share_token)) {
+                $session->share_token = (string) Str::uuid();
+            }
+        });
     }
 }

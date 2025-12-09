@@ -2,10 +2,14 @@
 
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\ExercisesController;
+use App\Http\Controllers\PublicSessionController;
 use App\Http\Controllers\SessionsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use App\Models\Session;
+use App\Models\Customer;
+use App\Mail\SessionEmail;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -54,6 +58,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/sessions/{session}/send-email', [SessionsController::class, 'sendEmail'])->name('sessions.send-email');
 });
 
+// Route publique pour consulter une séance via token
+Route::get('/session/{shareToken}', [PublicSessionController::class, 'show'])
+    ->name('public.session.show');
+
 // Pages légales
 Route::get('mentions-legales', function () {
     return Inertia::render('legal/MentionsLegales');
@@ -70,5 +78,13 @@ Route::get('conditions-utilisation', function () {
 Route::get('politique-cookies', function () {
     return Inertia::render('legal/PolitiqueCookies');
 })->name('legal.cookies');
+
+// test email
+Route::get('test-email', function () {
+    $session = Session::first();
+    $customer = Customer::first();
+
+    return (new SessionEmail($session, $customer))->render();
+});
 
 require __DIR__.'/settings.php';
