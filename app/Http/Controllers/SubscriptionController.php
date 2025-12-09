@@ -25,12 +25,34 @@ class SubscriptionController extends Controller
         $trialEndsAt = $onTrial ? $subscription->trial_ends_at : null;
         $daysLeftInTrial = $trialEndsAt ? now()->diffInDays($trialEndsAt, false) : 0;
 
+        // Vérifier si l'abonnement est en cours d'annulation
+        // Un abonnement est en cours d'annulation si :
+        // - Il a une date ends_at dans le futur
+        // - Il n'est pas déjà annulé (stripe_status != 'canceled')
+        $isCancelling = false;
+        $cancelsAt = null;
+        $daysUntilCancellation = 0;
+        
+        if ($subscription) {
+            $endsAt = $subscription->ends_at;
+            $isCancelling = $endsAt && $endsAt->isFuture() && $subscription->stripe_status !== 'canceled';
+            if ($isCancelling) {
+                $cancelsAt = $endsAt;
+                // Calculer le nombre de jours calendaires complets restants
+                // Utiliser startOfDay() pour ignorer les heures et obtenir un nombre entier
+                $daysUntilCancellation = max(0, (int) now()->startOfDay()->diffInDays($endsAt->startOfDay(), false));
+            }
+        }
+
         return Inertia::render('subscription/Index', [
             'hasActiveSubscription' => $hasActiveSubscription,
             'onTrial' => $onTrial,
             'trialEndsAt' => $trialEndsAt?->toDateTimeString(),
             'daysLeftInTrial' => max(0, $daysLeftInTrial),
             'subscriptionStatus' => $subscription?->stripe_status,
+            'isCancelling' => $isCancelling,
+            'cancelsAt' => $cancelsAt?->toDateTimeString(),
+            'daysUntilCancellation' => max(0, $daysUntilCancellation),
         ]);
     }
 

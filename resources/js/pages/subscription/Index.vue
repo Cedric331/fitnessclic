@@ -15,6 +15,9 @@ interface Props {
     trialEndsAt: string | null;
     daysLeftInTrial: number;
     subscriptionStatus: string | null;
+    isCancelling: boolean;
+    cancelsAt: string | null;
+    daysUntilCancellation: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -23,6 +26,9 @@ const props = withDefaults(defineProps<Props>(), {
     trialEndsAt: null,
     daysLeftInTrial: 0,
     subscriptionStatus: null,
+    isCancelling: false,
+    cancelsAt: null,
+    daysUntilCancellation: 0,
 });
 
 const page = usePage();
@@ -136,6 +142,26 @@ const proFeatures = [
                             </p>
                             <p class="text-sm text-blue-700 dark:text-blue-300">
                                 Il vous reste {{ daysLeftInTrial }} jour{{ daysLeftInTrial > 1 ? 's' : '' }} pour profiter de toutes les fonctionnalités Pro.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cancellation Banner -->
+                <div
+                    v-if="isCancelling && hasActiveSubscription"
+                    class="rounded-xl border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-orange-100 p-5 dark:border-orange-800 dark:from-orange-950 dark:to-orange-900"
+                >
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500">
+                            <X class="h-5 w-5 text-white" />
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-orange-900 dark:text-orange-100">
+                                Abonnement en cours d'annulation
+                            </p>
+                            <p class="text-sm text-orange-700 dark:text-orange-300">
+                                Votre abonnement prendra fin dans {{ daysUntilCancellation }} jour{{ daysUntilCancellation > 1 ? 's' : '' }}. Vous pouvez le réactiver depuis la page de gestion de votre abonnement.
                             </p>
                         </div>
                     </div>
