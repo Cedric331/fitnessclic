@@ -58,6 +58,13 @@ class CategoriesController extends Controller
     public function store(StoreCategoryRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $user = Auth::user();
+
+        // Les comptes gratuits ne peuvent pas créer de catégories
+        if ($user->isFree()) {
+            return redirect()->route('categories.index')
+                ->with('error', 'La création de catégories est réservée aux abonnés Pro. Passez à Pro pour créer des catégories illimitées.');
+        }
 
         Category::create([
             'name' => $validated['name'],
@@ -74,6 +81,14 @@ class CategoriesController extends Controller
      */
     public function update(UpdateCategoryRequest $request, Category $category): RedirectResponse
     {
+        $user = Auth::user();
+
+        // Les comptes gratuits ne peuvent pas modifier de catégories
+        if ($user->isFree()) {
+            return redirect()->route('categories.index')
+                ->with('error', 'La modification de catégories est réservée aux abonnés Pro.');
+        }
+
         $validated = $request->validated();
 
         $category->update($validated);
@@ -87,6 +102,14 @@ class CategoriesController extends Controller
      */
     public function destroy(Category $category): RedirectResponse
     {
+        $user = Auth::user();
+
+        // Les comptes gratuits ne peuvent pas supprimer de catégories
+        if ($user->isFree()) {
+            return redirect()->route('categories.index')
+                ->with('error', 'La suppression de catégories est réservée aux abonnés Pro.');
+        }
+
         // Vérifier que la catégorie est privée et appartient à l'utilisateur
         if ($category->type !== 'private' || $category->user_id !== Auth::id()) {
             abort(403);

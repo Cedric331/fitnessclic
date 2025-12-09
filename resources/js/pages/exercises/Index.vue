@@ -11,6 +11,7 @@ import ExerciseListItem from './ExerciseListItem.vue';
 import ExerciseFormDialog from './ExerciseFormDialog.vue';
 import ExerciseImportDialog from './ExerciseImportDialog.vue';
 import ExerciseDeleteDialog from './ExerciseDeleteDialog.vue';
+import UpgradeModal from '@/components/UpgradeModal.vue';
 import type { Exercise, ExercisesProps } from './types';
 
 const props = defineProps<ExercisesProps>();
@@ -134,6 +135,10 @@ const breadcrumbs: BreadcrumbItemType[] = [
 
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
+
+// Vérifier si l'utilisateur est Pro
+const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
+const isUpgradeModalOpen = ref(false);
 
 // Écouter les messages flash et les convertir en notifications
 const shownFlashMessages = ref(new Set<string>());
@@ -539,11 +544,42 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
                         </p>
                     </div>
                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:flex-shrink-0">
-                        <Button variant="outline" size="sm" class="gap-2 w-full sm:w-auto" @click="isImportDialogOpen = true">
+                        <Button
+                            v-if="isPro"
+                            variant="outline"
+                            size="sm"
+                            class="gap-2 w-full sm:w-auto"
+                            @click="isImportDialogOpen = true"
+                        >
                             <Upload class="size-4" />
                             <span>Importer</span>
                         </Button>
-                        <Button size="sm" class="gap-2 bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" @click="isExerciseDialogOpen = true">
+                        <Button
+                            v-else
+                            variant="outline"
+                            size="sm"
+                            class="gap-2 w-full sm:w-auto"
+                            @click="isUpgradeModalOpen = true"
+                        >
+                            <Upload class="size-4" />
+                            <span>Importer</span>
+                        </Button>
+                        <Button
+                            v-if="isPro"
+                            size="sm"
+                            class="gap-2 bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                            @click="isExerciseDialogOpen = true"
+                        >
+                            <Plus class="size-4" />
+                            <span class="hidden sm:inline">Ajouter un exercice</span>
+                            <span class="sm:hidden">Ajouter</span>
+                        </Button>
+                        <Button
+                            v-else
+                            size="sm"
+                            class="gap-2 bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                            @click="isUpgradeModalOpen = true"
+                        >
                             <Plus class="size-4" />
                             <span class="hidden sm:inline">Ajouter un exercice</span>
                             <span class="sm:hidden">Ajouter</span>
@@ -632,6 +668,10 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
                     exerciseToDelete.value = null;
                 }
             }"
+        />
+        <UpgradeModal
+            v-model:open="isUpgradeModalOpen"
+            feature="L'import et la création d'exercices sont réservés aux abonnés Pro. Passez à Pro pour créer et importer des exercices illimités."
         />
     </AppLayout>
 </template>

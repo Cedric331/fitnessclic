@@ -157,6 +157,13 @@ class SessionsController extends Controller
     public function store(StoreSessionRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $user = Auth::user();
+
+        // Vérifier si l'utilisateur peut sauvegarder des séances
+        if (!$user->canSaveSessions()) {
+            return redirect()->route('sessions.create')
+                ->with('error', 'L\'enregistrement des séances est réservé aux abonnés Pro. Passez à Pro pour enregistrer vos séances.');
+        }
 
         // Récupérer les IDs des clients
         $customerIds = $validated['customer_ids'] ?? [];
@@ -513,6 +520,13 @@ class SessionsController extends Controller
             abort(403);
         }
 
+        // Vérifier si l'utilisateur peut exporter en PDF
+        $user = Auth::user();
+        if (!$user->canExportPdf()) {
+            return redirect()->route('sessions.show', $session)
+                ->with('error', 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.');
+        }
+
         $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'user']);
 
         $pdf = Pdf::loadView('sessions.pdf', [
@@ -537,6 +551,14 @@ class SessionsController extends Controller
      */
     public function pdfPreview(PdfPreviewSessionRequest $request)
     {
+        // Vérifier si l'utilisateur peut exporter en PDF
+        $user = Auth::user();
+        if (!$user->canExportPdf()) {
+            return response()->json([
+                'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.'
+            ], 403);
+        }
+
         try {
             $validated = $request->validated();
 

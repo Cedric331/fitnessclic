@@ -142,4 +142,88 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
     {
         return $this->customers()->where('id', $customer->id)->exists();
     }
+
+    /**
+     * Check if the user has an active subscription
+     * @return bool
+     */
+    public function hasActiveSubscription(): bool
+    {
+        return $this->subscribed('default');
+    }
+
+    /**
+     * Check if the user is on a Pro subscription
+     * @return bool
+     */
+    public function isPro(): bool
+    {
+        return $this->hasActiveSubscription();
+    }
+
+    /**
+     * Check if the user is on a free account (not Pro)
+     * @return bool
+     */
+    public function isFree(): bool
+    {
+        return !$this->isPro();
+    }
+
+    /**
+     * Check if the user can save sessions
+     * @return bool
+     */
+    public function canSaveSessions(): bool
+    {
+        return $this->isPro();
+    }
+
+    /**
+     * Check if the user can have unlimited clients
+     * @return bool
+     */
+    public function canHaveUnlimitedClients(): bool
+    {
+        return $this->isPro();
+    }
+
+    /**
+     * Check if the user can export PDFs
+     * @return bool
+     */
+    public function canExportPdf(): bool
+    {
+        return $this->isPro();
+    }
+
+    /**
+     * Check if the user can import unlimited exercises
+     * @return bool
+     */
+    public function canImportUnlimitedExercises(): bool
+    {
+        return $this->isPro();
+    }
+
+    /**
+     * Check if the user can create unlimited categories
+     * @return bool
+     */
+    public function canCreateUnlimitedCategories(): bool
+    {
+        return $this->isPro();
+    }
+
+    /**
+     * Get the subscription plan name
+     * @return string
+     */
+    public function getSubscriptionPlanName(): string
+    {
+        if ($this->hasActiveSubscription()) {
+            return 'FitnessClic Pro';
+        }
+        return 'Gratuit';
+    }
 }

@@ -49,11 +49,16 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { User, Users, CheckSquare, Square } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
 import { VueDraggable } from 'vue-draggable-plus';
+import UpgradeModal from '@/components/UpgradeModal.vue';
 
 const props = defineProps<CreateSessionProps>();
 const page = usePage();
 const currentUserId = computed(() => (page.props.auth as any)?.user?.id);
+const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
 const { success: notifySuccess, error: notifyError } = useNotifications();
+
+// Modal d'upgrade
+const isUpgradeModalOpen = ref(false);
 
 // Écouter les messages flash et les convertir en notifications
 // Utiliser un Set pour éviter les doublons
@@ -170,6 +175,11 @@ const allFilteredSelected = computed(() => {
 
 // Ouvrir la modal avec les clients actuellement sélectionnés
 const openCustomerModal = () => {
+    // Vérifier si l'utilisateur est Pro
+    if (!isPro.value) {
+        isUpgradeModalOpen.value = true;
+        return;
+    }
     tempSelectedCustomerIds.value = [...form.customer_ids];
     customerSearchTerm.value = '';
     showCustomerModal.value = true;
@@ -1157,6 +1167,13 @@ const isFormValid = computed(() => {
 
 // Sauvegarder la séance
 const saveSession = () => {
+    // Vérifier si l'utilisateur est Pro
+    if (!isPro.value) {
+        // Afficher la modal d'upgrade sans resetter le formulaire
+        isUpgradeModalOpen.value = true;
+        return;
+    }
+
     // Validation côté client
     if (!form.name.trim()) {
         notifyError('Le nom de la séance est obligatoire.', 'Validation');
@@ -1278,6 +1295,12 @@ const confirmClearSession = () => {
 
 // Générer le PDF
 const generatePDF = () => {
+    // Vérifier si l'utilisateur est Pro
+    if (!isPro.value) {
+        isUpgradeModalOpen.value = true;
+        return;
+    }
+
     if (sessionExercises.value.length === 0) {
         notifyError('Veuillez ajouter au moins un exercice à la séance avant de générer le PDF.', 'Validation');
         return;
@@ -1584,8 +1607,9 @@ watch(sessionExercises, () => {
                             variant="outline"
                             size="sm"
                             class="sm:gap-2 text-xs sm:text-sm aspect-square sm:aspect-auto"
+                            :class="{ 'opacity-50 cursor-not-allowed': !isPro }"
                             @click="generatePDF"
-                            :disabled="sessionExercises.length === 0"
+                            :disabled="sessionExercises.length === 0 || !isPro"
                         >
                             <FileText class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             <span class="hidden sm:inline">PDF</span>
@@ -1646,6 +1670,8 @@ watch(sessionExercises, () => {
                                             type="button"
                                             variant="outline"
                                             class="w-full justify-start"
+                                            :disabled="!isPro"
+                                            :class="{ 'opacity-50 cursor-not-allowed': !isPro }"
                                             @click="openCustomerModal"
                                         >
                                             <Users class="h-4 w-4 mr-2" />
@@ -1662,6 +1688,7 @@ watch(sessionExercises, () => {
                                                 <User class="h-3.5 w-3.5" />
                                                 <span>{{ customer.full_name || `${customer.first_name} ${customer.last_name}` }}</span>
                                                 <button
+                                                    v-if="isPro"
                                                     type="button"
                                                     @click="removeCustomer(customer.id)"
                                                     class="ml-1 hover:text-blue-900 dark:hover:text-blue-100"
@@ -2008,6 +2035,11 @@ watch(sessionExercises, () => {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <UpgradeModal
+            v-model:open="isUpgradeModalOpen"
+            feature="La sélection de clients et l'enregistrement des séances sont réservés aux abonnés Pro. Passez à Pro pour débloquer toutes les fonctionnalités."
+        />
     </AppLayout>
 </template>
 

@@ -13,13 +13,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { urlIsActive } from '@/lib/utils';
-import { type NavItem } from '@/types';
+import { type NavItem, type User } from '@/types';
 import { Link, usePage, router, type InertiaLinkProps } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, toRef } from 'vue';
 import {
     Plus,
     Dumbbell,
-    User,
+    User as UserIcon,
     Library,
     Tag,
     Star,
@@ -32,8 +32,14 @@ import { edit } from '@/routes/profile';
 import { dashboard } from '@/routes';
 
 const page = usePage();
-const user = page.props.auth.user;
+const user = computed(() => page.props.auth.user as User | null);
 const { getInitials } = useInitials();
+
+// Vérifier si l'utilisateur a un abonnement actif
+const hasActiveSubscription = computed(() => {
+    const value = user.value?.hasActiveSubscription ?? false;
+    return value;
+});
 
 const mainNavItems: NavItem[] = [
     {
@@ -49,7 +55,7 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Mes Clients',
         href: '/customers',
-        icon: User,
+        icon: UserIcon,
     },
     {
         title: 'Bibliothèque',
@@ -67,6 +73,21 @@ const mainNavItems: NavItem[] = [
         icon: Star,
     },
 ];
+
+// Computed pour obtenir le titre de l'abonnement de manière réactive
+const subscriptionTitle = computed(() => {
+    return hasActiveSubscription.value ? 'Abonnement' : 'Passer à FitnessPro';
+});
+
+// Computed pour vérifier si c'est le bouton "Passer à FitnessPro"
+const isUpgradeButton = computed(() => {
+    return !hasActiveSubscription.value;
+});
+
+// Filtrer les items du menu selon le statut de l'utilisateur
+const filteredNavItems = computed(() => {
+    return mainNavItems;
+});
 
 const isCurrentRoute = computed(
     () => (url: NonNullable<InertiaLinkProps['href']>) => urlIsActive(url, page.url),
@@ -132,18 +153,47 @@ const handleLogout = () => {
 
                     <!-- Items de navigation -->
                     <SidebarMenuItem
-                        v-for="item in mainNavItems"
+                        v-for="item in filteredNavItems"
                         :key="item.title"
                         class="py-0.5"
                     >
                         <SidebarMenuButton
+                            v-if="item.title === 'Abonnement'"
+                            as-child
+                            :is-active="isCurrentRoute(item.href)"
+                            :tooltip="subscriptionTitle"
+                            :class="[
+                                'h-10 px-3',
+                                isUpgradeButton
+                                    ? 'bg-gradient-to-r from-yellow-600/20 to-yellow-500/20 hover:from-yellow-600/30 hover:to-yellow-500/30 text-yellow-400 border border-yellow-500/30 data-[active=true]:from-yellow-600/30 data-[active=true]:to-yellow-500/30'
+                                    : 'text-white hover:text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600'
+                            ]"
+                        >
+                            <Link :href="item.href" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+                                <!-- Étoile jaune remplie si abonné, sinon étoile blanche normale -->
+                                <Star
+                                    :class="[
+                                        'size-4',
+                                        hasActiveSubscription
+                                            ? 'text-yellow-400 fill-yellow-400'
+                                            : 'text-white fill-white'
+                                    ]"
+                                />
+                                <span :class="['group-data-[collapsible=icon]:hidden', 'font-semibold']">{{ subscriptionTitle }}</span>
+                            </Link>
+                        </SidebarMenuButton>
+                        <SidebarMenuButton
+                            v-else
                             as-child
                             :is-active="isCurrentRoute(item.href)"
                             :tooltip="item.title"
                             class="text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 h-10 px-3"
                         >
                             <Link :href="item.href" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-                                <component :is="item.icon" :class="['size-4', 'text-white']" />
+                                <component
+                                    :is="item.icon"
+                                    :class="['size-4', 'text-white']"
+                                />
                                 <span :class="['group-data-[collapsible=icon]:hidden', 'text-white']">{{ item.title }}</span>
                             </Link>
                         </SidebarMenuButton>
@@ -159,12 +209,12 @@ const handleLogout = () => {
                     <div class="flex items-center gap-3 px-2 py-2">
                         <Avatar class="size-8 bg-blue-600">
                             <AvatarFallback class="bg-blue-600 text-white">
-                                {{ getInitials(user.name) }}
+                                {{ getInitials(user?.name ?? '') }}
                             </AvatarFallback>
                         </Avatar>
                         <div class="flex flex-col group-data-[collapsible=icon]:hidden">
                             <span class="text-sm font-medium text-white">{{
-                                user.email
+                                user?.email ?? ''
                             }}</span>
                         </div>
                     </div>

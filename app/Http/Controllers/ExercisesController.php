@@ -83,6 +83,14 @@ class ExercisesController extends Controller
      */
     public function store(StoreExerciseRequest $request)
     {
+        $user = Auth::user();
+
+        // Les comptes gratuits ne peuvent pas créer d'exercices
+        if ($user->isFree()) {
+            return redirect()->route('exercises.index')
+                ->with('error', 'La création d\'exercices est réservée aux abonnés Pro. Passez à Pro pour créer des exercices illimités.');
+        }
+
         $validated = $request->validated();
 
         $exercise = Exercise::create([
@@ -224,6 +232,13 @@ class ExercisesController extends Controller
     public function uploadFiles(UploadFilesExerciseRequest $request)
     {
         $validated = $request->validated();
+        $user = Auth::user();
+
+        // Les comptes gratuits ne peuvent pas importer d'exercices
+        if ($user->isFree()) {
+            return redirect()->route('exercises.index')
+                ->with('error', 'L\'import d\'exercices est réservé aux abonnés Pro. Passez à Pro pour importer des exercices illimités.');
+        }
 
         $userId = Auth::id();
         $createdCount = 0;

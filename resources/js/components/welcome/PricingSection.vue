@@ -4,28 +4,28 @@ import { Link } from '@inertiajs/vue3';
 import { Check, X } from 'lucide-vue-next';
 
 const freeFeatures = [
-    'Création de séances illimitées',
-    'Bibliothèque d\'exercices personnalisée',
-    'Gestion de 3 clients maximum',
-    'Export PDF des séances',
+    'Création de séances illimitées (sans enregistrement)',
+    'Accès à tous les exercices de la bibliothèque publique',
+    'Impression des séances',
     'Support par email',
 ];
 
 const freeLimitations = [
-    'Maximum 3 clients',
-    'Pas d\'export avancé',
-    'Support standard',
+    'Pas de création de clients',
+    'Pas d\'import ou création d\'exercices personnalisés',
+    'Pas de création de catégories d\'exercices',
+    'Pas d\'enregistrement des séances',
+    'Pas d\'export PDF des séances',
 ];
 
 const premiumFeatures = [
-    'Tout du compte gratuit',
+    'Toutes les fonctionnalités du compte gratuit',
     'Clients illimités',
-    'Export avancé (PDF, Excel)',
-    'Statistiques détaillées',
-    'Support prioritaire',
-    'Personnalisation avancée',
-    'API d\'intégration',
-    'Sauvegarde automatique cloud',
+    'Export des séances en PDF',
+    'Sauvegardes illimitées de toutes vos séances',
+    'Import d\'exercices illimités dans la bibliothèque',
+    'Création de nouvelles catégories d\'exercices illimités',
+    'Support email prioritaire',
 ];
 
 const popular = true; // Mettre à true pour mettre en évidence l'offre premium

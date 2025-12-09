@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,9 @@ import type { Exercise, Category } from './types';
 
 // État pour suivre quel exercice est en cours de drag
 const draggingExerciseId = ref<number | null>(null);
+
+const page = usePage();
+const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
 
 const props = defineProps<{
     exercises: Exercise[];
@@ -238,8 +242,12 @@ const handleDragEnd = () => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            :class="showOnlyMine ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
-                            @click="emit('filterChange', true)"
+                            :class="[
+                                showOnlyMine ? 'bg-neutral-100 dark:bg-neutral-800' : '',
+                                !isPro ? 'opacity-50 cursor-not-allowed' : ''
+                            ]"
+                            :disabled="!isPro"
+                            @click="isPro && emit('filterChange', true)"
                             title="Mes exercices uniquement"
                         >
                             <Filter class="h-4 w-4 mr-1" />

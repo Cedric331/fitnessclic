@@ -22,6 +22,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Stripe Price ID
+    |--------------------------------------------------------------------------
+    |
+    | The Stripe Price ID for the subscription plan. This should be the
+    | recurring monthly price ID (starts with price_...).
+    |
+    */
+
+    'price_id' => env('STRIPE_PRICE_ID'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Cashier Path
     |--------------------------------------------------------------------------
     |
@@ -61,7 +73,7 @@ return [
     |
     */
 
-    'currency' => env('CASHIER_CURRENCY', 'usd'),
+    'currency' => env('CASHIER_CURRENCY', 'eur'),
 
     /*
     |--------------------------------------------------------------------------
@@ -74,7 +86,7 @@ return [
     |
     */
 
-    'currency_locale' => env('CASHIER_CURRENCY_LOCALE', 'en'),
+    'currency_locale' => env('CASHIER_CURRENCY_LOCALE', 'fr'),
 
     /*
     |--------------------------------------------------------------------------

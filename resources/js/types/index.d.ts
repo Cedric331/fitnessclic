@@ -34,6 +34,8 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    hasActiveSubscription?: boolean;
+    isPro?: boolean;
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;

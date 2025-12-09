@@ -56,7 +56,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/sessions/{session}/pdf', [SessionsController::class, 'pdf'])->name('sessions.pdf');
     Route::post('/sessions/pdf-preview', [SessionsController::class, 'pdfPreview'])->name('sessions.pdf-preview');
     Route::post('/sessions/{session}/send-email', [SessionsController::class, 'sendEmail'])->name('sessions.send-email');
+
+    // Subscription routes
+    Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::get('/subscription/checkout', [\App\Http\Controllers\SubscriptionController::class, 'checkout'])->name('subscription.checkout');
+    Route::get('/subscription/portal', [\App\Http\Controllers\SubscriptionController::class, 'portal'])->name('subscription.portal');
+    Route::get('/subscription/success', [\App\Http\Controllers\SubscriptionController::class, 'success'])->name('subscription.success');
 });
+
+// Stripe Webhook - doit être accessible sans authentification ni CSRF
+// Placé avant les autres routes pour éviter tout conflit de middleware
+Route::post(
+    '/stripe/webhook',
+    [\App\Http\Controllers\StripeWebhookController::class, 'handleWebhook']
+)->name('cashier.webhook')
+    ->withoutMiddleware([
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        \App\Http\Middleware\HandleInertiaRequests::class,
+        \App\Http\Middleware\HandleAppearance::class,
+        \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+    ]);
 
 // Route publique pour consulter une séance via token
 Route::get('/session/{shareToken}', [PublicSessionController::class, 'show'])
@@ -79,12 +98,12 @@ Route::get('politique-cookies', function () {
     return Inertia::render('legal/PolitiqueCookies');
 })->name('legal.cookies');
 
-// test email
-Route::get('test-email', function () {
-    $session = Session::first();
-    $customer = Customer::first();
+// // test email
+// Route::get('test-email', function () {
+//     $session = Session::first();
+//     $customer = Customer::first();
 
-    return (new SessionEmail($session, $customer))->render();
-});
+//     return (new SessionEmail($session, $customer))->render();
+// });
 
 require __DIR__.'/settings.php';

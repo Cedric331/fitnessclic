@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import CustomerCard from './CustomerCard.vue';
 import CustomerCreateDialog from './CustomerCreateDialog.vue';
-import { User } from 'lucide-vue-next';
+import UpgradeModal from '@/components/UpgradeModal.vue';
+import { Button } from '@/components/ui/button';
+import { User, Plus } from 'lucide-vue-next';
 import type { Customer } from './types';
 
 interface Props {
@@ -11,6 +14,11 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const page = usePage();
+
+// Vérifier si l'utilisateur est Pro
+const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
+const isUpgradeModalOpen = ref(false);
 
 const emit = defineEmits<{
     edit: [customer: Customer];
@@ -60,9 +68,22 @@ const handleDelete = (customer: Customer) => {
             }}
         </p>
         <CustomerCreateDialog
+            v-if="isPro"
             v-model:open="isCreateDialogOpen"
             trigger-label="Ajouter un client"
             :show-trigger="true"
+        />
+        <Button
+            v-else
+            class="bg-blue-600 hover:bg-blue-700 text-white"
+            @click="isUpgradeModalOpen = true"
+        >
+            <Plus class="h-4 w-4 mr-2" />
+            Ajouter un client
+        </Button>
+        <UpgradeModal
+            v-model:open="isUpgradeModalOpen"
+            feature="La création de clients est réservée aux abonnés Pro. Passez à Pro pour créer des clients illimités."
         />
     </div>
 </template>

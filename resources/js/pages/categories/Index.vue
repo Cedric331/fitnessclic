@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { Search } from 'lucide-vue-next';
 import { computed, ref, watch, nextTick } from 'vue';
@@ -9,6 +10,7 @@ import CategoryCreateDialog from './CategoryCreateDialog.vue';
 import CategoryEditDialog from './CategoryEditDialog.vue';
 import CategoryDeleteDialog from './CategoryDeleteDialog.vue';
 import CategorySection from './CategorySection.vue';
+import UpgradeModal from '@/components/UpgradeModal.vue';
 import type { Category, Filters } from './types';
 import { useNotifications } from '@/composables/useNotifications';
 
@@ -27,6 +29,10 @@ const breadcrumbs: BreadcrumbItemType[] = [
 
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
+
+// Vérifier si l'utilisateur est Pro
+const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
+const isUpgradeModalOpen = ref(false);
 
 // Écouter les messages flash et les convertir en notifications
 const shownFlashMessages = ref(new Set<string>());
@@ -127,11 +133,19 @@ watch(searchTerm, (newValue, oldValue) => {
 });
 
 const startEditCategory = (category: Category) => {
+    if (!isPro.value) {
+        isUpgradeModalOpen.value = true;
+        return;
+    }
     editingCategory.value = category;
     isEditDialogOpen.value = true;
 };
 
 const startDeleteCategory = (category: Category) => {
+    if (!isPro.value) {
+        isUpgradeModalOpen.value = true;
+        return;
+    }
     deletingCategory.value = category;
     isDeleteDialogOpen.value = true;
 };
@@ -152,7 +166,18 @@ const startDeleteCategory = (category: Category) => {
                         Gérez vos catégories pour organiser vos exercices
                     </p>
                 </div>
-                <CategoryCreateDialog v-model:open="isCreateDialogOpen" triggerLabel="Nouvelle catégorie" />
+                <CategoryCreateDialog
+                    v-if="isPro"
+                    v-model:open="isCreateDialogOpen"
+                    triggerLabel="Nouvelle catégorie"
+                />
+                <Button
+                    v-else
+                    @click="isUpgradeModalOpen = true"
+                    class="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                    Nouvelle catégorie
+                </Button>
             </div>
 
             <div class="relative">
@@ -185,6 +210,10 @@ const startDeleteCategory = (category: Category) => {
 
             <CategoryEditDialog v-model:open="isEditDialogOpen" :category="editingCategory" />
             <CategoryDeleteDialog v-model:open="isDeleteDialogOpen" :category="deletingCategory" />
+            <UpgradeModal
+                v-model:open="isUpgradeModalOpen"
+                feature="La gestion des catégories (création, modification, suppression) est réservée aux abonnés Pro."
+            />
         </div>
     </AppLayout>
 </template>
