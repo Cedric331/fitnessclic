@@ -221,7 +221,7 @@ const getSetLabel = (setNumber: number) => {
             </div>
             <CardContent class="p-1.5">
                 <!-- Contenu principal : Image, nom, commentaires avec icônes de drag and drop alignées -->
-                <div class="flex items-start gap-2 mb-2">
+                <div class="flex items-end gap-2 mb-2">
                     <!-- Poignée de drag et boutons de déplacement -->
                     <div 
                         class="flex flex-col items-center gap-0.5 flex-shrink-0 pt-0.5"
@@ -261,7 +261,7 @@ const getSetLabel = (setNumber: number) => {
 
                     <!-- Image de l'exercice -->
                     <div 
-                        class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800"
+                        class="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800"
                     >
                         <img
                             v-if="exercise?.image_url"
