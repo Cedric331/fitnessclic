@@ -1715,7 +1715,7 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                     <!-- Panneau gauche -->
                     <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
                         <div class="space-y-6">
-                        <Card class="shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
+                        <Card class="shadow-md">
                             <CardHeader>
                                 <CardTitle>Informations de la séance</CardTitle>
                             </CardHeader>
@@ -1780,7 +1780,7 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                         </Card>
 
                         <!-- Liste des exercices de la séance -->
-                        <Card class="shadow-[0_4px_15px_rgba(0,0,0,0.3)]">
+                        <Card class="shadow-md">
                             <CardHeader>
                                 <div class="space-y-2">
                                     <CardTitle class="flex items-center justify-between">

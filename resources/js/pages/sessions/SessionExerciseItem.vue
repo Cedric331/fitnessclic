@@ -13,6 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     GripVertical, 
     X, 
@@ -283,18 +284,26 @@ const getSetLabel = (setNumber: number) => {
                         <!-- Boutons au-dessus sur petit écran -->
                         <div class="flex flex-row sm:hidden items-center gap-2 mb-1.5">
                             <!-- Toggle Super Set -->
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                class="text-xs h-7"
-                                @click.stop="emit('convertToSet')"
-                                @mousedown.stop
-                                @dragstart.stop
-                                title="Convertir en bloc Super Set"
-                            >
-                                <ArrowLeftRight class="h-3 w-3 mr-1" />
-                                Super Set
-                            </Button>
+                            <Tooltip>
+                                <TooltipTrigger as-child>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        class="text-xs h-7"
+                                        @click.stop="emit('convertToSet')"
+                                        @mousedown.stop
+                                        @dragstart.stop
+                                    >
+                                        <ArrowLeftRight class="h-3 w-3 mr-1" />
+                                        Super Set
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p class="max-w-xs">
+                                        Convertir en bloc Super Set pour regrouper plusieurs exercices et insérer plusieurs images dans le cadre
+                                    </p>
+                                </TooltipContent>
+                            </Tooltip>
                             <!-- Bouton supprimer -->
                             <Button
                                 variant="ghost"
@@ -324,18 +333,26 @@ const getSetLabel = (setNumber: number) => {
                                     {{ sessionExercise.custom_exercise_name || exercise?.title || 'Exercice' }}
                                 </h3>
                                 <!-- Toggle Super Set - Desktop uniquement -->
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    class="hidden sm:flex text-xs h-7 flex-shrink-0"
-                                    @click.stop="emit('convertToSet')"
-                                    @mousedown.stop
-                                    @dragstart.stop
-                                    title="Convertir en bloc Super Set"
-                                >
-                                    <ArrowLeftRight class="h-3 w-3 mr-1" />
-                                    Super Set
-                                </Button>
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            class="hidden sm:flex text-xs h-7 flex-shrink-0"
+                                            @click.stop="emit('convertToSet')"
+                                            @mousedown.stop
+                                            @dragstart.stop
+                                        >
+                                            <ArrowLeftRight class="h-3 w-3 mr-1" />
+                                            Super Set
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p class="max-w-xs">
+                                            Convertir en bloc Super Set pour regrouper plusieurs exercices dans le cadre
+                                        </p>
+                                    </TooltipContent>
+                                </Tooltip>
                                 <!-- Bouton supprimer - Desktop uniquement -->
                                 <Button
                                     variant="ghost"
@@ -391,8 +408,7 @@ const getSetLabel = (setNumber: number) => {
 
                 <!-- Séries multiples -->
                 <div class="space-y-1.5">
-                    <div class="flex items-center justify-between mb-1.5">
-                        <Label class="text-sm font-medium">Lignes</Label>
+                    <div class="flex items-center justify-end mb-1.5">
                         <Button
                             variant="ghost"
                             size="sm"

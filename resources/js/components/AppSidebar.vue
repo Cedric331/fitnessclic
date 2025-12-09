@@ -76,10 +76,10 @@ const mainNavItems: NavItem[] = [
 
 // Computed pour obtenir le titre de l'abonnement de manière réactive
 const subscriptionTitle = computed(() => {
-    return hasActiveSubscription.value ? 'Abonnement' : 'Passer à FitnessPro';
+    return hasActiveSubscription.value ? 'Abonnement' : 'Passer à FitnessClicPro';
 });
 
-// Computed pour vérifier si c'est le bouton "Passer à FitnessPro"
+// Computed pour vérifier si c'est le bouton "Passer à FitnessClicPro"
 const isUpgradeButton = computed(() => {
     return !hasActiveSubscription.value;
 });

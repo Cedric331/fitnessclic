@@ -58,7 +58,7 @@ const proFeatures = [
                     </div>
                     <div>
                         <DialogTitle class="text-2xl font-bold text-slate-900 dark:text-white">
-                            Passez à Fitness Pro
+                            Passez à FitnessClicPro
                         </DialogTitle>
                         <DialogDescription class="text-sm text-slate-600 dark:text-slate-400 mt-1">
                             Débloquez toutes les fonctionnalités avancées
@@ -84,7 +84,7 @@ const proFeatures = [
 
                 <div class="space-y-2">
                     <p class="text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                        Avec l'abonnement Fitness Pro, vous bénéficiez de :
+                        Avec l'abonnement FitnessClicPro, vous bénéficiez de :
                     </p>
                     <ul class="space-y-2">
                         <li
@@ -111,7 +111,7 @@ const proFeatures = [
                     @click="handleUpgrade"
                 >
                     <Star class="size-4" />
-                    Passer à Fitness Pro
+                    Passer à FitnessClicPro
                 </Button>
             </DialogFooter>
         </DialogContent>
