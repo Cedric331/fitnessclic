@@ -475,7 +475,7 @@ watch(isDeleteDialogOpen, (open) => {
                                     :key="customer.id"
                                     :value="customer.id"
                                 >
-                                    {{ customer.full_name }} {{ customer.email ? `(${customer.email})` : '' }}
+                                    {{ customer.last_name }} {{ customer.first_name }} ({{ customer.email ? customer.email : '' }})
                                 </option>
                             </select>
                         </div>

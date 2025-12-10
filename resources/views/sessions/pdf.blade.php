@@ -579,12 +579,43 @@
                       <th>Charge</th>
                       <th>repos</th>
                     </tr>
-                    <tr>
-                      <td class="bold">{{ $setsCount }}</td>
-                      <td>{{ $durationOrReps }}</td>
-                      <td>{{ $charge }}</td>
-                      <td>{{ $rest }}</td>
-                    </tr>
+                    @if($sets->count() > 0)
+                      @foreach($sets as $set)
+                        @php
+                          $setDurationOrReps = '-';
+                          if ($useDuration) {
+                            $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
+                            $setDurationOrReps = formatDuration($rawDuration);
+                          } else {
+                            $setDurationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
+                          }
+
+                          $setCharge = '-';
+                          if ($useBodyweight) {
+                            $setCharge = 'poids de corps';
+                          } else {
+                            $setCharge = !empty($set->weight) ? $set->weight.' kg' : ($sessionExercise->weight ?? '-');
+                          }
+
+                          $setRest = '-';
+                          $rawRest = $set->rest_time ?? $sessionExercise->rest_time ?? '-';
+                          $setRest = formatRestTime($rawRest);
+                        @endphp
+                        <tr>
+                          <td class="bold">{{ $set->set_number ?? $loop->iteration }}</td>
+                          <td>{{ $setDurationOrReps }}</td>
+                          <td>{{ $setCharge }}</td>
+                          <td>{{ $setRest }}</td>
+                        </tr>
+                      @endforeach
+                    @else
+                      <tr>
+                        <td class="bold">{{ $setsCount }}</td>
+                        <td>{{ $durationOrReps }}</td>
+                        <td>{{ $charge }}</td>
+                        <td>{{ $rest }}</td>
+                      </tr>
+                    @endif
                   </table>
                 @endif
               @else
@@ -683,12 +714,43 @@
                               <th>{{ $useBodyweight ? 'poids de corps' : 'charge' }}</th>
                               <th>repos</th>
                             </tr>
-                            <tr>
-                              <td class="bold">{{ $setsCount }}</td>
-                              <td>{{ $durationOrReps }}</td>
-                              <td>{{ $charge }}</td>
-                              <td>{{ $rest }}</td>
-                            </tr>
+                            @if($sets->count() > 0)
+                              @foreach($sets as $set)
+                                @php
+                                  $setDurationOrReps = '-';
+                                  if ($useDuration) {
+                                    $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
+                                    $setDurationOrReps = formatDuration($rawDuration);
+                                  } else {
+                                    $setDurationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
+                                  }
+
+                                  $setCharge = '-';
+                                  if ($useBodyweight) {
+                                    $setCharge = 'poids de corps';
+                                  } else {
+                                    $setCharge = !empty($set->weight) ? $set->weight.' kg' : ($sessionExercise->weight ?? '-');
+                                  }
+
+                                  $setRest = '-';
+                                  $rawRest = $set->rest_time ?? $sessionExercise->rest_time ?? '-';
+                                  $setRest = formatRestTime($rawRest);
+                                @endphp
+                                <tr>
+                                  <td class="bold">{{ $set->set_number ?? $loop->iteration }}</td>
+                                  <td>{{ $setDurationOrReps }}</td>
+                                  <td>{{ $setCharge }}</td>
+                                  <td>{{ $setRest }}</td>
+                                </tr>
+                              @endforeach
+                            @else
+                              <tr>
+                                <td class="bold">{{ $setsCount }}</td>
+                                <td>{{ $durationOrReps }}</td>
+                                <td>{{ $charge }}</td>
+                                <td>{{ $rest }}</td>
+                              </tr>
+                            @endif
                           </table>
                         </td>
                       </tr>
