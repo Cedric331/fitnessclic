@@ -232,6 +232,133 @@ const sortedExercises = computed(() => {
         return orderA - orderB;
     });
 });
+
+// Fonctions helper pour formater les données comme dans le PDF
+const extractRestSeconds = (restTime: string | null | undefined): string | number => {
+    if (!restTime || restTime === '-') return '-';
+    // Extraire le nombre de secondes depuis le format "X seconde(s)" ou "X secondes"
+    const secondsMatch = restTime.match(/(\d+)\s*seconde/i);
+    if (secondsMatch) {
+        return parseInt(secondsMatch[1]);
+    }
+    // Si c'est juste un nombre, le retourner
+    const numberMatch = restTime.match(/^(\d+)$/);
+    if (numberMatch) {
+        return parseInt(numberMatch[1]);
+    }
+    // Si c'est au format "X minute(s) Y seconde(s)", convertir en secondes
+    let totalSeconds = 0;
+    const minutesMatch = restTime.match(/(\d+)\s*minute/i);
+    if (minutesMatch) totalSeconds += parseInt(minutesMatch[1]) * 60;
+    const secondsInMatch = restTime.match(/(\d+)\s*seconde/i);
+    if (secondsInMatch) totalSeconds += parseInt(secondsInMatch[1]);
+    return totalSeconds > 0 ? totalSeconds : '-';
+};
+
+const extractDurationSeconds = (duration: string | null | undefined): string | number => {
+    if (!duration || duration === '-') return '-';
+    // Extraire le nombre de secondes depuis le format "X seconde(s)" ou "X secondes"
+    const secondsMatch = duration.match(/(\d+)\s*seconde/i);
+    if (secondsMatch) {
+        return parseInt(secondsMatch[1]);
+    }
+    // Si c'est juste un nombre, le retourner
+    const numberMatch = duration.match(/^(\d+)$/);
+    if (numberMatch) {
+        return parseInt(numberMatch[1]);
+    }
+    // Si c'est au format "X minute(s) Y seconde(s)", convertir en secondes
+    let totalSeconds = 0;
+    const minutesMatch = duration.match(/(\d+)\s*minute/i);
+    if (minutesMatch) totalSeconds += parseInt(minutesMatch[1]) * 60;
+    const secondsInMatch = duration.match(/(\d+)\s*seconde/i);
+    if (secondsInMatch) totalSeconds += parseInt(secondsInMatch[1]);
+    return totalSeconds > 0 ? totalSeconds : '-';
+};
+
+// Formater une série pour l'affichage
+const formatSeriesLine = (set: any, sessionExercise: any): string => {
+    const setNumber = set.set_number || 1;
+    
+    // Déterminer le label et la valeur pour répétitions/durée
+    let repsLabel = 'Repets';
+    let repsValue: string | number = '-';
+    const useDuration = sessionExercise.use_duration === true || sessionExercise.use_duration === 1 || sessionExercise.use_duration === '1' || sessionExercise.use_duration === 'true';
+    
+    if (useDuration) {
+        const rawDuration = set.duration ?? sessionExercise.duration ?? '-';
+        repsLabel = 'Durée';
+        repsValue = extractDurationSeconds(rawDuration);
+    } else {
+        repsValue = set.repetitions ?? sessionExercise.repetitions ?? '-';
+    }
+    
+    // Déterminer le texte pour la charge
+    let chargeText = '';
+    const useBodyweight = sessionExercise.use_bodyweight === true || sessionExercise.use_bodyweight === 1 || sessionExercise.use_bodyweight === '1' || sessionExercise.use_bodyweight === 'true';
+    
+    if (useBodyweight) {
+        chargeText = 'Poids de corps';
+    } else {
+        const weight = set.weight ?? sessionExercise.weight ?? '-';
+        if (weight !== '-' && weight !== null) {
+            const weightValue = typeof weight === 'number' ? Math.round(weight) : weight;
+            chargeText = `Charges : ${weightValue}`;
+        }
+    }
+    
+    // Repos
+    const rawRest = set.rest_time ?? sessionExercise.rest_time ?? '-';
+    const restSeconds = extractRestSeconds(rawRest);
+    
+    // Construire la ligne
+    let line = `Série : ${setNumber} - ${repsLabel} : ${repsValue}`;
+    if (chargeText) {
+        line += ` - ${chargeText}`;
+    }
+    line += `, Repos : ${restSeconds}`;
+    
+    return line;
+};
+
+// Formater une série sans sets (fallback)
+const formatSeriesLineFallback = (sessionExercise: any, setsCount: number): string => {
+    const useDuration = sessionExercise.use_duration === true || sessionExercise.use_duration === 1 || sessionExercise.use_duration === '1' || sessionExercise.use_duration === 'true';
+    const useBodyweight = sessionExercise.use_bodyweight === true || sessionExercise.use_bodyweight === 1 || sessionExercise.use_bodyweight === '1' || sessionExercise.use_bodyweight === 'true';
+    
+    let repsLabel = 'Repets';
+    let repsValue: string | number = '-';
+    
+    if (useDuration) {
+        const rawDuration = sessionExercise.duration ?? '-';
+        repsLabel = 'Durée';
+        repsValue = extractDurationSeconds(rawDuration);
+    } else {
+        repsValue = sessionExercise.repetitions ?? '-';
+    }
+    
+    let chargeText = '';
+    if (useBodyweight) {
+        chargeText = 'Poids de corps';
+    } else {
+        const weight = sessionExercise.weight ?? '-';
+        if (weight !== '-' && weight !== null) {
+            const weightValue = typeof weight === 'number' ? Math.round(weight) : weight;
+            chargeText = `Charges : ${weightValue}`;
+        }
+    }
+    
+    const rawRest = sessionExercise.rest_time ?? '-';
+    const restSeconds = extractRestSeconds(rawRest);
+    
+    let line = `Série : ${setsCount} - ${repsLabel} : ${repsValue}`;
+    if (chargeText) {
+        line += ` - ${chargeText}`;
+    }
+    line += `, Repos : ${restSeconds}`;
+    
+    return line;
+};
 </script>
 
 <template>
@@ -379,143 +506,82 @@ const sortedExercises = computed(() => {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div v-if="orderedItems.length > 0" class="space-y-4">
+                    <div v-if="orderedItems.length > 0" class="space-y-[18px]">
                         <template v-for="item in orderedItems" :key="item.key">
                             <!-- Super Set -->
                             <div
                                 v-if="item.type === 'set' && item.block"
-                                class="relative rounded-lg border-2 border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 p-4"
+                                class="relative rounded-lg bg-[#f7f7f7] p-2"
                             >
-                                <!-- Badge Super Set -->
-                                <div class="absolute -top-3 right-4 z-10">
-                                    <Badge class="bg-blue-600 text-white text-xs font-semibold px-2 py-1">
-                                        Super Set
-                                    </Badge>
-                                </div>
-                                <!-- Numéro du Super Set -->
-                                <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
-                                    {{ item.displayIndex + 1 }}
-                                </div>
-                                
-                                <div class="mt-2 space-y-3">
-                                    <div
-                                        v-for="(sessionExercise, exerciseIndex) in item.block.exercises"
-                                        :key="sessionExercise.id || `ex-${item.block.id}-${exerciseIndex}`"
-                                        class="relative rounded-lg border border-blue-300 bg-white dark:bg-slate-900/50 p-3"
-                                    >
-                                        <!-- Indicateur de position dans le Super Set -->
-                                        <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white text-xs font-bold shadow-md">
-                                            {{ exerciseIndex + 1 }}
+                                <div class="flex gap-3">
+                                    <!-- Numéro du Super Set sur le côté gauche -->
+                                    <div class="flex-shrink-0 w-10 flex items-start justify-center pt-1 border-l-2 border-[#212121] pl-2">
+                                        <span class="text-2xl font-bold text-[#212121]">{{ item.displayIndex + 1 }}</span>
+                                    </div>
+                                    
+                                    <!-- Contenu du Super Set -->
+                                    <div class="flex-1">
+                                        <!-- Label Super Set -->
+                                        <div
+                                            v-if="item.block.exercises[0]?.additional_description || item.block.exercises[0]?.description"
+                                            class="text-right mb-3 mr-6 text-xs"
+                                        >
+                                            <span class="font-bold">Super set :</span> {{ item.block.exercises[0]?.additional_description || item.block.exercises[0]?.description }}
                                         </div>
-                                        <div class="flex gap-3">
-                                            <!-- Image de l'exercice -->
+                                        
+                                        <!-- Exercices du Super Set -->
+                                        <div class="space-y-3">
                                             <div
-                                                v-if="sessionExercise.exercise?.image_url"
-                                                class="flex-shrink-0"
+                                                v-for="(sessionExercise, exerciseIndex) in item.block.exercises"
+                                                :key="sessionExercise.id || `ex-${item.block.id}-${exerciseIndex}`"
+                                                class="flex gap-3"
                                             >
-                                                <img
-                                                    :src="sessionExercise.exercise.image_url"
-                                                    :alt="sessionExercise.exercise.title"
-                                                    class="size-16 rounded-lg object-cover"
-                                                />
-                                            </div>
-                                            <div
-                                                v-else
-                                                class="flex-shrink-0 size-16 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
-                                            >
-                                                <FileText class="size-6 text-slate-400" />
-                                            </div>
-
-                                            <!-- Détails de l'exercice -->
-                                            <div class="flex-1 space-y-2">
-                                                <div>
-                                                    <h3 class="font-semibold text-slate-900 dark:text-white text-sm">
-                                                        {{ sessionExercise.custom_exercise_name || sessionExercise.exercise?.title || 'Exercice inconnu' }}
-                                                    </h3>
+                                                <!-- Image de l'exercice à gauche (plus grande, prend toute la hauteur) -->
+                                                <div
+                                                    v-if="sessionExercise.exercise?.image_url"
+                                                    class="flex-shrink-0 self-start"
+                                                >
+                                                    <img
+                                                        :src="sessionExercise.exercise.image_url"
+                                                        :alt="sessionExercise.exercise.title"
+                                                        class="w-24 h-auto max-h-28 object-contain rounded"
+                                                    />
+                                                </div>
+                                                <div
+                                                    v-else
+                                                    class="flex-shrink-0 w-24 h-28 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center self-start"
+                                                >
+                                                    <FileText class="size-6 text-slate-400" />
                                                 </div>
 
-                                                <!-- Détails des sets -->
-                                                <div v-if="sessionExercise.sets && sessionExercise.sets.length > 0" class="space-y-2">
-                                                    <div
-                                                        v-for="(set, setIndex) in sessionExercise.sets"
-                                                        :key="set.id || `set-${item.block.id}-${exerciseIndex}-${setIndex}`"
-                                                        class="flex flex-wrap gap-2"
-                                                    >
-                                                        <Badge
-                                                            variant="outline"
-                                                            class="text-xs border-blue-300 bg-blue-50 dark:bg-blue-900/20"
+                                                <!-- Titre et lignes de séries à droite -->
+                                                <div class="flex-1 flex flex-col">
+                                                    <!-- Titre de l'exercice -->
+                                                    <div class="mb-2">
+                                                        <h3 class="font-bold text-sm text-[#212121] mb-1">
+                                                            {{ sessionExercise.custom_exercise_name || sessionExercise.exercise?.title || 'Exercice inconnu' }}
+                                                        </h3>
+                                                    </div>
+
+                                                    <!-- Lignes de séries avec style PDF -->
+                                                    <div class="space-y-0.5">
+                                                        <div
+                                                            v-if="sessionExercise.sets && sessionExercise.sets.length > 0"
+                                                            v-for="(set, setIndex) in sessionExercise.sets"
+                                                            :key="set.id || `set-${item.block.id}-${exerciseIndex}-${setIndex}`"
+                                                            class="text-xs bg-[#d5f5f5] py-1.5 px-3 rounded text-center leading-tight"
                                                         >
-                                                            <span class="font-semibold">Série {{ set.set_number }}</span>
-                                                        </Badge>
-                                                        <Badge
-                                                            v-if="sessionExercise.use_duration ? set.duration : set.repetitions"
-                                                            variant="outline"
-                                                            class="text-xs border-slate-300"
+                                                            {{ formatSeriesLine(set, sessionExercise) }}
+                                                        </div>
+                                                        <!-- Fallback pour les anciennes données (sans sets) -->
+                                                        <div
+                                                            v-else-if="sessionExercise.repetitions || sessionExercise.duration || sessionExercise.rest_time || sessionExercise.weight || sessionExercise.use_bodyweight"
+                                                            class="text-xs bg-[#d5f5f5] py-1.5 px-3 rounded text-center leading-tight"
                                                         >
-                                                            {{ sessionExercise.use_duration ? `Durée: ${set.duration}` : `${set.repetitions} répétitions` }}
-                                                        </Badge>
-                                                        <Badge
-                                                            v-if="sessionExercise.use_bodyweight"
-                                                            variant="outline"
-                                                            class="text-xs border-slate-300"
-                                                        >
-                                                            Poids de corps
-                                                        </Badge>
-                                                        <Badge
-                                                            v-else-if="set.weight"
-                                                            variant="outline"
-                                                            class="text-xs border-slate-300"
-                                                        >
-                                                            {{ set.weight }} kg
-                                                        </Badge>
-                                                        <Badge
-                                                            v-if="set.rest_time"
-                                                            variant="outline"
-                                                            class="text-xs border-slate-300"
-                                                        >
-                                                            Repos: {{ set.rest_time }}
-                                                        </Badge>
+                                                            {{ formatSeriesLineFallback(sessionExercise, sessionExercise.sets_count || 1) }}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <!-- Fallback pour les anciennes données (sans sets) -->
-                                                <div v-else-if="sessionExercise.repetitions || sessionExercise.duration || sessionExercise.rest_time || sessionExercise.weight || sessionExercise.use_bodyweight" class="flex flex-wrap gap-2">
-                                                    <Badge
-                                                        v-if="sessionExercise.use_duration ? sessionExercise.duration : sessionExercise.repetitions"
-                                                        variant="outline"
-                                                        class="text-xs border-slate-300"
-                                                    >
-                                                        {{ sessionExercise.use_duration ? `Durée: ${sessionExercise.duration}` : `${sessionExercise.repetitions} répétitions` }}
-                                                    </Badge>
-                                                    <Badge
-                                                        v-if="sessionExercise.use_bodyweight"
-                                                        variant="outline"
-                                                        class="text-xs border-slate-300"
-                                                    >
-                                                        Poids de corps
-                                                    </Badge>
-                                                    <Badge
-                                                        v-else-if="sessionExercise.weight"
-                                                        variant="outline"
-                                                        class="text-xs border-slate-300"
-                                                    >
-                                                        {{ sessionExercise.weight }} kg
-                                                    </Badge>
-                                                    <Badge
-                                                        v-if="sessionExercise.rest_time"
-                                                        variant="outline"
-                                                        class="text-xs border-slate-300"
-                                                    >
-                                                        Repos: {{ sessionExercise.rest_time }}
-                                                    </Badge>
-                                                </div>
-
-                                                <!-- Description additionnelle -->
-                                                <p
-                                                    v-if="sessionExercise.additional_description"
-                                                    class="text-xs text-slate-600 dark:text-slate-400"
-                                                >
-                                                    {{ sessionExercise.additional_description }}
-                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -526,121 +592,68 @@ const sortedExercises = computed(() => {
                             <div
                                 v-else-if="item.type === 'standard' && item.exercise"
                                 :key="item.key"
-                                class="relative rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/50"
+                                class="relative rounded-lg bg-[#f7f7f7] p-2"
                             >
-                                <!-- Numéro d'exercice en haut à gauche -->
-                                <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
-                                    {{ item.displayIndex + 1 }}
-                                </div>
-                                <div class="flex gap-4">
-                                    <!-- Image de l'exercice -->
-                                    <div
-                                        v-if="item.exercise.exercise?.image_url"
-                                        class="flex-shrink-0"
-                                    >
-                                        <img
-                                            :src="item.exercise.exercise.image_url"
-                                            :alt="item.exercise.exercise.title"
-                                            class="size-20 rounded-lg object-cover"
-                                        />
+                                <div class="flex gap-3">
+                                    <!-- Numéro d'exercice sur le côté gauche -->
+                                    <div class="flex-shrink-0 w-10 flex items-start justify-center pt-1 border-l-2 border-[#212121] pl-2">
+                                        <span class="text-2xl font-bold text-[#212121]">{{ item.displayIndex + 1 }}</span>
                                     </div>
-                                    <div
-                                        v-else
-                                        class="flex-shrink-0 size-20 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
-                                    >
-                                        <FileText class="size-8 text-slate-400" />
-                                    </div>
-
-                                    <!-- Détails de l'exercice -->
-                                    <div class="flex-1 space-y-2">
-                                        <div>
-                                            <h3 class="font-semibold text-slate-900 dark:text-white">
-                                                {{ item.exercise.custom_exercise_name || item.exercise.exercise?.title || 'Exercice inconnu' }}
-                                            </h3>
+                                    
+                                    <!-- Contenu de l'exercice -->
+                                    <div class="flex-1 flex gap-4">
+                                        <!-- Image de l'exercice à gauche (plus grande, prend toute la hauteur) -->
+                                        <div
+                                            v-if="item.exercise.exercise?.image_url"
+                                            class="flex-shrink-0 self-start"
+                                        >
+                                            <img
+                                                :src="item.exercise.exercise.image_url"
+                                                :alt="item.exercise.exercise.title"
+                                                class="w-28 h-auto max-h-32 object-contain rounded"
+                                            />
+                                        </div>
+                                        <div
+                                            v-else
+                                            class="flex-shrink-0 w-28 h-32 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center self-start"
+                                        >
+                                            <FileText class="size-8 text-slate-400" />
                                         </div>
 
-                                        <!-- Détails des sets -->
-                                        <div v-if="item.exercise.sets && item.exercise.sets.length > 0" class="space-y-2">
-                                            <div
-                                                v-for="(set, setIndex) in item.exercise.sets"
-                                                :key="set.id || `set-${item.exercise.id}-${setIndex}`"
-                                                class="flex flex-wrap gap-2"
-                                            >
-                                                <Badge
-                                                    variant="outline"
-                                                    class="text-xs border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                        <!-- Titre et lignes de séries à droite -->
+                                        <div class="flex-1 flex flex-col">
+                                            <!-- Titre de l'exercice -->
+                                            <div class="mb-2">
+                                                <h3 class="font-bold text-base text-[#212121] mb-1">
+                                                    {{ item.exercise.custom_exercise_name || item.exercise.exercise?.title || 'Exercice inconnu' }}
+                                                </h3>
+                                                <p
+                                                    v-if="item.exercise.additional_description"
+                                                    class="text-xs text-slate-600 dark:text-slate-400"
                                                 >
-                                                    <span class="font-semibold">Série {{ set.set_number }}</span>
-                                                </Badge>
-                                                <Badge
-                                                    v-if="item.exercise.use_duration ? set.duration : set.repetitions"
-                                                    variant="outline"
-                                                    class="text-xs border-slate-300"
+                                                    {{ item.exercise.additional_description }}
+                                                </p>
+                                            </div>
+
+                                            <!-- Lignes de séries avec style PDF -->
+                                            <div class="space-y-0.5">
+                                                <div
+                                                    v-if="item.exercise.sets && item.exercise.sets.length > 0"
+                                                    v-for="(set, setIndex) in item.exercise.sets"
+                                                    :key="set.id || `set-${item.exercise.id}-${setIndex}`"
+                                                    class="text-xs bg-[#d5f5f5] py-1.5 px-3 rounded text-center leading-tight"
                                                 >
-                                                    {{ item.exercise.use_duration ? `Durée: ${set.duration}` : `${set.repetitions} répétitions` }}
-                                                </Badge>
-                                                <Badge
-                                                    v-if="item.exercise.use_bodyweight"
-                                                    variant="outline"
-                                                    class="text-xs border-slate-300"
+                                                    {{ formatSeriesLine(set, item.exercise) }}
+                                                </div>
+                                                <!-- Fallback pour les anciennes données (sans sets) -->
+                                                <div
+                                                    v-else-if="item.exercise.repetitions || item.exercise.duration || item.exercise.rest_time || item.exercise.weight || item.exercise.use_bodyweight"
+                                                    class="text-xs bg-[#d5f5f5] py-1.5 px-3 rounded text-center leading-tight"
                                                 >
-                                                    Poids de corps
-                                                </Badge>
-                                                <Badge
-                                                    v-else-if="set.weight"
-                                                    variant="outline"
-                                                    class="text-xs border-slate-300"
-                                                >
-                                                    {{ set.weight }} kg
-                                                </Badge>
-                                                <Badge
-                                                    v-if="set.rest_time"
-                                                    variant="outline"
-                                                    class="text-xs border-slate-300"
-                                                >
-                                                    Repos: {{ set.rest_time }}
-                                                </Badge>
+                                                    {{ formatSeriesLineFallback(item.exercise, item.exercise.sets_count || 1) }}
+                                                </div>
                                             </div>
                                         </div>
-                                        <!-- Fallback pour les anciennes données (sans sets) -->
-                                        <div v-else-if="item.exercise.repetitions || item.exercise.duration || item.exercise.rest_time || item.exercise.weight || item.exercise.use_bodyweight" class="flex flex-wrap gap-2">
-                                            <Badge
-                                                v-if="item.exercise.use_duration ? item.exercise.duration : item.exercise.repetitions"
-                                                variant="outline"
-                                                class="text-xs border-slate-300"
-                                            >
-                                                {{ item.exercise.use_duration ? `Durée: ${item.exercise.duration}` : `${item.exercise.repetitions} répétitions` }}
-                                            </Badge>
-                                            <Badge
-                                                v-if="item.exercise.use_bodyweight"
-                                                variant="outline"
-                                                class="text-xs border-slate-300"
-                                            >
-                                                Poids de corps
-                                            </Badge>
-                                            <Badge
-                                                v-else-if="item.exercise.weight"
-                                                variant="outline"
-                                                class="text-xs border-slate-300"
-                                            >
-                                                {{ item.exercise.weight }} kg
-                                            </Badge>
-                                            <Badge
-                                                v-if="item.exercise.rest_time"
-                                                variant="outline"
-                                                class="text-xs border-slate-300"
-                                            >
-                                                Repos: {{ item.exercise.rest_time }}
-                                            </Badge>
-                                        </div>
-
-                                        <!-- Description additionnelle -->
-                                        <p
-                                            v-if="item.exercise.additional_description"
-                                            class="text-sm text-slate-600 dark:text-slate-400"
-                                        >
-                                            {{ item.exercise.additional_description }}
-                                        </p>
                                     </div>
                                 </div>
                             </div>
