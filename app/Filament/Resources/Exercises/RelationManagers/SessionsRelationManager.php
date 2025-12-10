@@ -46,7 +46,6 @@ class SessionsRelationManager extends RelationManager
                     ->sortable(),
             ])
             ->filters([
-                //
             ])
             ->headerActions([
                 Actions\AttachAction::make()

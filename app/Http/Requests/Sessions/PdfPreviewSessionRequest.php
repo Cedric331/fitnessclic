@@ -33,7 +33,6 @@ class PdfPreviewSessionRequest extends BaseSessionRequest
      */
     protected function prepareForValidation(): void
     {
-        // Si la requête est en JSON, décoder les données
         if ($this->isJson() || $this->header('Content-Type') === 'application/json') {
             $this->merge(json_decode($this->getContent(), true) ?? []);
         }

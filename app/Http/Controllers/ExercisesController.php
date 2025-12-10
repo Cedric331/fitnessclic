@@ -28,7 +28,7 @@ class ExercisesController extends Controller
         $viewMode = $validated['view'] ?? 'grid-6';
 
         $exercisesQuery = Exercise::query()
-            ->where('is_shared', true) // Seulement les exercices visibles (non cachés par l'admin)
+            ->where('is_shared', true)
             ->with('categories')
             ->when($searchTerm !== '', fn ($query) => $query->where('title', 'like', "%{$searchTerm}%"))
             ->when($categoryId, fn ($query, $value) => $query->whereHas('categories', fn ($query) => $query->where('categories.id', $value)));
@@ -85,7 +85,6 @@ class ExercisesController extends Controller
     {
         $user = Auth::user();
 
-        // Les comptes gratuits ne peuvent pas créer d'exercices
         if ($user->isFree()) {
             return redirect()->route('exercises.index')
                 ->with('error', 'La création d\'exercices est réservée aux abonnés Pro. Passez à Pro pour créer des exercices illimités.');
@@ -98,13 +97,11 @@ class ExercisesController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'suggested_duration' => $validated['suggested_duration'] ?? null,
-            'is_shared' => true, // All exercises are public by default
+            'is_shared' => true,
         ]);
 
-        // Attacher les catégories
         $exercise->categories()->attach($validated['category_ids']);
 
-        // Ajouter l'image avec optimisation
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             $optimizedFile = $this->optimizeImage($file);
@@ -129,13 +126,11 @@ class ExercisesController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'suggested_duration' => $validated['suggested_duration'] ?? null,
-            'is_shared' => true, // All exercises are public
+            'is_shared' => true,
         ]);
 
-        // Mettre à jour les catégories
         $exercise->categories()->sync($validated['category_ids']);
 
-        // Mettre à jour l'image si une nouvelle image est fournie
         if ($request->hasFile('image')) {
             $exercise->clearMediaCollection(Exercise::MEDIA_IMAGE);
             $file = $request->file('image');
@@ -252,7 +247,6 @@ class ExercisesController extends Controller
 
                 $exercise->categories()->attach($categoryIds);
 
-                // Add the image with optimization
                 $optimizedFile = $this->optimizeImage($file);
                 $exercise->addMedia($optimizedFile)
                     ->usingName($filename)
@@ -330,7 +324,6 @@ class ExercisesController extends Controller
             return $file;
         }
 
-        // Create image resource based on type
         $sourceImage = match ($imageType) {
             IMAGETYPE_JPEG => imagecreatefromjpeg($file->getRealPath()),
             IMAGETYPE_PNG => imagecreatefrompng($file->getRealPath()),
@@ -340,13 +333,11 @@ class ExercisesController extends Controller
         };
 
         if (!$sourceImage) {
-            return $file; // Return original if we can't process it
+            return $file;
         }
 
-        // Create new image with new dimensions
         $newImage = imagecreatetruecolor($newWidth, $newHeight);
 
-        // Preserve transparency for PNG and GIF
         if ($imageType === IMAGETYPE_PNG || $imageType === IMAGETYPE_GIF) {
             imagealphablending($newImage, false);
             imagesavealpha($newImage, true);
@@ -354,7 +345,6 @@ class ExercisesController extends Controller
             imagefilledrectangle($newImage, 0, 0, $newWidth, $newHeight, $transparent);
         }
 
-        // Resize image
         imagecopyresampled(
             $newImage,
             $sourceImage,
@@ -365,32 +355,29 @@ class ExercisesController extends Controller
             $originalHeight
         );
 
-        // Save optimized image to temporary file
         $tempPath = tempnam(sys_get_temp_dir(), 'optimized_');
         $success = match ($imageType) {
             IMAGETYPE_JPEG => imagejpeg($newImage, $tempPath, $quality),
-            IMAGETYPE_PNG => imagepng($newImage, $tempPath, 9), // PNG compression level 0-9
+            IMAGETYPE_PNG => imagepng($newImage, $tempPath, 9),
             IMAGETYPE_GIF => imagegif($newImage, $tempPath),
             IMAGETYPE_WEBP => imagewebp($newImage, $tempPath, $quality),
             default => false,
         };
 
-        // Clean up
         imagedestroy($sourceImage);
         imagedestroy($newImage);
 
         if (!$success) {
             unlink($tempPath);
-            return $file; // Return original if save failed
+            return $file;
         }
 
-        // Create new UploadedFile from optimized image
         $optimizedFile = new UploadedFile(
             $tempPath,
             $file->getClientOriginalName(),
             $file->getMimeType(),
             null,
-            true // Mark as test file so it gets cleaned up
+            true
         );
 
         return $optimizedFile;

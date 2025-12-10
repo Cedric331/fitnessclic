@@ -50,19 +50,11 @@ watch(() => props.block.block_description, (newDescription) => {
 // Computed pour les exercices du bloc pour assurer la réactivité
 // Utiliser directement props.block.exercises pour que Vue détecte les changements
 const blockExercises = computed(() => {
-    // Retourner directement les exercices du bloc pour maintenir la réactivité
-    console.log('SessionBlockSet: blockExercises computed recalculated:', { exercises: props.block.exercises, editingExerciseNameIds: editingExerciseNameIds.value });
     return props.block.exercises;
 });
 
-// Watcher pour préserver l'état d'édition lors des changements de props.block.exercises
 watch(() => props.block.exercises, (newExercises, oldExercises) => {
-    console.log('SessionBlockSet: props.block.exercises changed:', { 
-        newExercises, 
-        oldExercises, 
-        editingExerciseNameIds: editingExerciseNameIds.value,
-        editingExerciseNameIdsRef: editingExerciseNameIds
-    });
+    
     
     // Préserver l'état d'édition pour les exercices qui existent toujours
     if (oldExercises && editingExerciseNameIds.value) {
@@ -166,8 +158,7 @@ const findExerciseIndex = (exercise: SessionExercise): number => {
 // Mettre à jour un exercice du bloc
 const updateExercise = (exerciseIndex: number, updates: Partial<SessionExercise>) => {
     const exercise = props.block.exercises[exerciseIndex];
-    console.log('SessionBlockSet updateExercise:', { exerciseIndex, updates, currentExercise: exercise, exerciseId: exercise?.id });
-    // Passer l'ID de l'exercice seulement s'il est valide (positif), sinon utiliser l'index
+    
     // Les IDs négatifs sont des IDs temporaires pour les nouveaux exercices et ne sont pas uniques
     if (exercise?.id && exercise.id > 0) {
         emit('update-exercise', exercise.id, updates);
@@ -370,15 +361,11 @@ const exerciseToRemoveName = computed(() => {
                                     type="button"
                                     @click.stop="() => {
                                         const exerciseId = exercise.id || index;
-                                        console.log('SessionBlockSet: Opening edit mode for exercise:', { exerciseId, exercise, editingExerciseNameIds: editingExerciseNameIds.value, editingExerciseNameIdsRef: editingExerciseNameIds });
-                                        // S'assurer que editingExerciseNameIds.value est un objet
                                         if (!editingExerciseNameIds.value) {
                                             editingExerciseNameIds.value = {};
                                         }
-                                        // Initialiser la valeur locale avec la valeur actuelle
                                         editingNameValues[exerciseId] = exercise.custom_exercise_name || exercise.exercise?.title || 'Exercice';
                                         editingExerciseNameIdsValue[exerciseId] = true;
-                                        console.log('SessionBlockSet: After setting to true:', { exerciseId, editingExerciseNameIds: editingExerciseNameIds.value });
                                     }"
                                     @mousedown.stop
                                     class="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors flex-shrink-0"
@@ -438,7 +425,6 @@ const exerciseToRemoveName = computed(() => {
                                     type="button"
                                     @click.stop="() => {
                                         const exerciseId = exercise.id || index;
-                                        console.log('SessionBlockSet: Cancel button clicked:', { exerciseId, editingExerciseNameIds: editingExerciseNameIds.value });
                                         if (editingExerciseNameIds.value) {
                                             editingExerciseNameIdsValue[exerciseId] = false;
                                         }

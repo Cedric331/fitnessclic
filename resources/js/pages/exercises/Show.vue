@@ -218,7 +218,6 @@ const handlePrint = (session: Session) => {
         }, 1000);
     })
     .catch(error => {
-        console.error('Erreur complète:', error);
         notifyError(error.message || 'Une erreur est survenue lors de l\'ouverture du PDF.', 'Erreur');
     });
 };

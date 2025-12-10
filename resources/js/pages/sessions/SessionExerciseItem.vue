@@ -78,8 +78,6 @@ onMounted(() => {
 });
 
 const updateField = (field: keyof SessionExercise, value: any) => {
-    // Debug
-    console.log('updateField:', { field, value, sessionExercise: props.sessionExercise });
     emit('update', { [field]: value });
 };
 
@@ -129,22 +127,8 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
         }
     }
     
-    // Mettre à jour le set
     currentSets[setIndex] = { ...currentSets[setIndex], [field]: value };
     
-    // Debug
-    console.log('updateSet:', { 
-        setIndex, 
-        field, 
-        value, 
-        currentSets,
-        propsSets: props.sessionExercise.sets,
-        propsSetsExists: !!props.sessionExercise.sets,
-        propsSetsLength: props.sessionExercise.sets?.length || 0,
-        hasSets: hasSets,
-        exerciseId: props.sessionExercise.exercise_id,
-        willEmit: true
-    });
     
     // TOUJOURS émettre les sets, même si c'était un set par défaut
     // C'est crucial pour que les sets soient sauvegardés dans sessionExercises.value

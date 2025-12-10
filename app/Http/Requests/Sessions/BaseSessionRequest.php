@@ -23,7 +23,6 @@ abstract class BaseSessionRequest extends FormRequest
             'exercises.*.sets.*.rest_time' => ['nullable', 'string'],
             'exercises.*.sets.*.duration' => ['nullable', 'string'],
             'exercises.*.sets.*.order' => ['required', 'integer', 'min:0'],
-            // Champs pour compatibilité (si pas de séries multiples)
             'exercises.*.repetitions' => ['nullable', 'integer'],
             'exercises.*.weight' => ['nullable', 'numeric'],
             'exercises.*.rest_time' => ['nullable', 'string'],
@@ -31,11 +30,9 @@ abstract class BaseSessionRequest extends FormRequest
             'exercises.*.description' => ['nullable', 'string'],
             'exercises.*.sets_count' => ['nullable', 'integer', 'min:1'],
             'exercises.*.order' => ['required', 'integer', 'min:0'],
-            // Champs personnalisés
             'exercises.*.custom_exercise_name' => ['nullable', 'string', 'max:255'],
             'exercises.*.use_duration' => ['nullable', 'boolean'],
             'exercises.*.use_bodyweight' => ['nullable', 'boolean'],
-            // Champs pour Super Set
             'exercises.*.block_id' => ['nullable', 'integer'],
             'exercises.*.block_type' => ['nullable', 'in:standard,set'],
             'exercises.*.position_in_block' => ['nullable', 'integer', 'min:0', 'max:6'],

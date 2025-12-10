@@ -17,14 +17,12 @@ class StripeWebhookController extends CashierController
      */
     public function handleWebhook(Request $request)
     {
-        // Vérifier que le secret webhook est configuré
         $webhookSecret = config('cashier.webhook.secret');
         if (empty($webhookSecret)) {
             Log::error('Stripe Webhook secret not configured');
             return response()->json(['error' => 'Webhook secret not configured'], 500);
         }
 
-        // Log pour déboguer
         Log::info('Stripe Webhook received', [
             'method' => $request->method(),
             'path' => $request->path(),
@@ -40,7 +38,6 @@ class StripeWebhookController extends CashierController
                 'line' => $e->getLine(),
             ]);
             
-            // Retourner 200 pour éviter que Stripe réessaie indéfiniment
             return response()->json(['error' => $e->getMessage()], 200);
         }
     }
@@ -56,7 +53,6 @@ class StripeWebhookController extends CashierController
         $invoice = $payload['data']['object'];
         $stripeCustomerId = $invoice['customer'];
         
-        // Récupérer l'utilisateur par son Stripe ID
         $user = User::where('stripe_id', $stripeCustomerId)->first();
 
         if ($user) {
@@ -82,7 +78,6 @@ class StripeWebhookController extends CashierController
         $subscription = $payload['data']['object'];
         $stripeCustomerId = $subscription['customer'];
         
-        // Récupérer l'utilisateur par son Stripe ID
         $user = User::where('stripe_id', $stripeCustomerId)->first();
 
         if ($user) {

@@ -159,7 +159,6 @@ const handleUpload = async () => {
             alert(`Certains fichiers n'ont pas pu être importés. Veuillez réessayer.`);
         }
     } catch (error) {
-        console.error('Erreur lors de l\'upload:', error);
         alert('Une erreur est survenue lors de l\'importation. Veuillez réessayer.');
     } finally {
         isUploading.value = false;

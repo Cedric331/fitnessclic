@@ -50,7 +50,6 @@ class SessionEmail extends Mailable
             ? $this->session->session_date->format('d/m/Y')
             : 'Non définie';
 
-        // Générer le lien sécurisé vers la séance publique
         $publicUrl = route('public.session.show', ['shareToken' => $this->session->share_token]);
 
         return new Content(
@@ -80,7 +79,6 @@ class SessionEmail extends Mailable
             return null;
         }
 
-        // Vérifier la taille du fichier (si < 100KB, pas besoin d'optimiser)
         if (filesize($imagePath) < 100 * 1024) {
             return $imagePath;
         }
@@ -95,22 +93,18 @@ class SessionEmail extends Mailable
             $originalHeight = $imageInfo[1];
             $mimeType = $imageInfo['mime'];
 
-            // Si l'image est déjà petite, pas besoin de redimensionner
             if ($originalWidth <= $maxWidth) {
                 return $imagePath;
             }
 
-            // Calculer la nouvelle hauteur en gardant le ratio
             $newHeight = (int) (($maxWidth / $originalWidth) * $originalHeight);
 
-            // Créer une image temporaire optimisée
             $tempPath = storage_path('app/temp/' . uniqid('pdf_img_', true) . '.jpg');
             $tempDir = dirname($tempPath);
             if (!is_dir($tempDir)) {
                 mkdir($tempDir, 0755, true);
             }
 
-            // Charger l'image selon son type
             switch ($mimeType) {
                 case 'image/jpeg':
                     $source = imagecreatefromjpeg($imagePath);
@@ -122,17 +116,15 @@ class SessionEmail extends Mailable
                     $source = imagecreatefromgif($imagePath);
                     break;
                 default:
-                    return $imagePath; // Format non supporté, retourner l'original
+                    return $imagePath;
             }
 
             if (!$source) {
                 return $imagePath;
             }
 
-            // Créer une nouvelle image redimensionnée
             $destination = imagecreatetruecolor($maxWidth, $newHeight);
             
-            // Préserver la transparence pour PNG
             if ($mimeType === 'image/png') {
                 imagealphablending($destination, false);
                 imagesavealpha($destination, true);
@@ -140,7 +132,6 @@ class SessionEmail extends Mailable
                 imagefilledrectangle($destination, 0, 0, $maxWidth, $newHeight, $transparent);
             }
 
-            // Redimensionner
             imagecopyresampled(
                 $destination,
                 $source,
@@ -151,14 +142,12 @@ class SessionEmail extends Mailable
                 $originalHeight
             );
 
-            // Sauvegarder en JPEG avec compression
             imagejpeg($destination, $tempPath, $quality);
             imagedestroy($source);
             imagedestroy($destination);
 
             return $tempPath;
         } catch (\Exception $e) {
-            // En cas d'erreur, retourner l'image originale
             return $imagePath;
         }
     }
@@ -177,7 +166,6 @@ class SessionEmail extends Mailable
 
     public function attachments(): array
     {
-        // Charger la session avec toutes les relations nécessaires
         $this->session->load([
             'customers',
             'sessionExercises.exercise.categories',
@@ -186,7 +174,6 @@ class SessionEmail extends Mailable
             'user'
         ]);
 
-        // Optimiser les images des exercices avant la génération du PDF
         $tempImagePaths = [];
         foreach ($this->session->sessionExercises as $sessionExercise) {
             if ($sessionExercise->exercise && $sessionExercise->exercise->media->count() > 0) {
@@ -194,21 +181,18 @@ class SessionEmail extends Mailable
                 if ($firstMedia) {
                     try {
                         $originalPath = $firstMedia->getPath();
-                        $optimizedPath = $this->optimizeImageForPdf($originalPath, 150, 50); // 150px max, qualité 50%
+                        $optimizedPath = $this->optimizeImageForPdf($originalPath, 150, 50);
                         if ($optimizedPath && $optimizedPath !== $originalPath) {
                             $tempImagePaths[] = $optimizedPath;
-                            // Stocker le chemin optimisé temporairement dans l'exercice
                             $sessionExercise->exercise->optimized_image_path = $optimizedPath;
                         }
                     } catch (\Exception $e) {
-                        // Ignorer les erreurs d'optimisation
                     }
                 }
             }
         }
 
         try {
-            // Générer le PDF avec des options d'optimisation
             $pdf = Pdf::loadView('sessions.pdf', [
                 'session' => $this->session,
                 'use_optimized_images' => true,
@@ -216,9 +200,8 @@ class SessionEmail extends Mailable
               ->setOption('enable-local-file-access', true)
               ->setOption('isHtml5ParserEnabled', true)
               ->setOption('isRemoteEnabled', false)
-              ->setOption('dpi', 96); // Réduire la résolution pour réduire la taille
+              ->setOption('dpi', 96);
 
-            // Créer un nom de fichier pour le PDF
             $fileName = $this->session->name 
                 ? Str::slug($this->session->name) 
                 : "seance-{$this->session->id}";
@@ -226,7 +209,6 @@ class SessionEmail extends Mailable
 
             $pdfOutput = $pdf->output();
 
-            // Nettoyer les images temporaires
             $this->cleanupTempImages($tempImagePaths);
 
             return [
@@ -234,7 +216,6 @@ class SessionEmail extends Mailable
                     ->withMime('application/pdf'),
             ];
         } catch (\Exception $e) {
-            // Nettoyer les images temporaires en cas d'erreur
             $this->cleanupTempImages($tempImagePaths);
             throw $e;
         }

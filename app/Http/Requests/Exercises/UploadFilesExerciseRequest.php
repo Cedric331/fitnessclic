@@ -43,7 +43,6 @@ class UploadFilesExerciseRequest extends FormRequest
             $categoryIds = $this->input('category_ids', []);
 
             if (!empty($categoryIds)) {
-                // Vérifier que les catégories existent et appartiennent à l'utilisateur ou sont publiques
                 $categories = Category::whereIn('id', $categoryIds)
                     ->where(function ($query) {
                         $query->where('type', 'public')

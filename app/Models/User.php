@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\UserRole;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
@@ -27,15 +26,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
     {
         parent::boot();
 
-        // Annuler l'abonnement Stripe avant de supprimer l'utilisateur
         static::deleting(function (User $user) {
             try {
                 if ($user->hasStripeId() && $user->subscribed('default')) {
-                    // Annuler immédiatement l'abonnement
                     $user->subscription('default')->cancelNow();
                 }
             } catch (\Exception $e) {
-                // Logger l'erreur mais continuer la suppression
                 \Illuminate\Support\Facades\Log::error('Erreur lors de l\'annulation de l\'abonnement Stripe lors de la suppression du compte', [
                     'user_id' => $user->id,
                     'error' => $e->getMessage(),

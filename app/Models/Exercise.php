@@ -24,7 +24,6 @@ class Exercise extends Model implements HasMedia
      */
     protected static function booted(): void
     {
-        // All exercises are public by default
         static::creating(function (Exercise $exercise) {
             $exercise->is_shared = true;
         });
@@ -104,8 +103,6 @@ class Exercise extends Model implements HasMedia
      */
     public function registerMediaConversions(Media $media = null): void
     {
-        // Conversion pour optimiser l'image principale
-        // Redimensionne à une taille maximale de 1920x1080 et compresse à 85% de qualité
         $this->addMediaConversion('optimized')
             ->performOnCollections(self::MEDIA_IMAGE)
             ->width(1920)

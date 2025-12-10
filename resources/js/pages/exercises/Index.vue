@@ -508,12 +508,8 @@ const handleEditExercise = async (exercise: { id: number; name: string; image_ur
             
             // Ouvrir la modal après avoir défini les données
             isExerciseDialogOpen.value = true;
-        } else {
-            const errorData = await response.json().catch(() => ({ error: response.statusText }));
-            console.error('Erreur lors du chargement de l\'exercice:', errorData);
         }
     } catch (error) {
-        console.error('Erreur lors du chargement de l\'exercice:', error);
     }
 };
 

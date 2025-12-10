@@ -36,7 +36,6 @@ class SessionExercise extends Model
         'additional_description',
         'order',
         'sets_count',
-        // Nouveaux champs pour Super 7
         'block_id',
         'block_type',
         'position_in_block',

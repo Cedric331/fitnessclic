@@ -25,10 +25,6 @@ class SubscriptionController extends Controller
         $trialEndsAt = $onTrial ? $subscription->trial_ends_at : null;
         $daysLeftInTrial = $trialEndsAt ? now()->diffInDays($trialEndsAt, false) : 0;
 
-        // Vérifier si l'abonnement est en cours d'annulation
-        // Un abonnement est en cours d'annulation si :
-        // - Il a une date ends_at dans le futur
-        // - Il n'est pas déjà annulé (stripe_status != 'canceled')
         $isCancelling = false;
         $cancelsAt = null;
         $daysUntilCancellation = 0;
@@ -38,8 +34,6 @@ class SubscriptionController extends Controller
             $isCancelling = $endsAt && $endsAt->isFuture() && $subscription->stripe_status !== 'canceled';
             if ($isCancelling) {
                 $cancelsAt = $endsAt;
-                // Calculer le nombre de jours calendaires complets restants
-                // Utiliser startOfDay() pour ignorer les heures et obtenir un nombre entier
                 $daysUntilCancellation = max(0, (int) now()->startOfDay()->diffInDays($endsAt->startOfDay(), false));
             }
         }
@@ -63,7 +57,6 @@ class SubscriptionController extends Controller
     {
         $user = Auth::user();
 
-        // Récupérer le price ID depuis la configuration
         $priceId = config('cashier.price_id');
 
         if (!$priceId) {
@@ -78,15 +71,12 @@ class SubscriptionController extends Controller
                 'mode' => 'subscription',
             ]);
 
-            // Si c'est une requête Inertia, retourner une réponse qui force une navigation complète
             if ($request->header('X-Inertia')) {
-                // Retourner une réponse avec un header spécial pour forcer une navigation complète
                 return response()->view('subscription.redirect', [
                     'url' => $checkout->url,
                 ])->header('X-Inertia-Location', $checkout->url);
             }
 
-            // Sinon, retourner une page HTML qui force une redirection JavaScript
             return response()->view('subscription.redirect', [
                 'url' => $checkout->url,
             ]);
@@ -116,14 +106,12 @@ class SubscriptionController extends Controller
         try {
             $portal = $user->billingPortalUrl(route('subscription.index'));
             
-            // Si c'est une requête Inertia, retourner une réponse qui force une navigation complète
             if ($request->header('X-Inertia')) {
                 return response()->view('subscription.redirect', [
                     'url' => $portal,
                 ])->header('X-Inertia-Location', $portal);
             }
 
-            // Sinon, retourner une page HTML qui force une redirection JavaScript
             return response()->view('subscription.redirect', [
                 'url' => $portal,
             ]);

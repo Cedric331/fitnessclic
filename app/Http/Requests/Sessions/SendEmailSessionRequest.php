@@ -56,7 +56,6 @@ class SendEmailSessionRequest extends FormRequest
                 return;
             }
 
-            // Charger la session avec les clients si nécessaire
             if (!$session->relationLoaded('customers')) {
                 $session->load('customers');
             }

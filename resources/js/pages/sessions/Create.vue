@@ -57,25 +57,19 @@ const currentUserId = computed(() => (page.props.auth as any)?.user?.id);
 const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
 const { success: notifySuccess, error: notifyError } = useNotifications();
 
-// Modal d'upgrade
 const isUpgradeModalOpen = ref(false);
 
-// Écouter les messages flash et les convertir en notifications
-// Utiliser un Set pour éviter les doublons
 const shownFlashMessages = ref(new Set<string>());
 
 watch(() => (page.props as any).flash, (flash) => {
     if (!flash) return;
     
-    // Créer une clé unique pour chaque message
     const successKey = flash.success ? `success-${flash.success}` : null;
     const errorKey = flash.error ? `error-${flash.error}` : null;
     
-    // Afficher la notification seulement si on ne l'a pas déjà affichée
     if (successKey && !shownFlashMessages.value.has(successKey)) {
         shownFlashMessages.value.add(successKey);
         notifySuccess(flash.success);
-        // Nettoyer après 2 secondes pour permettre de réafficher le même message plus tard si nécessaire
         setTimeout(() => {
             shownFlashMessages.value.delete(successKey);
         }, 2000);
@@ -101,7 +95,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-// État du formulaire
 const form = useForm({
     name: '',
     customer_ids: [] as number[],
@@ -110,12 +103,10 @@ const form = useForm({
     exercises: [] as SessionExercise[],
 });
 
-// État pour la modal de sélection de clients
 const showCustomerModal = ref(false);
 const tempSelectedCustomerIds = ref<number[]>([]);
 const customerSearchTerm = ref('');
 
-// Clients sélectionnés (computed depuis form.customer_ids)
 const selectedCustomers = computed(() => {
     if (!form.customer_ids || form.customer_ids.length === 0) {
         return [];
@@ -125,10 +116,8 @@ const selectedCustomers = computed(() => {
     );
 });
 
-// Alias pour customers dans le template
 const customers = computed(() => props.customers);
 
-// Clients filtrés pour la recherche dans la modal
 const filteredCustomersForModal = computed(() => {
     if (!customerSearchTerm.value.trim()) {
         return customers.value;
@@ -141,14 +130,12 @@ const filteredCustomersForModal = computed(() => {
     });
 });
 
-// Sélectionner/désélectionner tous les clients filtrés
 const toggleAllFilteredCustomers = () => {
     const allFilteredSelected = filteredCustomersForModal.value.every(customer => 
         tempSelectedCustomerIds.value.includes(customer.id)
     );
     
     if (allFilteredSelected) {
-        // Désélectionner tous les clients filtrés
         filteredCustomersForModal.value.forEach(customer => {
             const index = tempSelectedCustomerIds.value.indexOf(customer.id);
             if (index > -1) {
@@ -156,7 +143,6 @@ const toggleAllFilteredCustomers = () => {
             }
         });
     } else {
-        // Sélectionner tous les clients filtrés
         filteredCustomersForModal.value.forEach(customer => {
             if (!tempSelectedCustomerIds.value.includes(customer.id)) {
                 tempSelectedCustomerIds.value.push(customer.id);
@@ -165,7 +151,6 @@ const toggleAllFilteredCustomers = () => {
     }
 };
 
-// Vérifier si tous les clients filtrés sont sélectionnés
 const allFilteredSelected = computed(() => {
     if (filteredCustomersForModal.value.length === 0) return false;
     return filteredCustomersForModal.value.every(customer => 
@@ -191,15 +176,12 @@ const confirmCustomerSelection = () => {
     showCustomerModal.value = false;
 };
 
-// Toggle la sélection d'un client dans la modal
 const toggleCustomer = (customerId: number, checked: boolean) => {
     if (checked) {
-        // Ajouter le client s'il n'est pas déjà dans la liste
         if (!tempSelectedCustomerIds.value.includes(customerId)) {
             tempSelectedCustomerIds.value.push(customerId);
         }
     } else {
-        // Retirer le client
         const index = tempSelectedCustomerIds.value.indexOf(customerId);
         if (index > -1) {
             tempSelectedCustomerIds.value.splice(index, 1);
@@ -207,19 +189,15 @@ const toggleCustomer = (customerId: number, checked: boolean) => {
     }
 };
 
-// Retirer un client de la sélection
 const removeCustomer = (customerId: number) => {
     form.customer_ids = form.customer_ids.filter(id => id !== customerId);
 };
 
-// État de l'interface
 const searchTerm = ref(props.filters.search || '');
-const localSearchTerm = ref(props.filters.search || ''); // Pour la recherche locale avec debounce
+const localSearchTerm = ref(props.filters.search || '');
 const selectedCategoryId = ref<number | null>(props.filters.category_id || null);
-// Déterminer le mode d'affichage par défaut selon la taille de l'écran
 const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
     if (typeof window !== 'undefined') {
-        // Sur petit écran (< 640px), utiliser grid-6
         if (window.innerWidth < 640) {
             return 'grid-6';
         }
@@ -229,67 +207,53 @@ const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
 
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>(getDefaultViewMode());
 
-// Mettre à jour le mode si la taille de l'écran change
 onMounted(() => {
     const handleResize = () => {
         if (window.innerWidth < 640 && viewMode.value !== 'grid-6') {
             viewMode.value = 'grid-6';
         } else if (window.innerWidth >= 640 && viewMode.value === 'grid-6' && window.innerWidth < 1024) {
-            // Garder grid-6 sur tablette aussi
             viewMode.value = 'grid-6';
         }
     };
     
     window.addEventListener('resize', handleResize);
-    // Vérifier aussi au montage
     handleResize();
 });
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
-const isLibraryOpen = ref(false); // Pour le drawer mobile
-const isClearDialogOpen = ref(false); // Pour la modal de confirmation d'effacement
+const isLibraryOpen = ref(false);
+const isClearDialogOpen = ref(false);
 
-// Liste des exercices dans la séance (avec drag and drop)
 const sessionExercises = ref<SessionExercise[]>([]);
 
-// Fonction helper pour obtenir sessionExercises de manière sécurisée
 const getSessionExercises = (): SessionExercise[] => {
     if (!sessionExercises.value || !Array.isArray(sessionExercises.value)) {
-        console.warn('sessionExercises.value is not initialized, initializing to empty array');
         sessionExercises.value = [];
     }
     return sessionExercises.value;
 };
 
-// Clé de réactivité pour forcer le re-render des composants
 const exercisesKey = ref(0);
 const isDraggingOver = ref(false);
-// Compteur pour générer des IDs uniques pour les exercices de session
 let sessionExerciseIdCounter = 0;
 
-// Compteur pour générer des IDs de blocs uniques
 let nextBlockId = 1;
 
-// État du mode Super Set (pour créer de nouveaux blocs en mode set)
 const isSetMode = ref(false);
 
-// Sauvegarder les exercices dans le localStorage pour les préserver en cas de rafraîchissement
 const STORAGE_KEY = 'fitnessclic_session_exercises';
 
-// Charger les exercices depuis le localStorage au montage
 const loadExercisesFromStorage = () => {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                // Filtrer les exercices invalides et s'assurer qu'ils ont un ID unique
                 const validExercises = parsed
                     .filter((ex: SessionExercise) => 
                         ex && ex.exercise_id !== null && ex.exercise_id !== undefined
                     )
                     .map((ex: SessionExercise, idx: number) => {
-                        // Générer un ID unique si l'exercice n'en a pas
                         if (!ex.id) {
                             ex.id = --sessionExerciseIdCounter;
                         }
@@ -302,11 +266,9 @@ const loadExercisesFromStorage = () => {
             }
         }
     } catch (error) {
-        console.error('Erreur lors du chargement depuis le localStorage:', error);
     }
 };
 
-// Sauvegarder les exercices dans le localStorage
 const saveExercisesToStorage = () => {
     try {
         if (sessionExercises.value.length > 0) {
@@ -315,14 +277,11 @@ const saveExercisesToStorage = () => {
             localStorage.removeItem(STORAGE_KEY);
         }
     } catch (error) {
-        console.error('Erreur lors de la sauvegarde dans le localStorage:', error);
     }
 };
 
-// Charger au montage
 loadExercisesFromStorage();
 
-// Ajouter un exercice à la séance (mode standard)
 const addExerciseToSession = (exercise: Exercise) => {
     if (!exercise || !exercise.id) {
         return;
@@ -351,13 +310,11 @@ const addExerciseToSession = (exercise: Exercise) => {
         position_in_block: null,
     };
     sessionExercises.value.push(sessionExercise);
-    // Forcer la réactivité en créant une nouvelle référence
     sessionExercises.value = [...sessionExercises.value];
     form.exercises = [...sessionExercises.value];
     saveExercisesToStorage();
 };
 
-// Créer un nouveau bloc Super Set
 const createNewSetBlock = (exercise: Exercise) => {
     if (!exercise || !exercise.id) {
         return;
@@ -392,13 +349,11 @@ const createNewSetBlock = (exercise: Exercise) => {
     saveExercisesToStorage();
 };
 
-// Ajouter un exercice à un bloc Super Set existant
 const addExerciseToSetBlock = (exercise: Exercise, blockId: number) => {
     if (!exercise || !exercise.id) {
         return;
     }
     
-    // Trouver la position dans le bloc
     const blockExercises = sessionExercises.value.filter(
         ex => ex.block_id === blockId && ex.block_type === 'set'
     );
@@ -432,7 +387,6 @@ const addExerciseToSetBlock = (exercise: Exercise, blockId: number) => {
     saveExercisesToStorage();
 };
 
-// Grouper les exercices par blocs (standard et Super Set)
 const groupExercisesIntoBlocks = () => {
     const blocksMap = new Map<number, SessionExercise[]>();
     const standardExercises: SessionExercise[] = [];
@@ -444,12 +398,10 @@ const groupExercisesIntoBlocks = () => {
             }
             blocksMap.get(ex.block_id)!.push(ex);
         } else {
-            // Exercice standard (pas de block_id ou block_type !== 'set')
             standardExercises.push(ex);
         }
     });
     
-    // Convertir les blocs Super Set en objets SessionBlock
     const setBlocks = Array.from(blocksMap.entries())
         .map(([blockId, exercises]) => ({
             id: blockId,
@@ -458,7 +410,7 @@ const groupExercisesIntoBlocks = () => {
                 (a.position_in_block || 0) - (b.position_in_block || 0)
             ),
             order: exercises[0]?.order || 0,
-            block_description: exercises[0]?.description || null, // Consignes du bloc
+            block_description: exercises[0]?.description || null,
         }))
         .sort((a, b) => a.order - b.order);
     
@@ -468,7 +420,6 @@ const groupExercisesIntoBlocks = () => {
     };
 };
 
-// Gérer la suppression d'un exercice standard
 const handleRemoveExercise = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }) => {
     if (!item?.exercise?.id) {
         return;
@@ -479,7 +430,6 @@ const handleRemoveExercise = (item: { type: 'standard' | 'set', exercise?: Sessi
     }
 };
 
-// Gérer la suppression d'un exercice dans un bloc Super Set
 const handleRemoveExerciseFromBlock = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }, index: number) => {
     if (!item?.block?.id) {
         return;
@@ -498,16 +448,13 @@ const handleRemoveExerciseFromBlock = (item: { type: 'standard' | 'set', exercis
     }
 };
 
-// Gérer la suppression d'un bloc Super Set entier
 const handleRemoveBlock = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }) => {
     if (!item?.block?.id) {
         return;
     }
-    // Supprimer tous les exercices du bloc
     const blockExercises = sessionExercises.value.filter(
         (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
     );
-    // Supprimer en ordre inverse pour éviter les problèmes d'index
     blockExercises.reverse().forEach((ex: SessionExercise) => {
         const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === ex.id);
         if (index !== -1) {
@@ -526,10 +473,8 @@ const removeExerciseFromSession = (index: number) => {
         return;
     }
     
-    // Supprimer l'exercice
     sessionExercises.value.splice(index, 1);
     
-    // Si c'était un exercice dans un bloc Super Set, réorganiser les positions
     if (exercise?.block_id && exercise?.block_type === 'set') {
         const blockExercises = sessionExercises.value.filter(
             ex => ex && ex.block_id === exercise.block_id && ex.block_type === 'set'
@@ -539,75 +484,38 @@ const removeExerciseFromSession = (index: number) => {
         });
     }
     
-    // Réorganiser les ordres
     sessionExercises.value.forEach((ex, idx) => {
         ex.order = idx;
     });
     
-    // Mettre à jour le formulaire et sauvegarder
     form.exercises = [...sessionExercises.value];
     saveExercisesToStorage();
 };
 
-// Mettre à jour un exercice dans la séance
-// Handler pour les mises à jour d'un exercice depuis SessionExerciseItem
 const handleExerciseUpdate = (exerciseId: number | undefined, updates: Partial<SessionExercise>) => {
-    console.log('handleExerciseUpdate called:', { 
-        exerciseId,
-        updates,
-        sessionExercisesRef: sessionExercises,
-        sessionExercisesValue: sessionExercises.value,
-        sessionExercisesLength: sessionExercises.value?.length,
-        sessionExercisesType: typeof sessionExercises.value
-    });
-    
-    // Vérifier que sessionExercises est bien défini et initialisé
     if (!sessionExercises) {
-        console.error('sessionExercises ref is not defined!');
         return;
     }
     
-    // Initialiser sessionExercises.value s'il est undefined
     if (!sessionExercises.value) {
-        console.warn('sessionExercises.value is undefined, initializing to empty array');
         sessionExercises.value = [];
     }
     
     if (!exerciseId) {
-        console.error('Missing exerciseId in handleExerciseUpdate:', { exerciseId });
         return;
     }
     
     const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === exerciseId);
-    console.log('Searching for exercise:', { exerciseId, index, sessionExercisesIds: sessionExercises.value.map((e: SessionExercise) => e.id) });
     
     if (index !== -1) {
         updateSessionExercise(index, updates);
-    } else {
-        console.error('Exercise not found in handleExerciseUpdate!', {
-            exerciseId,
-            sessionExercisesIds: sessionExercises.value.map((e: SessionExercise) => e.id),
-            sessionExercisesArray: sessionExercises.value
-        });
     }
 };
 
 const updateSessionExercise = (index: number, updates: Partial<SessionExercise>) => {
     const currentExercise = sessionExercises.value[index];
     
-    // Debug: afficher les mises à jour
-    console.log('updateSessionExercise called:', { 
-        index, 
-        updates, 
-        currentExercise,
-        updatesHasSets: !!updates.sets,
-        updatesSetsLength: updates.sets?.length || 0,
-        updatesSets: updates.sets
-    });
-    
-    // Si on met à jour les sets, s'assurer qu'ils sont bien initialisés
     if (updates.sets) {
-        // S'assurer que les sets sont bien un tableau et les copier en profondeur
         const setsArray = Array.isArray(updates.sets) 
             ? updates.sets.map(set => ({
                 set_number: set.set_number ?? 1,
@@ -619,10 +527,8 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
             }))
             : [];
         
-        // Créer un nouvel objet sans les sets de updates pour éviter les conflits
         const { sets: _, ...updatesWithoutSets } = updates;
         
-        // Mettre à jour directement les propriétés pour préserver la référence
         const exercise = sessionExercises.value[index];
         for (const key in updatesWithoutSets) {
             (exercise as any)[key] = (updatesWithoutSets as any)[key];
@@ -640,34 +546,11 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
         sessionExercises.value = [...sessionExercises.value];
     }
     
-    // Debug: afficher l'exercice mis à jour
-    const updatedExercise = sessionExercises.value[index];
-    console.log('Updated exercise:', {
-        id: updatedExercise.id,
-        exercise_id: updatedExercise.exercise_id,
-        custom_exercise_name: updatedExercise.custom_exercise_name,
-        setsLength: updatedExercise.sets?.length || 0,
-        sets: updatedExercise.sets,
-        setsArray: updatedExercise.sets ? [...updatedExercise.sets] : [],
-        firstSet: updatedExercise.sets?.[0]
-    });
-    
-    // Vérifier que les sets sont bien sauvegardés
-    if (updates.sets && updatedExercise.sets) {
-        console.log('Sets verification:', {
-            updatesSetsLength: updates.sets.length,
-            savedSetsLength: updatedExercise.sets.length,
-            updatesFirstSet: updates.sets[0],
-            savedFirstSet: updatedExercise.sets[0],
-            areEqual: JSON.stringify(updates.sets) === JSON.stringify(updatedExercise.sets)
-        });
-    }
     
     // Sauvegarder dans le localStorage pour persister les changements
     saveExercisesToStorage();
 };
 
-// Réorganiser les exercices (utilisé par les boutons haut/bas et après drag)
 const reorderExercises = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return;
     if (fromIndex < 0 || fromIndex >= sessionExercises.value.length) return;
@@ -675,7 +558,6 @@ const reorderExercises = (fromIndex: number, toIndex: number) => {
     
     const [moved] = sessionExercises.value.splice(fromIndex, 1);
     sessionExercises.value.splice(toIndex, 0, moved);
-    // Réorganiser les ordres
     sessionExercises.value.forEach((ex, idx) => {
         ex.order = idx;
     });
@@ -793,7 +675,6 @@ const onDragEnd = (event: any) => {
             reorderItems(movedItem, targetItem);
         }
     } else {
-        // Fallback : réorganiser tous les ordres
         sessionExercises.value.forEach((ex, idx) => {
             ex.order = idx;
         });
@@ -802,15 +683,12 @@ const onDragEnd = (event: any) => {
     }
 };
 
-// Items ordonnés (standard et Super Set mélangés) - computed pour réactivité
 const orderedItems = computed(() => {
     const blocks = groupExercisesIntoBlocks();
     const items: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number }> = [];
     
-    // Combiner et trier tous les items
     const allItems: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, order: number }> = [];
     
-    // Ajouter les exercices standard
     blocks.standard.forEach(ex => {
         allItems.push({
             type: 'standard',
@@ -819,7 +697,6 @@ const orderedItems = computed(() => {
         });
     });
     
-    // Ajouter les blocs Super Set
     blocks.set.forEach(block => {
         allItems.push({
             type: 'set',
@@ -828,10 +705,8 @@ const orderedItems = computed(() => {
         });
     });
     
-    // Trier par ordre
     allItems.sort((a, b) => a.order - b.order);
     
-    // Ajouter l'index d'affichage (compteur)
     allItems.forEach((item, index) => {
         items.push({
             ...item,
@@ -843,11 +718,9 @@ const orderedItems = computed(() => {
     return items;
 });
 
-// Fonctions helper pour gérer les mouvements avec vérifications de sécurité
 const handleMoveUp = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number }) => {
     const items = orderedItems.value;
     if (!items || !Array.isArray(items)) {
-        console.warn('orderedItems.value is not available');
         return;
     }
     const currentIndex = items.findIndex((i: any) => i.key === item.key);
@@ -860,7 +733,6 @@ const handleMoveUp = (item: { type: 'standard' | 'set', exercise?: SessionExerci
 const handleMoveDown = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number }) => {
     const items = orderedItems.value;
     if (!items || !Array.isArray(items)) {
-        console.warn('orderedItems.value is not available');
         return;
     }
     const currentIndex = items.findIndex((i: any) => i.key === item.key);
@@ -870,12 +742,10 @@ const handleMoveDown = (item: { type: 'standard' | 'set', exercise?: SessionExer
     }
 };
 
-// Obtenir l'index d'un exercice dans la liste complète
 const getExerciseIndex = (exercise: SessionExercise): number => {
     return sessionExercises.value.findIndex(e => e.id === exercise.id);
 };
 
-// Convertir un exercice standard en bloc Super Set
 const convertExerciseToSet = (exercise: SessionExercise) => {
     const index = sessionExercises.value.findIndex(e => e.id === exercise.id);
     if (index === -1) return;
@@ -893,82 +763,51 @@ const convertExerciseToSet = (exercise: SessionExercise) => {
     saveExercisesToStorage();
 };
 
-// Gérer la mise à jour de la description d'un bloc Super Set
 const handleUpdateBlockDescription = (blockId: number, description: string) => {
-    console.log('Create.vue: update-block-description called', { description, blockId });
-    // Utiliser la fonction helper pour obtenir sessionExercises de manière sécurisée
     const exercises = getSessionExercises();
     if (!exercises || exercises.length === 0) {
-        console.warn('Create.vue: No exercises found, cannot update block description');
         return;
     }
-    // Mettre à jour la description pour tous les exercices du bloc
     const blockExercises = exercises.filter(
         (ex: SessionExercise) => ex.block_id === blockId && ex.block_type === 'set'
     );
-    console.log('Create.vue: blockExercises found', { blockExercises, count: blockExercises.length });
     blockExercises.forEach((ex: SessionExercise) => {
         const index = exercises.findIndex((e: SessionExercise) => e.id === ex.id);
-        console.log('Create.vue: updating exercise', { index, exerciseId: ex.id, description });
         if (index !== -1) {
             updateSessionExercise(index, { description });
         }
     });
-    // Forcer la réactivité en mettant à jour form.exercises
     form.exercises = [...getSessionExercises()];
     saveExercisesToStorage();
-    console.log('Create.vue: after update, exercises:', getSessionExercises().map(ex => ({ 
-        id: ex.id, 
-        block_id: ex.block_id, 
-        description: ex.description 
-    })));
 };
 
-// Gérer la mise à jour d'un exercice dans un bloc Super Set
 const handleUpdateExerciseFromBlock = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }, exerciseIdOrIndex: number, updates: Partial<SessionExercise>) => {
-    console.log('Create.vue handleUpdateExerciseFromBlock:', { exerciseIdOrIndex, updates, item, block: item.block, exercises: item.block?.exercises });
-    
-    // Vérifier que sessionExercises.value existe et est un tableau
     if (!sessionExercises.value || !Array.isArray(sessionExercises.value)) {
-        console.error('sessionExercises.value is not initialized:', { sessionExercises: sessionExercises.value });
         return;
     }
     
     let exerciseToUpdate: SessionExercise | undefined;
     
     if (exerciseIdOrIndex < 0 || exerciseIdOrIndex > 1000) {
-        // C'est probablement un ID (négatif pour nouveaux, ou ID de base de données)
-        // Trouver l'exercice dans sessionExercises par son ID
         const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === exerciseIdOrIndex);
         if (index !== -1) {
             updateSessionExercise(index, updates);
             return;
         }
     } else {
-        // C'est probablement un index dans le bloc, trouver l'exercice dans le bloc
         if (!item.block || !item.block.exercises[exerciseIdOrIndex]) {
-            console.error('Missing data in handleUpdateExerciseFromBlock:', { 
-                hasItem: !!item, 
-                hasBlock: !!item.block, 
-                hasExercise: !!item.block?.exercises[exerciseIdOrIndex],
-                exercisesLength: item.block?.exercises?.length 
-            });
             return;
         }
         exerciseToUpdate = item.block.exercises[exerciseIdOrIndex];
     }
     
-    // Si on a trouvé l'exercice dans le bloc, le trouver dans sessionExercises
     if (exerciseToUpdate) {
-        // Chercher par ID si disponible et valide (positif), sinon par block_id et position_in_block
         let index = -1;
         if (exerciseToUpdate.id && exerciseToUpdate.id > 0) {
             index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === exerciseToUpdate.id);
         }
         
-        // Si pas trouvé par ID (ou ID temporaire négatif), chercher par block_id et position_in_block
         if (index === -1 && item.block) {
-            // Utiliser la position_in_block de l'exercice trouvé dans le bloc
             const targetPositionInBlock = exerciseToUpdate.position_in_block ?? exerciseIdOrIndex;
             index = sessionExercises.value.findIndex((e: SessionExercise) => 
                 e.block_id === item.block!.id && 
@@ -976,7 +815,6 @@ const handleUpdateExerciseFromBlock = (item: { type: 'standard' | 'set', exercis
                 e.block_type === 'set'
             );
             
-            // Si toujours pas trouvé, essayer avec l'index comme fallback
             if (index === -1) {
                 const blockExercises = sessionExercises.value.filter(
                     (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
@@ -995,19 +833,15 @@ const handleUpdateExerciseFromBlock = (item: { type: 'standard' | 'set', exercis
         
         if (index !== -1) {
             updateSessionExercise(index, updates);
-        } else {
-            console.error('Exercise not found in sessionExercises:', { exerciseToUpdate, exerciseIdOrIndex });
         }
     }
 };
 
-// Convertir un bloc Super Set en exercices standard
 const convertBlockToStandard = (block: SessionBlock) => {
     const blockExercises = sessionExercises.value.filter(
         (ex: SessionExercise) => ex.block_id === block.id && ex.block_type === 'set'
     );
     
-    // Trier les exercices par position_in_block pour trouver le premier
     const sortedExercises = [...blockExercises].sort((a, b) => 
         (a.position_in_block || 0) - (b.position_in_block || 0)
     );
@@ -1016,7 +850,6 @@ const convertBlockToStandard = (block: SessionBlock) => {
         return;
     }
     
-    // Convertir uniquement le premier exercice en standard
     const firstExercise = sortedExercises[0];
     const firstIndex = sessionExercises.value.findIndex((e: SessionExercise) => e.id === firstExercise.id);
     if (firstIndex !== -1) {
@@ -1028,7 +861,6 @@ const convertBlockToStandard = (block: SessionBlock) => {
         };
     }
     
-    // Supprimer tous les autres exercices du bloc (en ordre inverse pour éviter les problèmes d'index)
     const exercisesToRemove = sortedExercises.slice(1).reverse();
     exercisesToRemove.forEach((ex: SessionExercise) => {
         const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === ex.id);
@@ -1041,7 +873,6 @@ const convertBlockToStandard = (block: SessionBlock) => {
     saveExercisesToStorage();
 };
 
-// Gérer le dragover sur la zone principale
 const handleDragOverMain = (e: DragEvent) => {
     if (!e.dataTransfer) return;
     const target = e.target as HTMLElement;
@@ -1057,7 +888,6 @@ const handleDragOverMain = (e: DragEvent) => {
     }
 };
 
-// Gérer le dragleave sur la zone principale
 const handleDragLeaveMain = (e: DragEvent) => {
     const target = e.relatedTarget as HTMLElement;
     if (target && target.closest('.superset-block')) return;
@@ -1069,7 +899,6 @@ const handleDragLeaveMain = (e: DragEvent) => {
     }
 };
 
-// Gérer le drop sur la zone principale
 const handleDropMain = (e: DragEvent) => {
     if (!e.dataTransfer) return;
     const target = e.target as HTMLElement;
@@ -1080,12 +909,10 @@ const handleDropMain = (e: DragEvent) => {
     }
 };
 
-// Gestion du drop depuis la bibliothèque
 const handleDropFromLibrary = (event: DragEvent, targetBlockId?: number) => {
     isDraggingOver.value = false;
     if (!event.dataTransfer) return;
     
-    // Vérifier que le drop vient bien de la bibliothèque (pas d'un drag interne)
     const types = event.dataTransfer.types;
     if (!types.includes('application/json')) {
         return;
@@ -1097,17 +924,13 @@ const handleDropFromLibrary = (event: DragEvent, targetBlockId?: number) => {
             const exercise: Exercise = JSON.parse(exerciseData);
             
             if (targetBlockId) {
-                // Ajouter au bloc Super Set existant
                 addExerciseToSetBlock(exercise, targetBlockId);
             } else if (isSetMode.value) {
-                // Mode Super Set activé : créer un nouveau bloc Super Set
                 createNewSetBlock(exercise);
             } else {
-                // Mode standard : créer un nouveau bloc standard (comportement par défaut)
                 addExerciseToSession(exercise);
             }
         } else {
-            // Fallback: essayer avec l'ID
             const exerciseId = event.dataTransfer.getData('text/plain');
             if (exerciseId) {
                 const exercise = props.exercises.find(ex => ex.id === parseInt(exerciseId));
@@ -1123,34 +946,27 @@ const handleDropFromLibrary = (event: DragEvent, targetBlockId?: number) => {
             }
         }
     } catch (error) {
-        console.error('Erreur lors du drop:', error);
     }
 };
 
-// Gestion du drag over depuis la bibliothèque
 watch(() => sessionExercises.value.length, () => {
-    // Réinitialiser l'état de drag over quand la liste change
     isDraggingOver.value = false;
 });
 
-// Filtrer les exercices disponibles (recherche locale avec debounce)
 const filteredExercises = computed(() => {
     let exercises = props.exercises;
 
-    // Filtre par utilisateur (tous ou seulement les miens)
     if (showOnlyMine.value && currentUserId.value) {
         const userId = Number(currentUserId.value);
         exercises = exercises.filter(ex => Number(ex.user_id) === userId);
     }
 
-    // Recherche locale (instantanée)
     if (localSearchTerm.value.trim()) {
         exercises = exercises.filter(ex => 
             ex.title.toLowerCase().includes(localSearchTerm.value.toLowerCase())
         );
     }
 
-    // Filtre par catégorie
     if (selectedCategoryId.value) {
         exercises = exercises.filter(ex => 
             ex.categories?.some(cat => cat.id === selectedCategoryId.value)
@@ -1160,7 +976,6 @@ const filteredExercises = computed(() => {
     return exercises;
 });
 
-// Debounce pour la recherche (uniquement pour synchroniser avec l'URL si nécessaire)
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(localSearchTerm, (newValue) => {
     if (searchTimeout) {
@@ -1168,40 +983,21 @@ watch(localSearchTerm, (newValue) => {
     }
     searchTimeout = setTimeout(() => {
         searchTerm.value = newValue;
-        // Ne pas recharger la page pour préserver les exercices
     }, 300);
 });
 
-// Appliquer les filtres (désactivé pour éviter de perdre les exercices)
-// Le filtrage se fait maintenant entièrement côté client
-const applyFilters = () => {
-    // Désactivé pour éviter de perdre les exercices lors du rafraîchissement
-    // router.get('/sessions/create', {
-    //     search: searchTerm.value || null,
-    //     category_id: selectedCategoryId.value || null,
-    // }, {
-    //     preserveState: true,
-    //     preserveScroll: true,
-    // });
-};
-
-// Validation du formulaire
 const isFormValid = computed(() => {
     const hasName = form.name.trim().length > 0;
     const hasExercises = sessionExercises.value.length > 0;
     return hasName && hasExercises;
 });
 
-// Sauvegarder la séance
 const saveSession = () => {
-    // Vérifier si l'utilisateur est Pro
     if (!isPro.value) {
-        // Afficher la modal d'upgrade sans resetter le formulaire
         isUpgradeModalOpen.value = true;
         return;
     }
 
-    // Validation côté client
     if (!form.name.trim()) {
         notifyError('Le nom de la séance est obligatoire.', 'Validation');
         return;
@@ -1213,15 +1009,11 @@ const saveSession = () => {
     }
 
     isSaving.value = true;
-    // S'assurer que customer_ids est bien un tableau
     if (!Array.isArray(form.customer_ids)) {
         form.customer_ids = [];
     }
     
-    // Formater les exercices pour l'envoi au backend
     form.exercises = sessionExercises.value.map(ex => {
-        // Toujours créer au moins un set si les sets existent, même s'ils sont vides
-        // Convertir le Proxy en tableau normal si nécessaire
         const setsArray = ex.sets ? (Array.isArray(ex.sets) ? [...ex.sets] : []) : [];
         const hasSets = setsArray.length > 0;
         let sets = undefined;
@@ -1240,23 +1032,10 @@ const saveSession = () => {
             });
         }
         
-        // Debug: afficher les données avant envoi
-        console.log('Exercise data before formatting:', {
-            exercise_id: ex.exercise_id,
-            sets: ex.sets,
-            setsArray: setsArray,
-            setsArrayLength: setsArray.length,
-            firstSet: setsArray[0],
-            sets_count: ex.sets_count,
-            description: ex.description,
-            hasSets: hasSets,
-            formattedSets: sets
-        });
         
         return {
             exercise_id: ex.exercise_id,
             sets: sets,
-            // Envoyer les valeurs directes seulement si pas de sets
             repetitions: hasSets ? null : (ex.repetitions ?? null),
             weight: hasSets ? null : (ex.weight ?? null),
             rest_time: hasSets ? null : (ex.rest_time ?? null),
@@ -1264,33 +1043,25 @@ const saveSession = () => {
             description: ex.description ?? null,
             sets_count: ex.sets_count ?? null,
             order: ex.order,
-            // Champs Super Set
             block_id: ex.block_id ?? null,
             block_type: ex.block_type ?? null,
             position_in_block: ex.position_in_block ?? null,
-            // Nom personnalisé et options d'exercice
             custom_exercise_name: ex.custom_exercise_name ?? null,
             use_duration: ex.use_duration ?? false,
             use_bodyweight: ex.use_bodyweight ?? false,
         };
     });
     
-    // Debug: afficher les données formatées
-    console.log('Formatted exercises:', form.exercises);
     
     form.post('/sessions', {
         preserveScroll: false,
         onSuccess: () => {
-            // Nettoyer le localStorage après sauvegarde réussie
             localStorage.removeItem(STORAGE_KEY);
-            // Réinitialiser le formulaire et les exercices
             form.reset();
             sessionExercises.value = [];
-            // La notification sera affichée automatiquement via le message flash du backend
         },
         onError: (errors) => {
             isSaving.value = false;
-            // Afficher les erreurs de validation
             if (errors.name) {
                 notifyError(errors.name);
             } else if (errors.exercises) {
@@ -1305,12 +1076,10 @@ const saveSession = () => {
     });
 };
 
-// Ouvrir la modal de confirmation d'effacement
 const openClearDialog = () => {
     isClearDialogOpen.value = true;
 };
 
-// Confirmer l'effacement de la séance
 const confirmClearSession = () => {
     sessionExercises.value = [];
     form.reset();
@@ -1320,9 +1089,7 @@ const confirmClearSession = () => {
     isClearDialogOpen.value = false;
 };
 
-// Générer le PDF
 const generatePDF = () => {
-    // Vérifier si l'utilisateur est Pro
     if (!isPro.value) {
         isUpgradeModalOpen.value = true;
         return;
@@ -1357,17 +1124,13 @@ const generatePDF = () => {
         description: ex.description ?? null,
         sets_count: ex.sets_count ?? null,
         order: ex.order,
-        // Champs de configuration
         use_duration: ex.use_duration ?? false,
         use_bodyweight: ex.use_bodyweight ?? false,
-        // Champs Super Set
         block_id: ex.block_id ?? null,
         block_type: ex.block_type ?? null,
         position_in_block: ex.position_in_block ?? null,
     }));
 
-    // Utiliser fetch pour télécharger le PDF
-    // Envoyer les données en JSON plutôt qu'en FormData pour éviter les problèmes de sérialisation
     const requestData = {
         name: form.name,
         session_date: form.session_date,
@@ -1375,13 +1138,10 @@ const generatePDF = () => {
         exercises: exercisesData,
     };
 
-    // Récupérer le token CSRF depuis les props Inertia ou le cookie XSRF
     const getCsrfToken = () => {
-        // Essayer depuis les props Inertia
         const propsToken = (page.props as any).csrfToken;
         if (propsToken) return propsToken;
         
-        // Essayer depuis le cookie XSRF-TOKEN (Laravel le met automatiquement)
         const cookies = document.cookie.split(';');
         for (const cookie of cookies) {
             const [name, value] = cookie.trim().split('=');
@@ -1400,8 +1160,6 @@ const generatePDF = () => {
         return;
     }
 
-    // Debug: afficher le token (à retirer en production)
-    console.log('Token CSRF:', csrfToken ? 'Présent' : 'Manquant');
     
     fetch('/sessions/pdf-preview', {
         method: 'POST',
@@ -1411,34 +1169,28 @@ const generatePDF = () => {
             'Accept': 'application/pdf',
             'Content-Type': 'application/json',
         },
-        credentials: 'include', // Important pour envoyer les cookies de session (same-origin peut ne pas fonctionner)
+        credentials: 'include',
         body: JSON.stringify(requestData),
     })
     .then(async response => {
         if (!response.ok) {
-            // Essayer de lire le message d'erreur
             const errorText = await response.text();
-            console.error('Erreur serveur:', response.status, errorText);
             throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
         }
         
-        // Vérifier que c'est bien un PDF
         const contentType = response.headers.get('content-type');
         if (contentType && !contentType.includes('application/pdf')) {
             const errorText = await response.text();
-            console.error('Réponse inattendue:', contentType, errorText);
             throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
         }
         
         return response.blob();
     })
     .then(blob => {
-        // Vérifier que le blob n'est pas vide
         if (blob.size === 0) {
             throw new Error('Le PDF généré est vide');
         }
         
-        // Créer un lien de téléchargement
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1449,12 +1201,10 @@ const generatePDF = () => {
         document.body.removeChild(a);
     })
     .catch(error => {
-        console.error('Erreur complète:', error);
         notifyError(error.message || 'Une erreur est survenue lors de la génération du PDF.', 'Erreur');
     });
 };
 
-// Ouvrir le PDF dans un nouvel onglet pour impression
 const printPDF = () => {
     if (sessionExercises.value.length === 0) {
         notifyError('Veuillez ajouter au moins un exercice à la séance avant d\'imprimer.', 'Validation');
@@ -1534,14 +1284,12 @@ const printPDF = () => {
     .then(async response => {
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Erreur serveur:', response.status, errorText);
             throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
         }
         
         const contentType = response.headers.get('content-type');
         if (contentType && !contentType.includes('application/pdf')) {
             const errorText = await response.text();
-            console.error('Réponse inattendue:', contentType, errorText);
             throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
         }
         
@@ -1552,47 +1300,39 @@ const printPDF = () => {
             throw new Error('Le PDF généré est vide');
         }
         
-        // Créer une URL blob et ouvrir dans un nouvel onglet
         const url = window.URL.createObjectURL(blob);
         const printWindow = window.open(url, '_blank');
         
         if (printWindow) {
-            // Attendre que le PDF soit chargé puis déclencher l'impression
             printWindow.onload = () => {
                 setTimeout(() => {
                     printWindow.print();
                 }, 250);
             };
         } else {
-            // Si la popup est bloquée, ouvrir dans le même onglet
             window.open(url, '_blank');
             notifyError('Veuillez autoriser les popups pour cette fonctionnalité.', 'Information');
         }
         
-        // Nettoyer l'URL après un délai
         setTimeout(() => {
             window.URL.revokeObjectURL(url);
         }, 1000);
     })
     .catch(error => {
-        console.error('Erreur complète:', error);
         notifyError(error.message || 'Une erreur est survenue lors de l\'ouverture du PDF.', 'Erreur');
     });
 };
 
-
-// Détecter les exercices en double
 const duplicateExercises = computed(() => {
     const exerciseIds = sessionExercises.value
         .filter(ex => ex && ex.exercise_id !== null && ex.exercise_id !== undefined)
         .map(ex => ex.exercise_id);
     const duplicates = exerciseIds.filter((id, index) => exerciseIds.indexOf(id) !== index);
-    return [...new Set(duplicates)]; // Retourner les IDs uniques des exercices en double
+    return [...new Set(duplicates)];
 });
 
 const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0);
 
-// Synchroniser les exercices avec le localStorage (sans toucher à form.exercises qui sera formaté lors de la sauvegarde)
 watch(sessionExercises, () => {
     saveExercisesToStorage();
 }, { deep: true });
@@ -1672,9 +1412,9 @@ watch(sessionExercises, () => {
                     
                     <!-- Panneau gauche -->
                     <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
-                        <div class="space-y-6">
+                        <div class="space-y-1">
                         <Card class="shadow-md">
-                            <CardContent class="space-y-4 pt-6">
+                            <CardContent class="space-y-2 pt-4">
                                 <!-- Nom de la séance -->
                                 <div class="space-y-2">
                                     <Label for="session-name">Nom de la séance <span class="text-red-500">*</span></Label>
@@ -1745,7 +1485,7 @@ watch(sessionExercises, () => {
                                 @dragover.prevent="handleDragOverMain"
                                 @dragleave="handleDragLeaveMain"
                                 @drop.prevent="handleDropMain"
-                                class="min-h-[200px] transition-all duration-200 ease-out relative pt-6"
+                                class="min-h-[200px] transition-all duration-200 ease-out relative pt-2"
                             >
                                 <!-- Message d'avertissement pour les doublons -->
                                 <Alert

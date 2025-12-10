@@ -42,14 +42,12 @@ class SessionsController extends Controller
             });
         }
 
-        // Filtrer par clients via la relation many-to-many
         if (!empty($validated['customer_id'])) {
             $query->whereHas('customers', function ($q) use ($validated) {
                 $q->where('customers.id', $validated['customer_id']);
             });
         }
 
-        // Gérer le tri par date
         $sortOrder = $validated['sort'] ?? 'newest';
         if ($sortOrder === 'oldest') {
             $query->oldest('session_date')->oldest('created_at');
@@ -59,7 +57,6 @@ class SessionsController extends Controller
 
         $sessions = $query->paginate(12);
 
-        // Mapper les sessions pour inclure les clients avec is_active
         $sessions->getCollection()->transform(function ($session) {
             $session->customers = $session->customers->map(function ($customer) {
                 return [
@@ -69,7 +66,7 @@ class SessionsController extends Controller
                     'email' => $customer->email,
                     'phone' => $customer->phone,
                     'full_name' => $customer->full_name,
-                    'is_active' => (bool) $customer->is_active, // S'assurer que c'est un booléen
+                    'is_active' => (bool) $customer->is_active,
                 ];
             });
             return $session;
@@ -96,7 +93,6 @@ class SessionsController extends Controller
         $searchTerm = trim((string) $request->input('search', ''));
         $categoryId = $request->input('category_id');
 
-        // Récupérer tous les exercices disponibles
         $exercisesQuery = Exercise::query()
             ->where('is_shared', true)
             ->with(['categories', 'media'])
@@ -118,12 +114,10 @@ class SessionsController extends Controller
             ];
         });
 
-        // Récupérer toutes les catégories pour le filtre
         $categories = \App\Models\Category::forUser(Auth::id())
             ->orderBy('name')
             ->get();
 
-        // Récupérer les clients actifs avec full_name
         $customers = Customer::where('user_id', Auth::id())
             ->where('is_active', true)
             ->orderBy('first_name')
@@ -159,13 +153,11 @@ class SessionsController extends Controller
         $validated = $request->validated();
         $user = Auth::user();
 
-        // Vérifier si l'utilisateur peut sauvegarder des séances
         if (!$user->canSaveSessions()) {
             return redirect()->route('sessions.create')
                 ->with('error', 'L\'enregistrement des séances est réservé aux abonnés Pro. Passez à Pro pour enregistrer vos séances.');
         }
 
-        // Récupérer les IDs des clients
         $customerIds = $validated['customer_ids'] ?? [];
 
         $session = Session::create([
@@ -175,12 +167,10 @@ class SessionsController extends Controller
             'session_date' => $validated['session_date'] ?? now(),
         ]);
 
-        // Attacher les clients via la relation many-to-many
         if (!empty($customerIds)) {
             $session->customers()->attach($customerIds);
         }
 
-        // Attacher les exercices avec leurs détails
         foreach ($validated['exercises'] as $exerciseData) {
             $sessionExercise = \App\Models\SessionExercise::create([
                 'session_id' => $session->id,
@@ -195,13 +185,11 @@ class SessionsController extends Controller
                 'additional_description' => $exerciseData['description'] ?? null,
                 'sets_count' => $exerciseData['sets_count'] ?? null,
                 'order' => $exerciseData['order'],
-                // Nouveaux champs Super 7
                 'block_id' => $exerciseData['block_id'] ?? null,
                 'block_type' => $exerciseData['block_type'] ?? null,
                 'position_in_block' => $exerciseData['position_in_block'] ?? null,
             ]);
 
-            // Créer les séries multiples si elles existent
             if (isset($exerciseData['sets']) && is_array($exerciseData['sets']) && count($exerciseData['sets']) > 0) {
                 foreach ($exerciseData['sets'] as $setData) {
                     \App\Models\SessionExerciseSet::create([
@@ -226,7 +214,6 @@ class SessionsController extends Controller
      */
     public function show(Session $session): Response
     {
-        // Vérifier que la séance appartient à l'utilisateur
         if ($session->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
             abort(403);
         }
@@ -234,7 +221,6 @@ class SessionsController extends Controller
         $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets'])
             ->loadCount('exercises');
 
-        // Mapper la session avec les données nécessaires pour l'affichage
         $sessionData = [
             'id' => $session->id,
             'name' => $session->name,
@@ -302,7 +288,6 @@ class SessionsController extends Controller
      */
     public function edit(Session $session, Request $request): Response
     {
-        // Vérifier que la séance appartient à l'utilisateur
         if ($session->user_id !== Auth::id()) {
             abort(403);
         }
@@ -312,7 +297,6 @@ class SessionsController extends Controller
         $searchTerm = trim((string) $request->input('search', ''));
         $categoryId = $request->input('category_id');
 
-        // Récupérer tous les exercices disponibles
         $exercisesQuery = Exercise::query()
             ->where('is_shared', true)
             ->with(['categories', 'media'])
@@ -334,12 +318,10 @@ class SessionsController extends Controller
             ];
         });
 
-        // Récupérer toutes les catégories pour le filtre
         $categories = \App\Models\Category::forUser(Auth::id())
             ->orderBy('name')
             ->get();
 
-        // Récupérer les clients actifs avec full_name
         $customers = Customer::where('user_id', Auth::id())
             ->where('is_active', true)
             ->orderBy('first_name')
@@ -356,7 +338,6 @@ class SessionsController extends Controller
                 ];
             });
 
-        // Mapper la session avec les données nécessaires
         $sessionData = [
             'id' => $session->id,
             'name' => $session->name,
@@ -433,7 +414,6 @@ class SessionsController extends Controller
     {
         $validated = $request->validated();
 
-        // Récupérer les IDs des clients
         $customerIds = $validated['customer_ids'] ?? [];
 
         $session->update([
@@ -442,13 +422,10 @@ class SessionsController extends Controller
             'session_date' => $validated['session_date'] ?? $session->session_date,
         ]);
 
-        // Synchroniser les clients via la relation many-to-many
         if (isset($validated['customer_ids'])) {
             $session->customers()->sync($customerIds);
         }
 
-        // Synchroniser les exercices
-        // Supprimer tous les exercices existants (cela supprimera aussi les sets via cascade)
         $session->sessionExercises()->delete();
         
         foreach ($validated['exercises'] as $exerciseData) {
@@ -465,13 +442,11 @@ class SessionsController extends Controller
                 'additional_description' => $exerciseData['description'] ?? null,
                 'sets_count' => $exerciseData['sets_count'] ?? null,
                 'order' => $exerciseData['order'],
-                // Nouveaux champs Super 7
                 'block_id' => $exerciseData['block_id'] ?? null,
                 'block_type' => $exerciseData['block_type'] ?? null,
                 'position_in_block' => $exerciseData['position_in_block'] ?? null,
             ]);
 
-            // Créer les séries multiples si elles existent
             if (isset($exerciseData['sets']) && is_array($exerciseData['sets']) && count($exerciseData['sets']) > 0) {
                 foreach ($exerciseData['sets'] as $setData) {
                     \App\Models\SessionExerciseSet::create([
@@ -496,7 +471,6 @@ class SessionsController extends Controller
      */
     public function destroy(Session $session): RedirectResponse
     {
-        // Vérifier que la séance appartient à l'utilisateur
         if ($session->user_id !== Auth::id()) {
             abort(403);
         }
@@ -515,12 +489,10 @@ class SessionsController extends Controller
      */
     public function pdf(Session $session, Request $request)
     {
-        // Vérifier que la séance appartient à l'utilisateur
         if ($session->user_id !== Auth::id()) {
             abort(403);
         }
 
-        // Vérifier si l'utilisateur peut exporter en PDF
         $user = Auth::user();
         if (!$user->canExportPdf()) {
             return redirect()->route('sessions.show', $session)
@@ -536,7 +508,6 @@ class SessionsController extends Controller
         $fileName = $session->name ?: "seance-{$session->id}";
         $fileName = Str::slug($fileName) . '.pdf';
         
-        // Si c'est une requête AJAX (pour l'impression), retourner le PDF sans forcer le téléchargement
         if ($request->ajax() || $request->wantsJson()) {
             return response($pdf->output(), 200)
                 ->header('Content-Type', 'application/pdf')
@@ -551,7 +522,6 @@ class SessionsController extends Controller
      */
     public function pdfPreview(PdfPreviewSessionRequest $request)
     {
-        // Vérifier si l'utilisateur peut exporter en PDF
         $user = Auth::user();
         if (!$user->canExportPdf()) {
             return response()->json([
@@ -562,14 +532,12 @@ class SessionsController extends Controller
         try {
             $validated = $request->validated();
 
-        // Charger les exercices avec leurs relations
         $exerciseIds = array_column($validated['exercises'], 'exercise_id');
         $exercises = Exercise::whereIn('id', $exerciseIds)
             ->with(['categories', 'media'])
             ->get()
             ->keyBy('id');
 
-        // Construire les données de session pour la vue
         $sessionData = [
             'name' => $validated['name'] ?? 'Nouvelle Séance',
             'session_date' => $validated['session_date'] ?? now(),
@@ -634,16 +602,13 @@ class SessionsController extends Controller
     {
         $validated = $request->validated();
 
-        // Charger la session avec les relations nécessaires
         $session->load(['customers', 'user']);
 
-        // Récupérer le client (déjà validé dans la Form Request)
         $customer = Customer::where('id', $validated['customer_id'])
             ->where('user_id', Auth::id())
             ->where('is_active', true)
             ->first();
 
-        // Déterminer la route de redirection
         $redirectRoute = $validated['redirect_to_customer'] ?? false
             ? 'client.customers.show'
             : 'sessions.index';
@@ -652,7 +617,6 @@ class SessionsController extends Controller
             : [];
 
         try {
-            // Envoyer l'email
             Mail::to($customer->email)->send(new SessionEmail($session, $customer));
 
             return redirect()->route($redirectRoute, $redirectParams)
