@@ -1430,7 +1430,10 @@ const generatePDF = () => {
         rest_time: ex.rest_time ?? null,
         duration: ex.duration ?? null,
         description: ex.description ?? null,
-        order: ex.order
+        order: ex.order,
+        // Champs de configuration
+        use_duration: ex.use_duration ?? false,
+        use_bodyweight: ex.use_bodyweight ?? false,
     }));
 
     const requestData = {
@@ -1533,7 +1536,10 @@ const printPDF = () => {
         rest_time: ex.rest_time ?? null,
         duration: ex.duration ?? null,
         description: ex.description ?? null,
-        order: ex.order
+        order: ex.order,
+        // Champs de configuration
+        use_duration: ex.use_duration ?? false,
+        use_bodyweight: ex.use_bodyweight ?? false,
     }));
 
     const requestData = {

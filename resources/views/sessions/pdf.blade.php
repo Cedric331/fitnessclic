@@ -124,7 +124,7 @@
     /* Exercise Section */
     .exercise-table {
       width: 100%;
-      margin-top: 24px;
+      margin-top: 18px;
       background-color: #f7f7f7;  
       padding: 6px;               
       border-radius: 4px;         
@@ -157,6 +157,7 @@
     .exercise-image-cell {
       width: 100px;
       vertical-align: top;
+      text-align: center;
     }
 
     .exercise-image {
@@ -258,6 +259,17 @@
       font-weight: bold;
     }
 
+    /* Series lines */
+    .series-line {
+      font-size: 12px;
+      margin-top: 2px;
+      line-height: 1.2;
+      background-color: #d5f5f5;
+      padding: 3px 6px;
+      text-align: center;
+      border-radius: 2px;
+    }
+
     /* Super Set */
     .superset-label {
       text-align: right;
@@ -278,6 +290,7 @@
     .sub-exercise-image-cell {
       width: 80px;
       vertical-align: top;
+      text-align: center;
     }
 
     .sub-exercise-content-cell {
@@ -293,7 +306,7 @@
       right: 0;
       width: 100%;
       background-color: #d5f5f5;
-      padding: 12px 15px;
+      padding: 10px 12px;
       z-index: 1000;
       margin: 0;
     }
@@ -382,6 +395,40 @@
             return $seconds.' seconde'.($seconds > 1 ? 's' : '');
         }
         return $restTime;
+    }
+
+    function extractRestSeconds($restTime) {
+        if (empty($restTime) || $restTime === '-') return '-';
+        // Extraire le nombre de secondes depuis le format "X seconde(s)" ou "X secondes"
+        if (preg_match('/(\d+)\s*seconde/i', $restTime, $m)) {
+            return intval($m[1]);
+        }
+        // Si c'est juste un nombre, le retourner
+        if (preg_match('/^(\d+)$/', $restTime, $m)) {
+            return intval($m[1]);
+        }
+        // Si c'est au format "X minute(s) Y seconde(s)", convertir en secondes
+        $totalSeconds = 0;
+        if (preg_match('/(\d+)\s*minute/i', $restTime, $m)) $totalSeconds += intval($m[1]) * 60;
+        if (preg_match('/(\d+)\s*seconde/i', $restTime, $m)) $totalSeconds += intval($m[1]);
+        return $totalSeconds > 0 ? $totalSeconds : '-';
+    }
+
+    function extractDurationSeconds($duration) {
+        if (empty($duration) || $duration === '-') return '-';
+        // Extraire le nombre de secondes depuis le format "X seconde(s)" ou "X secondes"
+        if (preg_match('/(\d+)\s*seconde/i', $duration, $m)) {
+            return intval($m[1]);
+        }
+        // Si c'est juste un nombre, le retourner
+        if (preg_match('/^(\d+)$/', $duration, $m)) {
+            return intval($m[1]);
+        }
+        // Si c'est au format "X minute(s) Y seconde(s)", convertir en secondes
+        $totalSeconds = 0;
+        if (preg_match('/(\d+)\s*minute/i', $duration, $m)) $totalSeconds += intval($m[1]) * 60;
+        if (preg_match('/(\d+)\s*seconde/i', $duration, $m)) $totalSeconds += intval($m[1]);
+        return $totalSeconds > 0 ? $totalSeconds : '-';
     }
 
     $sessionExercises = $session->sessionExercises ?? collect();
@@ -510,8 +557,13 @@
                   }
 
                   $setsCount    = $sets->count() > 0 ? $sets->count() : ($sessionExercise->sets_count ?? 1);
-                  $useDuration  = $sessionExercise->use_duration ?? false;
-                  $useBodyweight= $sessionExercise->use_bodyweight ?? false;
+                  // Récupérer use_duration et use_bodyweight - gérer différents formats (bool, int, string)
+                  $useDurationRaw = $sessionExercise->use_duration ?? false;
+                  $useBodyweightRaw = $sessionExercise->use_bodyweight ?? false;
+                  
+                  // Convertir en boolean de manière robuste
+                  $useDuration = $useDurationRaw === true || $useDurationRaw === 1 || $useDurationRaw === '1' || $useDurationRaw === 'true';
+                  $useBodyweight = $useBodyweightRaw === true || $useBodyweightRaw === 1 || $useBodyweightRaw === '1' || $useBodyweightRaw === 'true';
 
                   $durationOrReps = '-';
                   if ($sets->count() > 0) {
@@ -559,7 +611,7 @@
                     <tr>
                       <td class="exercise-image-cell">
                         @if($exerciseImage)
-                          <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="width: 100px; height: 70px; object-fit: contain;">
+                          <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="max-width: 100px; max-height: 70px; width: auto; height: auto;">
                         @else
                           <div class="exercise-image">🏋️</div>
                         @endif
@@ -572,51 +624,85 @@
                       </td>
                     </tr>
                   </table>
-                  <table class="data-table">
-                    <tr>
-                      <th style="width: 70px;">série(s)</th>
-                      <th>{{ $useDuration ? 'durée' : 'repets' }}</th>
-                      <th>Charge</th>
-                      <th>repos</th>
-                    </tr>
+                  <div style="margin-top: 4px;">
                     @if($sets->count() > 0)
                       @foreach($sets as $set)
                         @php
+                          $setNumber = $set->set_number ?? $loop->iteration;
+                          
                           $setDurationOrReps = '-';
                           if ($useDuration) {
                             $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
-                            $setDurationOrReps = formatDuration($rawDuration);
+                            $durationSeconds = extractDurationSeconds($rawDuration);
+                            $repsLabel = 'Durée';
+                            $repsValue = $durationSeconds;
                           } else {
                             $setDurationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
+                            $repsLabel = 'Repets';
+                            $repsValue = $setDurationOrReps;
                           }
 
                           $setCharge = '-';
+                          $chargeLabel = 'Charges';
                           if ($useBodyweight) {
                             $setCharge = 'poids de corps';
+                            $chargeLabel = 'Poids de corps';
                           } else {
-                            $setCharge = !empty($set->weight) ? $set->weight.' kg' : ($sessionExercise->weight ?? '-');
+                            $setCharge = !empty($set->weight) ? $set->weight : ($sessionExercise->weight ?? '-');
+                            if ($setCharge !== '-' && $setCharge !== null) {
+                              $setCharge = is_numeric($setCharge) ? number_format((float)$setCharge, 0, '.', '') : $setCharge;
+                            }
                           }
 
                           $setRest = '-';
                           $rawRest = $set->rest_time ?? $sessionExercise->rest_time ?? '-';
-                          $setRest = formatRestTime($rawRest);
+                          $restSeconds = extractRestSeconds($rawRest);
+                          
+                          // Construire le texte de la charge
+                          $chargeText = '';
+                          if ($useBodyweight) {
+                            $chargeText = 'Poids de corps';
+                          } else {
+                            $chargeText = $chargeLabel . ' : ' . $setCharge;
+                          }
                         @endphp
-                        <tr>
-                          <td class="bold">{{ $set->set_number ?? $loop->iteration }}</td>
-                          <td>{{ $setDurationOrReps }}</td>
-                          <td>{{ $setCharge }}</td>
-                          <td>{{ $setRest }}</td>
-                        </tr>
+                        <div class="series-line">
+                          Série : {{ $setNumber }} - {{ $repsLabel }} : {{ $repsValue }}@if($chargeText) - {{ $chargeText }}@endif, Repos : {{ $restSeconds }}
+                        </div>
                       @endforeach
                     @else
-                      <tr>
-                        <td class="bold">{{ $setsCount }}</td>
-                        <td>{{ $durationOrReps }}</td>
-                        <td>{{ $charge }}</td>
-                        <td>{{ $rest }}</td>
-                      </tr>
+                      @php
+                        if ($useDuration) {
+                          $durationSeconds = extractDurationSeconds($durationOrReps);
+                          $repsLabel = 'Durée (secondes)';
+                          $repsValue = $durationSeconds;
+                        } else {
+                          $repsLabel = 'Repets';
+                          $repsValue = $durationOrReps;
+                        }
+                        $chargeLabel = $useBodyweight ? 'Poids de corps' : 'Charges';
+                        $chargeValue = $charge;
+                        if (!$useBodyweight && $chargeValue !== '-' && $chargeValue !== 'poids de corps') {
+                          $chargeValue = str_replace(' kg', '', $chargeValue);
+                          if (is_numeric($chargeValue)) {
+                            $chargeValue = number_format((float)$chargeValue, 0, '.', '');
+                          }
+                        }
+                        $restSeconds = extractRestSeconds($rest);
+                        
+                        // Construire le texte de la charge
+                        $chargeText = '';
+                        if ($useBodyweight) {
+                          $chargeText = 'Poids de corps';
+                        } else {
+                          $chargeText = $chargeLabel . ' : ' . $chargeValue;
+                        }
+                      @endphp
+                      <div class="series-line">
+                        Série : {{ $setsCount }} - {{ $repsLabel }} : {{ $repsValue }}@if($chargeText) - {{ $chargeText }}@endif, Repos (secondes) : {{ $restSeconds }}
+                      </div>
                     @endif
-                  </table>
+                  </div>
                 @endif
               @else
                 @php
@@ -653,8 +739,13 @@
                     }
 
                     $setsCount    = $sets->count() > 0 ? $sets->count() : ($sessionExercise->sets_count ?? 1);
-                    $useDuration  = $sessionExercise->use_duration ?? false;
-                    $useBodyweight= $sessionExercise->use_bodyweight ?? false;
+                    // Récupérer use_duration et use_bodyweight - gérer différents formats (bool, int, string)
+                    $useDurationRaw = $sessionExercise->use_duration ?? false;
+                    $useBodyweightRaw = $sessionExercise->use_bodyweight ?? false;
+                    
+                    // Convertir en boolean
+                    $useDuration = $useDurationRaw === true || $useDurationRaw === 1 || $useDurationRaw === '1' || $useDurationRaw === 'true';
+                    $useBodyweight = $useBodyweightRaw === true || $useBodyweightRaw === 1 || $useBodyweightRaw === '1' || $useBodyweightRaw === 'true';
 
                     $durationOrReps = '-';
                     if ($sets->count() > 0) {
@@ -702,56 +793,90 @@
                       <tr>
                         <td class="sub-exercise-image-cell">
                           @if($exerciseImage)
-                            <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="width: 80px; height: 55px; object-fit: contain;">
+                            <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="max-width: 80px; max-height: 55px; width: auto; height: auto;">
                           @endif
                         </td>
                         <td class="sub-exercise-content-cell">
                           <div class="exercise-title-small">{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}</div>
-                          <table class="data-table">
-                            <tr>
-                              <th style="width: 70px;">série(s)</th>
-                              <th>{{ $useDuration ? 'durée' : 'repets' }}</th>
-                              <th>{{ $useBodyweight ? 'poids de corps' : 'charge' }}</th>
-                              <th>repos</th>
-                            </tr>
+                          <div style="margin-top: 4px;">
                             @if($sets->count() > 0)
                               @foreach($sets as $set)
                                 @php
+                                  $setNumber = $set->set_number ?? $loop->iteration;
+                                  
                                   $setDurationOrReps = '-';
                                   if ($useDuration) {
                                     $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
-                                    $setDurationOrReps = formatDuration($rawDuration);
+                                    $durationSeconds = extractDurationSeconds($rawDuration);
+                                    $repsLabel = 'Durée (secondes)';
+                                    $repsValue = $durationSeconds;
                                   } else {
                                     $setDurationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
+                                    $repsLabel = 'Repets';
+                                    $repsValue = $setDurationOrReps;
                                   }
 
                                   $setCharge = '-';
+                                  $chargeLabel = 'Charges';
                                   if ($useBodyweight) {
                                     $setCharge = 'poids de corps';
+                                    $chargeLabel = 'Poids de corps';
                                   } else {
-                                    $setCharge = !empty($set->weight) ? $set->weight.' kg' : ($sessionExercise->weight ?? '-');
+                                    $setCharge = !empty($set->weight) ? $set->weight : ($sessionExercise->weight ?? '-');
+                                    if ($setCharge !== '-' && $setCharge !== null) {
+                                      $setCharge = is_numeric($setCharge) ? number_format((float)$setCharge, 0, '.', '') : $setCharge;
+                                    }
                                   }
 
                                   $setRest = '-';
                                   $rawRest = $set->rest_time ?? $sessionExercise->rest_time ?? '-';
-                                  $setRest = formatRestTime($rawRest);
+                                  $restSeconds = extractRestSeconds($rawRest);
+                                  
+                                  // Construire le texte de la charge
+                                  $chargeText = '';
+                                  if ($useBodyweight) {
+                                    $chargeText = 'Poids de corps';
+                                  } else {
+                                    $chargeText = $chargeLabel . ' : ' . $setCharge;
+                                  }
                                 @endphp
-                                <tr>
-                                  <td class="bold">{{ $set->set_number ?? $loop->iteration }}</td>
-                                  <td>{{ $setDurationOrReps }}</td>
-                                  <td>{{ $setCharge }}</td>
-                                  <td>{{ $setRest }}</td>
-                                </tr>
+                                <div class="series-line">
+                                  Série : {{ $setNumber }} - {{ $repsLabel }} : {{ $repsValue }}@if($chargeText) - {{ $chargeText }}@endif, Repos : {{ $restSeconds }}
+                                </div>
                               @endforeach
                             @else
-                              <tr>
-                                <td class="bold">{{ $setsCount }}</td>
-                                <td>{{ $durationOrReps }}</td>
-                                <td>{{ $charge }}</td>
-                                <td>{{ $rest }}</td>
-                              </tr>
+                              @php
+                                if ($useDuration) {
+                                  $durationSeconds = extractDurationSeconds($durationOrReps);
+                                  $repsLabel = 'Durée (secondes)';
+                                  $repsValue = $durationSeconds;
+                                } else {
+                                  $repsLabel = 'Repets';
+                                  $repsValue = $durationOrReps;
+                                }
+                                $chargeLabel = $useBodyweight ? 'Poids de corps' : 'Charges';
+                                $chargeValue = $charge;
+                                if (!$useBodyweight && $chargeValue !== '-' && $chargeValue !== 'poids de corps') {
+                                  $chargeValue = str_replace(' kg', '', $chargeValue);
+                                  if (is_numeric($chargeValue)) {
+                                    $chargeValue = number_format((float)$chargeValue, 0, '.', '');
+                                  }
+                                }
+                                $restSeconds = extractRestSeconds($rest);
+                                
+                                // Construire le texte de la charge
+                                $chargeText = '';
+                                if ($useBodyweight) {
+                                  $chargeText = 'Poids de corps';
+                                } else {
+                                  $chargeText = $chargeLabel . ' : ' . $chargeValue;
+                                }
+                              @endphp
+                              <div class="series-line">
+                                Série : {{ $setsCount }} - {{ $repsLabel }} : {{ $repsValue }}@if($chargeText) - {{ $chargeText }}@endif, Repos : {{ $restSeconds }}
+                              </div>
                             @endif
-                          </table>
+                          </div>
                         </td>
                       </tr>
                     </table>

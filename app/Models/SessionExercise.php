@@ -51,6 +51,8 @@ class SessionExercise extends Model
     {
         return [
             'weight' => 'decimal:2',
+            'use_duration' => 'boolean',
+            'use_bodyweight' => 'boolean',
         ];
     }
 

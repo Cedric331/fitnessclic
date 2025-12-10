@@ -1330,6 +1330,9 @@ const generatePDF = () => {
         description: ex.description ?? null,
         sets_count: ex.sets_count ?? null,
         order: ex.order,
+        // Champs de configuration
+        use_duration: ex.use_duration ?? false,
+        use_bodyweight: ex.use_bodyweight ?? false,
         // Champs Super Set
         block_id: ex.block_id ?? null,
         block_type: ex.block_type ?? null,

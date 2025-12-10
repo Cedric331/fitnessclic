@@ -155,10 +155,8 @@ class ExercisesController extends Controller
      */
     public function show(Request $request, Exercise $exercise)
     {
-        /** @var \App\Models\User|null $user */
         $user = Auth::user();
         
-        // Vérifier que l'exercice est visible (non caché par l'admin)
         if (!$exercise->is_shared) {
             return redirect()->route('exercises.index')
                 ->with('error', 'Cet exercice n\'est pas disponible.');
@@ -166,10 +164,8 @@ class ExercisesController extends Controller
 
         $userId = Auth::id();
         
-        // Charger les catégories et l'utilisateur créateur
         $exercise->load(['categories', 'user']);
 
-        // Charger uniquement les séances de l'utilisateur connecté
         $userSessions = $exercise->sessions()
             ->where('user_id', $userId)
             ->with('customers')
@@ -193,8 +189,6 @@ class ExercisesController extends Controller
             'categories_list' => Category::forUser(Auth::id())->orderBy('name')->get(['id', 'name']),
         ];
 
-        // Si c'est une requête AJAX avec le paramètre json=true (mais pas Inertia), retourner du JSON
-        // Inertia envoie le header X-Inertia, donc on vérifie qu'il n'est pas présent
         $isInertiaRequest = $request->header('X-Inertia') !== null;
         $wantsJson = $request->has('json') || ($request->wantsJson() && !$isInertiaRequest);
         
@@ -202,7 +196,6 @@ class ExercisesController extends Controller
             return response()->json($data);
         }
 
-        // Sinon, retourner la page Inertia complète avec seulement les séances de l'utilisateur
         $data['sessions'] = $userSessions->map(fn ($session) => [
             'id' => $session->id,
             'name' => $session->name,
@@ -234,7 +227,6 @@ class ExercisesController extends Controller
         $validated = $request->validated();
         $user = Auth::user();
 
-        // Les comptes gratuits ne peuvent pas importer d'exercices
         if ($user->isFree()) {
             return redirect()->route('exercises.index')
                 ->with('error', 'L\'import d\'exercices est réservé aux abonnés Pro. Passez à Pro pour importer des exercices illimités.');
@@ -248,19 +240,16 @@ class ExercisesController extends Controller
 
         foreach ($files as $file) {
             try {
-                // Get filename without extension
                 $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
                 
-                // Create exercise with filename as title
                 $exercise = Exercise::create([
                     'user_id' => $userId,
                     'title' => $filename,
                     'description' => null,
                     'suggested_duration' => null,
-                    'is_shared' => true, // All exercises are public by default
+                    'is_shared' => true,
                 ]);
 
-                // Attach categories
                 $exercise->categories()->attach($categoryIds);
 
                 // Add the image with optimization
@@ -298,17 +287,13 @@ class ExercisesController extends Controller
      */
     public function destroy(Exercise $exercise)
     {
-        /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        
-        // Vérifier que l'utilisateur peut supprimer cet exercice
-        // Seul le créateur ou un admin peut supprimer
+  
         if ($exercise->user_id !== Auth::id() && (!$user || !$user->isAdmin())) {
             return redirect()->route('exercises.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour supprimer cet exercice.');
         }
 
-        // Supprimer l'exercice (les relations seront supprimées automatiquement via les contraintes de clé étrangère)
         $exercise->delete();
 
         return redirect()->route('exercises.index')
@@ -327,22 +312,18 @@ class ExercisesController extends Controller
         $maxHeight = 1080;
         $quality = 85;
 
-        // Get image info
         $imageInfo = getimagesize($file->getRealPath());
         if (!$imageInfo) {
-            return $file; // Return original if not an image
+            return $file;
         }
 
         [$originalWidth, $originalHeight, $imageType] = $imageInfo;
 
-        // Calculate new dimensions while maintaining aspect ratio
         $ratio = min($maxWidth / $originalWidth, $maxHeight / $originalHeight);
         $newWidth = (int) ($originalWidth * $ratio);
         $newHeight = (int) ($originalHeight * $ratio);
 
-        // If image is already smaller than max dimensions, return original
         if ($originalWidth <= $maxWidth && $originalHeight <= $maxHeight) {
-            // Still compress if it's a JPEG
             if ($imageType === IMAGETYPE_JPEG) {
                 return $this->compressJpeg($file, $quality);
             }
