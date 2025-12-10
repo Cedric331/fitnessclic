@@ -276,88 +276,91 @@ const extractDurationSeconds = (duration: string | null | undefined): string | n
     return totalSeconds > 0 ? totalSeconds : '-';
 };
 
-// Formater une série pour l'affichage
-const formatSeriesLine = (set: any, sessionExercise: any): string => {
+// Formater une série pour l'affichage en tableau
+const formatSeriesData = (set: any, sessionExercise: any) => {
     const setNumber = set.set_number || 1;
     
     // Déterminer le label et la valeur pour répétitions/durée
-    let repsLabel = 'Repets';
+    let repsLabel = 'répétition';
     let repsValue: string | number = '-';
     const useDuration = sessionExercise.use_duration === true || sessionExercise.use_duration === 1 || sessionExercise.use_duration === '1' || sessionExercise.use_duration === 'true';
     
     if (useDuration) {
         const rawDuration = set.duration ?? sessionExercise.duration ?? '-';
-        repsLabel = 'Durée';
         repsValue = extractDurationSeconds(rawDuration);
+        repsLabel = 'seconde';
     } else {
         repsValue = set.repetitions ?? sessionExercise.repetitions ?? '-';
     }
     
     // Déterminer le texte pour la charge
-    let chargeText = '';
+    let chargeValue = '';
     const useBodyweight = sessionExercise.use_bodyweight === true || sessionExercise.use_bodyweight === 1 || sessionExercise.use_bodyweight === '1' || sessionExercise.use_bodyweight === 'true';
     
     if (useBodyweight) {
-        chargeText = 'Poids de corps';
+        chargeValue = 'poids de corps';
     } else {
         const weight = set.weight ?? sessionExercise.weight ?? '-';
         if (weight !== '-' && weight !== null) {
             const weightValue = typeof weight === 'number' ? Math.round(weight) : weight;
-            chargeText = `Charges : ${weightValue}`;
+            chargeValue = `${weightValue}kg`;
+        } else {
+            chargeValue = '-';
         }
     }
     
     // Repos
     const rawRest = set.rest_time ?? sessionExercise.rest_time ?? '-';
     const restSeconds = extractRestSeconds(rawRest);
+    const restText = restSeconds !== '-' ? `${restSeconds} seconde${restSeconds > 1 ? 's' : ''}` : '-';
     
-    // Construire la ligne
-    let line = `Série : ${setNumber} - ${repsLabel} : ${repsValue}`;
-    if (chargeText) {
-        line += ` - ${chargeText}`;
-    }
-    line += `, Repos : ${restSeconds}`;
-    
-    return line;
+    return {
+        serie: setNumber,
+        reps: { value: repsValue, label: repsLabel },
+        charge: chargeValue,
+        rest: restText
+    };
 };
 
 // Formater une série sans sets (fallback)
-const formatSeriesLineFallback = (sessionExercise: any, setsCount: number): string => {
+const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
     const useDuration = sessionExercise.use_duration === true || sessionExercise.use_duration === 1 || sessionExercise.use_duration === '1' || sessionExercise.use_duration === 'true';
     const useBodyweight = sessionExercise.use_bodyweight === true || sessionExercise.use_bodyweight === 1 || sessionExercise.use_bodyweight === '1' || sessionExercise.use_bodyweight === 'true';
     
-    let repsLabel = 'Repets';
+    let repsLabel = 'répétition';
     let repsValue: string | number = '-';
     
     if (useDuration) {
         const rawDuration = sessionExercise.duration ?? '-';
-        repsLabel = 'Durée';
         repsValue = extractDurationSeconds(rawDuration);
+        repsLabel = 'seconde';
     } else {
         repsValue = sessionExercise.repetitions ?? '-';
     }
     
-    let chargeText = '';
+    let chargeValue = '';
     if (useBodyweight) {
-        chargeText = 'Poids de corps';
+        chargeValue = 'poids de corps';
     } else {
         const weight = sessionExercise.weight ?? '-';
         if (weight !== '-' && weight !== null) {
             const weightValue = typeof weight === 'number' ? Math.round(weight) : weight;
-            chargeText = `Charges : ${weightValue}`;
+            chargeValue = `${weightValue}kg`;
+        } else {
+            chargeValue = '-';
         }
     }
     
     const rawRest = sessionExercise.rest_time ?? '-';
     const restSeconds = extractRestSeconds(rawRest);
+    const restText = restSeconds !== '-' ? `${restSeconds} seconde${restSeconds > 1 ? 's' : ''}` : '-';
     
-    let line = `Série : ${setsCount} - ${repsLabel} : ${repsValue}`;
-    if (chargeText) {
-        line += ` - ${chargeText}`;
-    }
-    line += `, Repos : ${restSeconds}`;
-    
-    return line;
+    return {
+        serie: setsCount,
+        reps: { value: repsValue, label: repsLabel },
+        charge: chargeValue,
+        rest: restText
+    };
 };
 </script>
 
@@ -565,21 +568,47 @@ const formatSeriesLineFallback = (sessionExercise: any, setsCount: number): stri
 
                                                     <!-- Lignes de séries avec style PDF -->
                                                     <div class="space-y-0.5">
-                                                        <div
+                                                        <table
                                                             v-if="sessionExercise.sets && sessionExercise.sets.length > 0"
                                                             v-for="(set, setIndex) in sessionExercise.sets"
                                                             :key="set.id || `set-${item.block.id}-${exerciseIndex}-${setIndex}`"
-                                                            class="text-xs bg-[#d5f5f5] py-1.5 px-3 rounded text-center leading-tight"
+                                                            class="w-full text-xs border-collapse mt-1"
                                                         >
-                                                            {{ formatSeriesLine(set, sessionExercise) }}
-                                                        </div>
+                                                            <tr>
+                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                                    <strong>{{ formatSeriesData(set, sessionExercise).serie }}</strong> série{{ formatSeriesData(set, sessionExercise).serie > 1 ? 's' : '' }}
+                                                                </td>
+                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                                    <strong>{{ formatSeriesData(set, sessionExercise).reps.value }}</strong> {{ formatSeriesData(set, sessionExercise).reps.label }}{{ formatSeriesData(set, sessionExercise).reps.value > 1 ? 's' : '' }}
+                                                                </td>
+                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                                    charge : <strong>{{ formatSeriesData(set, sessionExercise).charge }}</strong>
+                                                                </td>
+                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 w-1/4">
+                                                                    repos inter-séries : <strong>{{ formatSeriesData(set, sessionExercise).rest }}</strong>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
                                                         <!-- Fallback pour les anciennes données (sans sets) -->
-                                                        <div
+                                                        <table
                                                             v-else-if="sessionExercise.repetitions || sessionExercise.duration || sessionExercise.rest_time || sessionExercise.weight || sessionExercise.use_bodyweight"
-                                                            class="text-xs bg-[#d5f5f5] py-1.5 px-3 rounded text-center leading-tight"
+                                                            class="w-full text-xs border-collapse mt-1"
                                                         >
-                                                            {{ formatSeriesLineFallback(sessionExercise, sessionExercise.sets_count || 1) }}
-                                                        </div>
+                                                            <tr>
+                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                                    <strong>{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).serie }}</strong> série{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).serie > 1 ? 's' : '' }}
+                                                                </td>
+                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                                    <strong>{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).reps.value }}</strong> {{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).reps.label }}{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).reps.value > 1 ? 's' : '' }}
+                                                                </td>
+                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                                    charge : <strong>{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).charge }}</strong>
+                                                                </td>
+                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 w-1/4">
+                                                                    repos inter-séries : <strong>{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).rest }}</strong>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
                                                     </div>
                                                 </div>
                                             </div>
@@ -637,21 +666,47 @@ const formatSeriesLineFallback = (sessionExercise: any, setsCount: number): stri
 
                                             <!-- Lignes de séries avec style PDF -->
                                             <div class="space-y-0.5">
-                                                <div
+                                                <table
                                                     v-if="item.exercise.sets && item.exercise.sets.length > 0"
                                                     v-for="(set, setIndex) in item.exercise.sets"
                                                     :key="set.id || `set-${item.exercise.id}-${setIndex}`"
-                                                    class="text-xs bg-[#d5f5f5] py-1.5 px-3 rounded text-center leading-tight"
+                                                    class="w-full text-xs border-collapse mt-1"
                                                 >
-                                                    {{ formatSeriesLine(set, item.exercise) }}
-                                                </div>
+                                                    <tr>
+                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                            <strong>{{ formatSeriesData(set, item.exercise).serie }}</strong> série{{ formatSeriesData(set, item.exercise).serie > 1 ? 's' : '' }}
+                                                        </td>
+                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                            <strong>{{ formatSeriesData(set, item.exercise).reps.value }}</strong> {{ formatSeriesData(set, item.exercise).reps.label }}{{ formatSeriesData(set, item.exercise).reps.value > 1 ? 's' : '' }}
+                                                        </td>
+                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                            charge : <strong>{{ formatSeriesData(set, item.exercise).charge }}</strong>
+                                                        </td>
+                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 w-1/4">
+                                                            repos inter-séries : <strong>{{ formatSeriesData(set, item.exercise).rest }}</strong>
+                                                        </td>
+                                                    </tr>
+                                                </table>
                                                 <!-- Fallback pour les anciennes données (sans sets) -->
-                                                <div
+                                                <table
                                                     v-else-if="item.exercise.repetitions || item.exercise.duration || item.exercise.rest_time || item.exercise.weight || item.exercise.use_bodyweight"
-                                                    class="text-xs bg-[#d5f5f5] py-1.5 px-3 rounded text-center leading-tight"
+                                                    class="w-full text-xs border-collapse mt-1"
                                                 >
-                                                    {{ formatSeriesLineFallback(item.exercise, item.exercise.sets_count || 1) }}
-                                                </div>
+                                                    <tr>
+                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                            <strong>{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).serie }}</strong> série{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).serie > 1 ? 's' : '' }}
+                                                        </td>
+                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                            <strong>{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).reps.value }}</strong> {{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).reps.label }}{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).reps.value > 1 ? 's' : '' }}
+                                                        </td>
+                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
+                                                            charge : <strong>{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).charge }}</strong>
+                                                        </td>
+                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 w-1/4">
+                                                            repos inter-séries : <strong>{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).rest }}</strong>
+                                                        </td>
+                                                    </tr>
+                                                </table>
                                             </div>
                                         </div>
                                     </div>

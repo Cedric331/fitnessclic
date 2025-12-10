@@ -260,14 +260,24 @@
     }
 
     /* Series lines */
-    .series-line {
+    .series-table {
+      width: 100%;
+      margin-top: 4px;
+      border-collapse: collapse;
+    }
+
+    .series-table td {
+      width: 25%;
+      background-color: #e0f4fc;
+      color: #212121;
       font-size: 12px;
-      margin-top: 2px;
-      line-height: 1.2;
-      background-color: #d5f5f5;
-      padding: 3px 6px;
+      padding: 6px 8px;
       text-align: center;
-      border-radius: 2px;
+      border-right: 1px solid #d1d5db;
+    }
+
+    .series-table td:last-child {
+      border-right: none;
     }
 
     /* Super Set */
@@ -636,10 +646,12 @@
                             $durationSeconds = extractDurationSeconds($rawDuration);
                             $repsLabel = 'Durée';
                             $repsValue = $durationSeconds;
+                            $repsDisplayLabel = 'seconde';
                           } else {
                             $setDurationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
                             $repsLabel = 'Repets';
                             $repsValue = $setDurationOrReps;
+                            $repsDisplayLabel = 'répétition';
                           }
 
                           $setCharge = '-';
@@ -666,9 +678,14 @@
                             $chargeText = $chargeLabel . ' : ' . $setCharge;
                           }
                         @endphp
-                        <div class="series-line">
-                          Série : {{ $setNumber }} - {{ $repsLabel }} : {{ $repsValue }}@if($chargeText) - {{ $chargeText }}@endif, Repos : {{ $restSeconds }}
-                        </div>
+                        <table class="series-table">
+                          <tr>
+                            <td><strong>{{ $setNumber }}</strong> série{{ $setNumber > 1 ? 's' : '' }}</td>
+                            <td><strong>{{ $repsValue }}</strong> {{ $useDuration ? 'seconde' . ($repsValue > 1 ? 's' : '') : $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}</td>
+                            <td>charge : <strong>{{ $useBodyweight ? 'poids de corps' : ($setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-') }}</strong></td>
+                            <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
+                          </tr>
+                        </table>
                       @endforeach
                     @else
                       @php
@@ -676,9 +693,11 @@
                           $durationSeconds = extractDurationSeconds($durationOrReps);
                           $repsLabel = 'Durée (secondes)';
                           $repsValue = $durationSeconds;
+                          $repsDisplayLabel = 'seconde';
                         } else {
                           $repsLabel = 'Repets';
                           $repsValue = $durationOrReps;
+                          $repsDisplayLabel = 'répétition';
                         }
                         $chargeLabel = $useBodyweight ? 'Poids de corps' : 'Charges';
                         $chargeValue = $charge;
@@ -698,9 +717,14 @@
                           $chargeText = $chargeLabel . ' : ' . $chargeValue;
                         }
                       @endphp
-                      <div class="series-line">
-                        Série : {{ $setsCount }} - {{ $repsLabel }} : {{ $repsValue }}@if($chargeText) - {{ $chargeText }}@endif, Repos (secondes) : {{ $restSeconds }}
-                      </div>
+                      <table class="series-table">
+                        <tr>
+                          <td><strong>{{ $setsCount }}</strong> série{{ $setsCount > 1 ? 's' : '' }}</td>
+                          <td><strong>{{ $repsValue }}</strong> {{ $useDuration ? 'seconde' . ($repsValue > 1 ? 's' : '') : $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}</td>
+                          <td>charge : <strong>{{ $useBodyweight ? 'poids de corps' : ($chargeValue !== '-' && $chargeValue !== null && $chargeValue !== 'poids de corps' ? $chargeValue . 'kg' : ($useBodyweight ? 'poids de corps' : '-')) }}</strong></td>
+                          <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
+                        </tr>
+                      </table>
                     @endif
                   </div>
                 @endif
@@ -810,10 +834,12 @@
                                     $durationSeconds = extractDurationSeconds($rawDuration);
                                     $repsLabel = 'Durée (secondes)';
                                     $repsValue = $durationSeconds;
+                                    $repsDisplayLabel = 'seconde';
                                   } else {
                                     $setDurationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
                                     $repsLabel = 'Repets';
                                     $repsValue = $setDurationOrReps;
+                                    $repsDisplayLabel = 'répétition';
                                   }
 
                                   $setCharge = '-';
@@ -840,9 +866,14 @@
                                     $chargeText = $chargeLabel . ' : ' . $setCharge;
                                   }
                                 @endphp
-                                <div class="series-line">
-                                  Série : {{ $setNumber }} - {{ $repsLabel }} : {{ $repsValue }}@if($chargeText) - {{ $chargeText }}@endif, Repos : {{ $restSeconds }}
-                                </div>
+                                <table class="series-table">
+                                  <tr>
+                                    <td><strong>{{ $setNumber }}</strong> série{{ $setNumber > 1 ? 's' : '' }}</td>
+                                    <td><strong>{{ $repsValue }}</strong> {{ $useDuration ? 'seconde' . ($repsValue > 1 ? 's' : '') : $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}</td>
+                                    <td>charge : <strong>{{ $useBodyweight ? 'poids de corps' : ($setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-') }}</strong></td>
+                                    <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
+                                  </tr>
+                                </table>
                               @endforeach
                             @else
                               @php
@@ -850,9 +881,11 @@
                                   $durationSeconds = extractDurationSeconds($durationOrReps);
                                   $repsLabel = 'Durée (secondes)';
                                   $repsValue = $durationSeconds;
+                                  $repsDisplayLabel = 'seconde';
                                 } else {
                                   $repsLabel = 'Repets';
                                   $repsValue = $durationOrReps;
+                                  $repsDisplayLabel = 'répétition';
                                 }
                                 $chargeLabel = $useBodyweight ? 'Poids de corps' : 'Charges';
                                 $chargeValue = $charge;
@@ -872,9 +905,14 @@
                                   $chargeText = $chargeLabel . ' : ' . $chargeValue;
                                 }
                               @endphp
-                              <div class="series-line">
-                                Série : {{ $setsCount }} - {{ $repsLabel }} : {{ $repsValue }}@if($chargeText) - {{ $chargeText }}@endif, Repos : {{ $restSeconds }}
-                              </div>
+                              <table class="series-table">
+                                <tr>
+                                  <td><strong>{{ $setsCount }}</strong> série{{ $setsCount > 1 ? 's' : '' }}</td>
+                                  <td><strong>{{ $repsValue }}</strong> {{ $useDuration ? 'seconde' . ($repsValue > 1 ? 's' : '') : $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}</td>
+                                  <td>charge : <strong>{{ $useBodyweight ? 'poids de corps' : ($chargeValue !== '-' && $chargeValue !== null && $chargeValue !== 'poids de corps' ? $chargeValue . 'kg' : ($useBodyweight ? 'poids de corps' : '-')) }}</strong></td>
+                                  <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
+                                </tr>
+                              </table>
                             @endif
                           </div>
                         </td>
