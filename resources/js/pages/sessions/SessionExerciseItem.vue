@@ -231,7 +231,7 @@ const getSetLabel = (setNumber: number) => {
                             type="button"
                             @click.stop.prevent="emit('moveUp')"
                             class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                            :disabled="index === 0"
+                            :disabled="(displayIndex !== undefined ? displayIndex : index) === 0"
                             title="Déplacer vers le haut"
                         >
                             <ChevronUp class="h-3 w-3" />
@@ -253,7 +253,7 @@ const getSetLabel = (setNumber: number) => {
                             type="button"
                             @click.stop.prevent="emit('moveDown')"
                             class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600 disabled:opacity-80 disabled:cursor-not-allowed"
-                            :disabled="totalCount !== undefined && index === totalCount - 1"
+                            :disabled="totalCount !== undefined && (displayIndex !== undefined ? displayIndex : index) >= totalCount - 1"
                             title="Déplacer vers le bas"
                         >
                             <ChevronDown class="h-3 w-3" />

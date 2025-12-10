@@ -622,6 +622,33 @@ const orderedItems = computed(() => {
     return items;
 });
 
+// Fonctions helper pour gérer les mouvements avec vérifications de sécurité
+const handleMoveUp = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number }) => {
+    const items = orderedItems.value;
+    if (!items || !Array.isArray(items)) {
+        console.warn('orderedItems.value is not available');
+        return;
+    }
+    const currentIndex = items.findIndex((i: any) => i.key === item.key);
+    if (currentIndex > 0) {
+        const prevItem = items[currentIndex - 1];
+        reorderItems(item, prevItem);
+    }
+};
+
+const handleMoveDown = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number }) => {
+    const items = orderedItems.value;
+    if (!items || !Array.isArray(items)) {
+        console.warn('orderedItems.value is not available');
+        return;
+    }
+    const currentIndex = items.findIndex((i: any) => i.key === item.key);
+    if (currentIndex < items.length - 1) {
+        const nextItem = items[currentIndex + 1];
+        reorderItems(item, nextItem);
+    }
+};
+
 // Convertir un exercice standard en bloc Super Set
 const convertExerciseToSet = (exercise: SessionExercise) => {
     const index = sessionExercises.value.findIndex(e => e.id === exercise.id);
@@ -1722,10 +1749,7 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                     <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
                         <div class="space-y-6">
                         <Card class="shadow-md">
-                            <CardHeader>
-                                <CardTitle>Informations de la séance</CardTitle>
-                            </CardHeader>
-                            <CardContent class="space-y-4">
+                            <CardContent class="space-y-4 pt-6">
                                 <!-- Nom de la séance -->
                                 <div class="space-y-2">
                                     <Label for="session-name">Nom de la séance <span class="text-red-500">*</span></Label>
@@ -1779,7 +1803,7 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                                     <Textarea
                                         v-model="form.notes"
                                         placeholder="Ajouter des notes sur cette séance..."
-                                        :rows="3"
+                                        :rows="2"
                                     />
                                 </div>
                             </CardContent>
@@ -1787,32 +1811,23 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
 
                         <!-- Liste des exercices de la séance -->
                         <Card class="shadow-md">
-                            <CardHeader>
-                                <div class="space-y-2">
-                                    <CardTitle class="flex items-center justify-between">
-                                        <span>Exercices de la séance</span>
-                                        <span class="text-sm font-normal text-neutral-500">
-                                            {{ sessionExercises.length }} exercice(s)
-                                        </span>
-                                    </CardTitle>
-                                    <Alert
-                                        v-if="hasDuplicateExercises"
-                                        variant="destructive"
-                                        class="py-2"
-                                    >
-                                        <AlertTriangle class="h-4 w-4" />
-                                        <AlertDescription class="text-sm">
-                                            Attention : {{ duplicateExercises.length }} exercice(s) {{ duplicateExercises.length > 1 ? 'sont' : 'est' }} présent{{ duplicateExercises.length > 1 ? 's' : '' }} plusieurs fois dans cette séance.
-                                        </AlertDescription>
-                                    </Alert>
-                                </div>
-                            </CardHeader>
                             <CardContent
                                 @dragover.prevent="handleDragOverMain"
                                 @dragleave.prevent="handleDragLeaveMain"
                                 @drop.prevent="handleDropMain"
-                                class="min-h-[200px] transition-all duration-200 ease-out relative"
+                                class="min-h-[200px] transition-all duration-200 ease-out relative pt-6"
                             >
+                                <!-- Message d'avertissement pour les doublons -->
+                                <Alert
+                                    v-if="hasDuplicateExercises"
+                                    variant="destructive"
+                                    class="py-2 mb-4"
+                                >
+                                    <AlertTriangle class="h-4 w-4" />
+                                    <AlertDescription class="text-sm">
+                                        Attention : {{ duplicateExercises.length }} exercice(s) {{ duplicateExercises.length > 1 ? 'sont' : 'est' }} présent{{ duplicateExercises.length > 1 ? 's' : '' }} plusieurs fois dans cette séance.
+                                    </AlertDescription>
+                                </Alert>
                                 <!-- Ligne d'insertion discrète quand on drag depuis la bibliothèque -->
                                 <div
                                     v-if="isDraggingOver"
@@ -1856,22 +1871,8 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                                                 @update-block-description="(description: string) => handleUpdateBlockDescription(item.block!.id, description)"
                                                 @convert-to-standard="convertBlockToStandard(item.block!)"
                                                 @remove-block="handleRemoveBlock(item)"
-                                                @move-up="() => {
-                                                    const items = orderedItems.value;
-                                                    const currentIndex = items.findIndex((i: any) => i.key === item.key);
-                                                    if (currentIndex > 0) {
-                                                        const prevItem = items[currentIndex - 1];
-                                                        reorderItems(item, prevItem);
-                                                    }
-                                                }"
-                                                @move-down="() => {
-                                                    const items = orderedItems.value;
-                                                    const currentIndex = items.findIndex((i: any) => i.key === item.key);
-                                                    if (currentIndex < items.length - 1) {
-                                                        const nextItem = items[currentIndex + 1];
-                                                        reorderItems(item, nextItem);
-                                                    }
-                                                }"
+                                                @move-up="() => handleMoveUp(item)"
+                                                @move-down="() => handleMoveDown(item)"
                                             />
                                             
                                             <!-- Exercice standard -->
@@ -1879,26 +1880,13 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                                                 v-else-if="item.type === 'standard'"
                                                 :session-exercise="item.exercise!"
                                                 :index="item.displayIndex"
+                                                :display-index="item.displayIndex"
                                                 :draggable="true"
                                                 :total-count="orderedItems.length"
                                                 @update="(updates: Partial<SessionExercise>) => handleExerciseUpdate(item.exercise?.id, updates)"
                                                 @remove="handleRemoveExercise(item)"
-                                                @move-up="() => {
-                                                    const items = orderedItems.value;
-                                                    const currentIndex = items.findIndex((i: any) => i.key === item.key);
-                                                    if (currentIndex > 0) {
-                                                        const prevItem = items[currentIndex - 1];
-                                                        reorderItems(item, prevItem);
-                                                    }
-                                                }"
-                                                @move-down="() => {
-                                                    const items = orderedItems.value;
-                                                    const currentIndex = items.findIndex((i: any) => i.key === item.key);
-                                                    if (currentIndex < items.length - 1) {
-                                                        const nextItem = items[currentIndex + 1];
-                                                        reorderItems(item, nextItem);
-                                                    }
-                                                }"
+                                                @move-up="() => handleMoveUp(item)"
+                                                @move-down="() => handleMoveDown(item)"
                                                 @convert-to-set="convertExerciseToSet(item.exercise!)"
                                             />
                                             </template>
