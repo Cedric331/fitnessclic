@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { 
     Save, 
     Download, 
@@ -24,7 +25,13 @@ import {
     Users,
     Grid2x2,
     Grid3x3,
-    LayoutGrid
+    LayoutGrid,
+    Square,
+    Circle,
+    Minus,
+    Hexagon,
+    ArrowRight,
+    Highlighter
 } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
 import Konva from 'konva';
@@ -32,7 +39,7 @@ import type { Exercise } from './types';
 
 interface LayoutElement {
     id: string;
-    type: 'image' | 'text';
+    type: 'image' | 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight';
     x: number;
     y: number;
     width?: number;
@@ -43,7 +50,15 @@ interface LayoutElement {
     text?: string;
     fontSize?: number;
     fontFamily?: string;
-    fill?: string;
+    fill?: string | null; // null signifie explicitement "pas de remplissage"
+    stroke?: string;
+    strokeWidth?: number;
+    opacity?: number;
+    points?: number[]; // Pour les lignes et flèches
+    radiusX?: number; // Pour les ellipses
+    radiusY?: number; // Pour les ellipses
+    pointerLength?: number; // Pour les flèches
+    pointerWidth?: number; // Pour les flèches
     konvaNode?: any;
 }
 
@@ -115,6 +130,17 @@ const customerSearchTerm = ref('');
 
 // Library view mode
 const libraryViewMode = ref<'grid-2' | 'grid-4' | 'grid-6'>('grid-6');
+
+// Shape drawing state
+const isDrawingShape = ref(false);
+const drawingShapeType = ref<'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight' | null>(null);
+const shapeStartPos = ref<{ x: number; y: number } | null>(null);
+const shapeStrokeColor = ref('#000000');
+const shapeStrokeWidth = ref(2);
+const shapeOpacity = ref(1);
+const polygonPoints = ref<number[]>([]);
+const tempShapeRef = ref<any>(null); // Référence à la forme temporaire en cours de dessin
+const isMouseDown = ref(false); // État pour suivre si la souris est enfoncée
 
 // Initialize canvas
 onMounted(() => {
@@ -199,6 +225,9 @@ onMounted(() => {
 
     // Handle clicks on stage (deselect)
     stage.on('click', (e) => {
+        // Ne pas désélectionner si on est en train de dessiner
+        if (isDrawingShape.value) return;
+        
         if (e.target === stage) {
             transformer.nodes([]);
             selectedElementId.value = null;
@@ -231,6 +260,8 @@ const loadElementsToCanvas = async () => {
                 await addImageToCanvas(element);
             } else if (element.type === 'text' && element.text) {
                 addTextToCanvas(element);
+            } else if (['rect', 'ellipse', 'line', 'arrow', 'highlight'].includes(element.type)) {
+                addShapeToCanvas(element);
             }
         } catch (error) {
             console.error('Error loading element:', error, element);
@@ -447,6 +478,452 @@ const addTextToCanvas = (element: LayoutElement) => {
     element.konvaNode = konvaText;
 };
 
+// Add shape to canvas
+const addShapeToCanvas = (element: LayoutElement) => {
+    if (!layer) return;
+
+    let konvaShape: any = null;
+
+    switch (element.type) {
+        case 'rect':
+            konvaShape = new Konva.Rect({
+                x: element.x,
+                y: element.y,
+                width: element.width || 100,
+                height: element.height || 100,
+                fill: element.fill || undefined,
+                stroke: element.stroke !== undefined ? element.stroke : shapeStrokeColor.value,
+                strokeWidth: element.strokeWidth !== undefined ? element.strokeWidth : shapeStrokeWidth.value,
+                opacity: element.opacity !== undefined ? element.opacity : shapeOpacity.value,
+                draggable: true,
+                rotation: element.rotation || 0,
+            });
+            break;
+
+        case 'ellipse':
+            const radiusX = element.radiusX || element.width ? (element.width || 50) / 2 : 50;
+            const radiusY = element.radiusY || element.height ? (element.height || 50) / 2 : 50;
+            konvaShape = new Konva.Ellipse({
+                x: element.x,
+                y: element.y,
+                radiusX: radiusX,
+                radiusY: radiusY,
+                fill: element.fill || undefined,
+                stroke: element.stroke !== undefined ? element.stroke : shapeStrokeColor.value,
+                strokeWidth: element.strokeWidth !== undefined ? element.strokeWidth : shapeStrokeWidth.value,
+                opacity: element.opacity !== undefined ? element.opacity : shapeOpacity.value,
+                draggable: true,
+                rotation: element.rotation || 0,
+            });
+            break;
+
+        case 'line':
+            if (element.points && element.points.length >= 4) {
+                konvaShape = new Konva.Line({
+                    points: element.points,
+                    stroke: element.stroke || shapeStrokeColor.value,
+                    strokeWidth: element.strokeWidth || shapeStrokeWidth.value,
+                    opacity: element.opacity !== undefined ? element.opacity : shapeOpacity.value,
+                    draggable: true,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                });
+            }
+            break;
+
+        case 'polygon':
+            if (element.points && element.points.length >= 6) {
+                konvaShape = new Konva.Line({
+                    points: element.points,
+                    closed: true,
+                    fill: element.fill || undefined,
+                    stroke: element.stroke || shapeStrokeColor.value,
+                    strokeWidth: element.strokeWidth || shapeStrokeWidth.value,
+                    opacity: element.opacity !== undefined ? element.opacity : shapeOpacity.value,
+                    draggable: true,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                });
+            }
+            break;
+
+        case 'arrow':
+            if (element.points && element.points.length >= 4) {
+                konvaShape = new Konva.Arrow({
+                    points: element.points,
+                    pointerLength: element.pointerLength || 10,
+                    pointerWidth: element.pointerWidth || 10,
+                    fill: element.fill || shapeStrokeColor.value,
+                    stroke: element.stroke || shapeStrokeColor.value,
+                    strokeWidth: element.strokeWidth || shapeStrokeWidth.value,
+                    opacity: element.opacity !== undefined ? element.opacity : shapeOpacity.value,
+                    draggable: true,
+                });
+            }
+            break;
+
+        case 'highlight':
+            konvaShape = new Konva.Rect({
+                x: element.x,
+                y: element.y,
+                width: element.width || 100,
+                height: element.height || 30,
+                fill: element.fill || '#FFFF00',
+                opacity: element.opacity !== undefined ? element.opacity : 0.3,
+                draggable: true,
+                rotation: element.rotation || 0,
+            });
+            break;
+    }
+
+    if (konvaShape) {
+        konvaShape.id(element.id);
+        
+        konvaShape.on('dragend', () => {
+            updateElementPosition(element.id, konvaShape.x(), konvaShape.y());
+        });
+
+        konvaShape.on('transformend', () => {
+            updateElementTransform(element.id, konvaShape);
+        });
+
+        konvaShape.on('click', () => {
+            selectElement(element.id, konvaShape);
+        });
+
+        layer.add(konvaShape);
+        element.konvaNode = konvaShape;
+        layer.draw();
+    }
+};
+
+// Cleanup function for shape drawing
+const cleanupShapeDrawing = () => {
+    if (tempShapeRef.value) {
+        tempShapeRef.value.destroy();
+        tempShapeRef.value = null;
+    }
+    shapeStartPos.value = null;
+    isMouseDown.value = false;
+    
+    // Supprimer tous les événements du stage
+    if (stage) {
+        if (currentHandlers.mousedown) {
+            stage.off('mousedown', currentHandlers.mousedown);
+        }
+        if (currentHandlers.mousemove) {
+            stage.off('mousemove', currentHandlers.mousemove);
+        }
+        if (currentHandlers.mouseup) {
+            stage.off('mouseup', currentHandlers.mouseup);
+        }
+        if (currentHandlers.click) {
+            stage.off('click', currentHandlers.click);
+        }
+        // Nettoyer aussi sans handler pour être sûr
+        stage.off('mousedown');
+        stage.off('mousemove');
+        stage.off('mouseup');
+        stage.off('click');
+    }
+    
+    if (layer) {
+        layer.find('.temp-shape').forEach((node: any) => node.destroy());
+        layer.find('.temp-point').forEach((node: any) => node.destroy());
+        layer.draw();
+    }
+    
+    if (handleMouseUpGlobal) {
+        window.removeEventListener('mouseup', handleMouseUpGlobal);
+        handleMouseUpGlobal = null;
+    }
+    
+    // Réinitialiser les handlers
+    currentHandlers = {};
+};
+
+// Global mouse up handler reference
+let handleMouseUpGlobal: (() => void) | null = null;
+
+// Store event handlers for cleanup
+let currentHandlers: {
+    mousedown?: (e: any) => void;
+    mousemove?: (e: any) => void;
+    mouseup?: (e: any) => void;
+    click?: (e: any) => void;
+} = {};
+
+// Start drawing a shape
+const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'polygon' | 'arrow' | 'highlight') => {
+    if (!stage || !layer) return;
+    
+    // Nettoyer complètement le mode précédent
+    cleanupShapeDrawing();
+    
+    drawingShapeType.value = type;
+    isDrawingShape.value = true;
+    
+    if (type === 'polygon') {
+        polygonPoints.value = [];
+        // Nettoyer les points précédents
+        if (layer) {
+            layer.find('.temp-point').forEach((node: any) => node.destroy());
+            layer.draw();
+        }
+    }
+    
+    const handleStageMouseDown = (e: any) => {
+        if (!isDrawingShape.value || drawingShapeType.value !== type) return;
+        // Ne pas dessiner si on clique sur un élément existant (sauf le stage)
+        if (e.target !== stage && e.target !== layer) return;
+        
+        const pointerPos = stage.getPointerPosition();
+        if (!pointerPos) return;
+        
+        isMouseDown.value = true;
+        shapeStartPos.value = { x: pointerPos.x, y: pointerPos.y };
+        
+        // Empêcher la sélection d'éléments pendant le dessin
+        e.cancelBubble = true;
+    };
+    
+    
+    const handleStageMouseMove = (e: any) => {
+        if (!isDrawingShape.value || !shapeStartPos.value) return;
+        
+        // Pour rect, ellipse, highlight, line, arrow : seulement si la souris est enfoncée
+        if ((type === 'rect' || type === 'ellipse' || type === 'highlight' || type === 'line' || type === 'arrow') && !isMouseDown.value) {
+            return;
+        }
+        
+        const pointerPos = stage.getPointerPosition();
+        if (!pointerPos) return;
+        
+        if (type === 'rect' || type === 'ellipse' || type === 'highlight') {
+            const width = pointerPos.x - shapeStartPos.value.x;
+            const height = pointerPos.y - shapeStartPos.value.y;
+            
+            // Supprimer la forme temporaire précédente si elle existe
+            if (tempShapeRef.value) {
+                tempShapeRef.value.destroy();
+                tempShapeRef.value = null;
+            }
+            
+            if (type === 'rect' || type === 'highlight') {
+                const tempRect = new Konva.Rect({
+                    x: Math.min(shapeStartPos.value.x, pointerPos.x),
+                    y: Math.min(shapeStartPos.value.y, pointerPos.y),
+                    width: Math.abs(width),
+                    height: Math.abs(height),
+                    fill: type === 'highlight' ? '#FFFF00' : undefined,
+                    opacity: type === 'highlight' ? 0.3 : shapeOpacity.value,
+                    stroke: type === 'highlight' ? undefined : shapeStrokeColor.value,
+                    strokeWidth: shapeStrokeWidth.value,
+                });
+                tempRect.name('temp-shape');
+                layer.add(tempRect);
+                tempShapeRef.value = tempRect;
+                layer.draw();
+            } else if (type === 'ellipse') {
+                const tempEllipse = new Konva.Ellipse({
+                    x: shapeStartPos.value.x + width / 2,
+                    y: shapeStartPos.value.y + height / 2,
+                    radiusX: Math.abs(width) / 2,
+                    radiusY: Math.abs(height) / 2,
+                    fill: undefined,
+                    opacity: shapeOpacity.value,
+                    stroke: shapeStrokeColor.value,
+                    strokeWidth: shapeStrokeWidth.value,
+                });
+                tempEllipse.name('temp-shape');
+                layer.add(tempEllipse);
+                tempShapeRef.value = tempEllipse;
+                layer.draw();
+            }
+        } else if (type === 'line' || type === 'arrow') {
+            // Supprimer la ligne temporaire précédente si elle existe
+            if (tempShapeRef.value) {
+                tempShapeRef.value.destroy();
+                tempShapeRef.value = null;
+            }
+            
+            // Créer une ligne temporaire
+            const tempLine = new Konva.Line({
+                points: [shapeStartPos.value.x, shapeStartPos.value.y, pointerPos.x, pointerPos.y],
+                stroke: shapeStrokeColor.value,
+                strokeWidth: shapeStrokeWidth.value,
+                opacity: shapeOpacity.value,
+                lineCap: 'round',
+                lineJoin: 'round',
+            });
+            
+            // Pour les flèches, ajouter une pointe
+            if (type === 'arrow') {
+                const arrow = new Konva.Arrow({
+                    points: [shapeStartPos.value.x, shapeStartPos.value.y, pointerPos.x, pointerPos.y],
+                    stroke: shapeStrokeColor.value,
+                    strokeWidth: shapeStrokeWidth.value,
+                    fill: shapeStrokeColor.value,
+                    opacity: shapeOpacity.value,
+                    pointerLength: 10,
+                    pointerWidth: 10,
+                });
+                arrow.name('temp-shape');
+                layer.add(arrow);
+                tempShapeRef.value = arrow;
+            } else {
+                tempLine.name('temp-shape');
+                layer.add(tempLine);
+                tempShapeRef.value = tempLine;
+            }
+            layer.draw();
+        }
+    };
+    
+    const handleStageMouseUp = (e: any) => {
+        if (!isDrawingShape.value || !shapeStartPos.value || !isMouseDown.value) return;
+        
+        isMouseDown.value = false;
+        
+        const pointerPos = stage.getPointerPosition();
+        if (!pointerPos) return;
+        
+        if (type === 'rect' || type === 'ellipse' || type === 'highlight') {
+            // Supprimer la forme temporaire
+            if (tempShapeRef.value) {
+                tempShapeRef.value.destroy();
+                tempShapeRef.value = null;
+            }
+            
+            const width = pointerPos.x - shapeStartPos.value.x;
+            const height = pointerPos.y - shapeStartPos.value.y;
+            
+            if (Math.abs(width) < 5 || Math.abs(height) < 5) {
+                // Trop petit, annuler
+                shapeStartPos.value = null;
+                layer.draw();
+                return;
+            }
+            
+            const element: LayoutElement = {
+                id: `${type}-${Date.now()}`,
+                type: type,
+                x: type === 'ellipse' ? shapeStartPos.value.x + width / 2 : Math.min(shapeStartPos.value.x, pointerPos.x),
+                y: type === 'ellipse' ? shapeStartPos.value.y + height / 2 : Math.min(shapeStartPos.value.y, pointerPos.y),
+                width: type === 'ellipse' ? undefined : Math.abs(width),
+                height: type === 'ellipse' ? undefined : Math.abs(height),
+                radiusX: type === 'ellipse' ? Math.abs(width) / 2 : undefined,
+                radiusY: type === 'ellipse' ? Math.abs(height) / 2 : undefined,
+                fill: type === 'highlight' ? '#FFFF00' : undefined,
+                stroke: type === 'highlight' ? undefined : shapeStrokeColor.value,
+                strokeWidth: shapeStrokeWidth.value,
+                opacity: type === 'highlight' ? 0.3 : shapeOpacity.value,
+            };
+            
+            elements.value.push(element);
+            addShapeToCanvas(element);
+            
+            // Réinitialiser
+            shapeStartPos.value = null;
+        } else if (type === 'line' || type === 'arrow') {
+            // Supprimer la ligne temporaire
+            if (tempShapeRef.value) {
+                tempShapeRef.value.destroy();
+                tempShapeRef.value = null;
+            }
+            
+            const distance = Math.sqrt(
+                Math.pow(pointerPos.x - shapeStartPos.value.x, 2) + 
+                Math.pow(pointerPos.y - shapeStartPos.value.y, 2)
+            );
+            
+            if (distance < 5) {
+                // Trop petit, annuler
+                shapeStartPos.value = null;
+                layer.draw();
+                return;
+            }
+            
+            const element: LayoutElement = {
+                id: `${type}-${Date.now()}`,
+                type: type,
+                x: shapeStartPos.value.x,
+                y: shapeStartPos.value.y,
+                points: [shapeStartPos.value.x, shapeStartPos.value.y, pointerPos.x, pointerPos.y],
+                stroke: shapeStrokeColor.value,
+                strokeWidth: shapeStrokeWidth.value,
+                fill: type === 'arrow' ? shapeStrokeColor.value : undefined,
+                opacity: shapeOpacity.value,
+                pointerLength: type === 'arrow' ? 10 : undefined,
+                pointerWidth: type === 'arrow' ? 10 : undefined,
+            };
+            
+            elements.value.push(element);
+            addShapeToCanvas(element);
+            
+            // Réinitialiser
+            shapeStartPos.value = null;
+        }
+    };
+    
+    // Gérer le cas où la souris est relâchée en dehors du stage
+    const localHandleMouseUpGlobal = () => {
+        if (isMouseDown.value) {
+            isMouseDown.value = false;
+        }
+    };
+    
+    // Stocker la référence pour pouvoir la supprimer plus tard
+    handleMouseUpGlobal = localHandleMouseUpGlobal;
+    
+    // Stocker les handlers pour pouvoir les supprimer plus tard
+    if (type === 'rect' || type === 'ellipse' || type === 'highlight' || type === 'line' || type === 'arrow') {
+        currentHandlers.mousedown = handleStageMouseDown;
+        currentHandlers.mousemove = handleStageMouseMove;
+        currentHandlers.mouseup = handleStageMouseUp;
+        
+        stage.on('mousedown', handleStageMouseDown);
+        stage.on('mousemove', handleStageMouseMove);
+        stage.on('mouseup', handleStageMouseUp);
+        window.addEventListener('mouseup', localHandleMouseUpGlobal);
+    } else if (type === 'polygon') {
+        currentHandlers.click = handleStageClick;
+        stage.on('click', handleStageClick);
+    }
+    
+    notifySuccess(`Mode dessin ${type} activé. ${type === 'polygon' ? 'Cliquez plusieurs fois pour créer les points, puis cliquez sur "Terminer".' : 'Maintenez le clic et déplacez la souris pour dessiner.'}`);
+};
+
+// Finish polygon drawing
+const finishPolygon = () => {
+    if (polygonPoints.value.length >= 6) {
+        const element: LayoutElement = {
+            id: `polygon-${Date.now()}`,
+            type: 'polygon',
+            x: 0,
+            y: 0,
+            points: polygonPoints.value,
+            fill: undefined,
+            stroke: shapeStrokeColor.value,
+            strokeWidth: shapeStrokeWidth.value,
+            opacity: shapeOpacity.value,
+        };
+        elements.value.push(element);
+        addShapeToCanvas(element);
+        
+        // Nettoyer les points temporaires
+        if (layer) {
+            layer.find('.temp-point').forEach((node: any) => node.destroy());
+            layer.draw();
+        }
+    }
+    
+    // Nettoyer complètement
+    cleanupShapeDrawing();
+    isDrawingShape.value = false;
+    drawingShapeType.value = null;
+};
+
 // Update element position
 const updateElementPosition = (id: string, x: number, y: number) => {
     const element = elements.value.find(el => el.id === id);
@@ -460,44 +937,59 @@ const updateElementPosition = (id: string, x: number, y: number) => {
 const updateElementTransform = (id: string, node: any) => {
     const element = elements.value.find(el => el.id === id);
     if (element && node) {
-        // Obtenir les nouvelles dimensions après transformation
-        const newWidth = node.width() * node.scaleX();
-        const newHeight = node.height() * node.scaleY();
         const newX = node.x();
         const newY = node.y();
         const newRotation = node.rotation();
         
-        console.log('Updating element transform:', {
-            id,
-            oldSize: { width: element.width, height: element.height },
-            newSize: { width: newWidth, height: newHeight },
-            scale: { x: node.scaleX(), y: node.scaleY() }
-        });
-        
-        // Mettre à jour les dimensions du nœud Konva AVANT de réinitialiser les scales
-        node.width(newWidth);
-        node.height(newHeight);
-        
-        // Réinitialiser les scales à 1 après avoir mis à jour les dimensions
-        node.scaleX(1);
-        node.scaleY(1);
-        
-        // Mettre à jour l'élément dans le tableau
+        // Mettre à jour la position et la rotation
         element.x = newX;
         element.y = newY;
-        element.width = newWidth;
-        element.height = newHeight;
         element.rotation = newRotation;
+        
+        // Gérer les dimensions selon le type d'élément
+        if (element.type === 'ellipse') {
+            // Pour les ellipses, mettre à jour radiusX et radiusY
+            const newRadiusX = node.radiusX() * node.scaleX();
+            const newRadiusY = node.radiusY() * node.scaleY();
+            node.radiusX(newRadiusX);
+            node.radiusY(newRadiusY);
+            node.scaleX(1);
+            node.scaleY(1);
+            element.radiusX = newRadiusX;
+            element.radiusY = newRadiusY;
+        } else if (element.type === 'line' || element.type === 'arrow' || element.type === 'polygon') {
+            // Pour les lignes et flèches, mettre à jour les points
+            if (node.points) {
+                const points = node.points();
+                // Appliquer la transformation aux points
+                const scaleX = node.scaleX();
+                const scaleY = node.scaleY();
+                const transformedPoints: number[] = [];
+                for (let i = 0; i < points.length; i += 2) {
+                    transformedPoints.push(points[i] * scaleX);
+                    transformedPoints.push(points[i + 1] * scaleY);
+                }
+                node.points(transformedPoints);
+                node.scaleX(1);
+                node.scaleY(1);
+                element.points = transformedPoints;
+            }
+        } else {
+            // Pour les autres formes (rect, image, text, highlight)
+            const newWidth = node.width() * node.scaleX();
+            const newHeight = node.height() * node.scaleY();
+            node.width(newWidth);
+            node.height(newHeight);
+            node.scaleX(1);
+            node.scaleY(1);
+            element.width = newWidth;
+            element.height = newHeight;
+        }
         
         // Forcer le redessin
         if (layer) {
             layer.draw();
         }
-        
-        console.log('Element transform updated:', {
-            elementSize: { width: element.width, height: element.height },
-            nodeSize: { width: node.width(), height: node.height() }
-        });
     }
 };
 
@@ -736,6 +1228,14 @@ const saveLayout = async () => {
             fontSize: el.fontSize,
             fontFamily: el.fontFamily,
             fill: el.fill,
+            stroke: el.stroke,
+            strokeWidth: el.strokeWidth,
+            opacity: el.opacity,
+            points: el.points,
+            radiusX: el.radiusX,
+            radiusY: el.radiusY,
+            pointerLength: el.pointerLength,
+            pointerWidth: el.pointerWidth,
         }));
 
         const url = props.sessionId 
@@ -904,35 +1404,68 @@ const setupDragAndDrop = () => {
                 </Button>
                 <h2 class="text-lg font-semibold">Éditeur de mise en page</h2>
             </div>
+            <!-- Boutons de forme au centre -->
             <div class="flex items-center gap-2">
                 <Button 
                     variant="outline" 
                     size="sm" 
-                    @click="showExerciseLibrary = !showExerciseLibrary"
+                    @click="startDrawingShape('arrow')"
+                    :class="{ 'bg-blue-100 dark:bg-blue-900': drawingShapeType === 'arrow' }"
                 >
-                    <Library class="h-4 w-4 mr-2" />
-                    {{ showExerciseLibrary ? 'Masquer' : 'Afficher' }} bibliothèque
+                    <ArrowRight class="h-4 w-4 mr-2" />
+                    Flèche
+                </Button>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    @click="startDrawingShape('rect')"
+                    :class="{ 'bg-blue-100 dark:bg-blue-900': drawingShapeType === 'rect' }"
+                >
+                    <Square class="h-4 w-4 mr-2" />
+                    Carré
+                </Button>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    @click="startDrawingShape('ellipse')"
+                    :class="{ 'bg-blue-100 dark:bg-blue-900': drawingShapeType === 'ellipse' }"
+                >
+                    <Circle class="h-4 w-4 mr-2" />
+                    Rond
+                </Button>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    @click="startDrawingShape('line')"
+                    :class="{ 'bg-blue-100 dark:bg-blue-900': drawingShapeType === 'line' }"
+                >
+                    <Minus class="h-4 w-4 mr-2" />
+                    Ligne
+                </Button>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    @click="startDrawingShape('highlight')"
+                    :class="{ 'bg-blue-100 dark:bg-blue-900': drawingShapeType === 'highlight' }"
+                >
+                    <Highlighter class="h-4 w-4 mr-2" />
+                    Surligner
                 </Button>
                 <Button variant="outline" size="sm" @click="addText">
                     <Type class="h-4 w-4 mr-2" />
                     Texte
                 </Button>
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    @click="deleteSelected"
-                    :disabled="!selectedElementId"
-                >
-                    <Trash2 class="h-4 w-4 mr-2" />
-                    Supprimer
-                </Button>
+            </div>
+            
+            <!-- Boutons d'action à droite -->
+            <div class="flex items-center gap-2">
                 <Button variant="outline" size="sm" @click="exportToPDF">
                     <Download class="h-4 w-4 mr-2" />
                     Exporter PDF
                 </Button>
-                <Button size="sm" @click="saveLayout" :disabled="isSaving">
+                <Button variant="default" size="sm" @click="saveLayout" :disabled="isSaving">
                     <Save class="h-4 w-4 mr-2" />
-                    {{ isSaving ? 'Sauvegarde...' : 'Enregistrer' }}
+                    {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
                 </Button>
             </div>
         </div>
@@ -990,6 +1523,54 @@ const setupDragAndDrop = () => {
                             </div>
                         </div>
                         <p v-else class="text-xs text-neutral-500">Aucun client sélectionné</p>
+                    </div>
+                </div>
+
+                <!-- Options de forme -->
+                <div v-if="drawingShapeType" class="p-4 border-t space-y-4 overflow-y-auto">
+                    <h3 class="font-semibold text-sm">Options de forme</h3>
+
+                    <!-- Couleur de contour -->
+                    <div class="space-y-2">
+                        <Label class="text-xs">Couleur de contour</Label>
+                        <div class="flex items-center gap-2">
+                            <Input
+                                v-model="shapeStrokeColor"
+                                type="color"
+                                class="h-8 w-16 p-1"
+                            />
+                            <Input
+                                v-model="shapeStrokeColor"
+                                type="text"
+                                class="flex-1 text-xs"
+                                placeholder="#000000"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Épaisseur du contour -->
+                    <div class="space-y-2">
+                        <Label class="text-xs">Épaisseur du contour</Label>
+                        <Input
+                            v-model.number="shapeStrokeWidth"
+                            type="number"
+                            min="1"
+                            max="20"
+                            class="text-xs"
+                        />
+                    </div>
+
+                    <!-- Opacité -->
+                    <div class="space-y-2">
+                        <Label class="text-xs">Opacité (0-1)</Label>
+                        <Input
+                            v-model.number="shapeOpacity"
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            class="text-xs"
+                        />
                     </div>
                 </div>
             </div>
