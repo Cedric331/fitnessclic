@@ -4,7 +4,7 @@ import Konva from 'konva';
 
 interface LayoutElement {
     id: string;
-    type: 'image' | 'text';
+    type: 'image' | 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight';
     x: number;
     y: number;
     width?: number;
@@ -16,6 +16,14 @@ interface LayoutElement {
     fontSize?: number;
     fontFamily?: string;
     fill?: string;
+    stroke?: string;
+    strokeWidth?: number;
+    opacity?: number;
+    points?: number[];
+    radiusX?: number;
+    radiusY?: number;
+    pointerLength?: number;
+    pointerWidth?: number;
 }
 
 interface Props {
@@ -65,6 +73,8 @@ const loadElementsToCanvas = async () => {
                 await addImageToCanvas(element);
             } else if (element.type === 'text' && element.text) {
                 addTextToCanvas(element);
+            } else if (element.type === 'rect' || element.type === 'ellipse' || element.type === 'line' || element.type === 'arrow' || element.type === 'highlight') {
+                addShapeToCanvas(element);
             }
         } catch (error) {
             console.error('Error loading element:', error, element);
@@ -142,6 +152,89 @@ const addTextToCanvas = (element: LayoutElement) => {
 
     layer.add(konvaText);
     layer.draw();
+};
+
+// Add shape to canvas
+const addShapeToCanvas = (element: LayoutElement) => {
+    if (!layer) return;
+
+    let konvaShape: Konva.Shape | Konva.Group | null = null;
+
+    switch (element.type) {
+        case 'rect':
+        case 'highlight':
+            konvaShape = new Konva.Rect({
+                x: element.x,
+                y: element.y,
+                width: element.width || 100,
+                height: element.height || 100,
+                fill: element.type === 'highlight' ? '#FFFF00' : element.fill || undefined,
+                opacity: element.type === 'highlight' ? 0.3 : (element.opacity !== undefined ? element.opacity : 1),
+                stroke: element.type === 'highlight' ? undefined : (element.stroke !== undefined ? element.stroke : '#000000'),
+                strokeWidth: element.strokeWidth !== undefined ? element.strokeWidth : 2,
+                rotation: element.rotation || 0,
+                draggable: false,
+            });
+            break;
+        case 'ellipse':
+            const radiusX = element.radiusX !== undefined ? element.radiusX : 50;
+            const radiusY = element.radiusY !== undefined ? element.radiusY : 50;
+            
+            // Utiliser un Group comme dans l'éditeur pour la cohérence
+            const ellipseGroup = new Konva.Group({
+                x: element.x - radiusX,
+                y: element.y - radiusY,
+                rotation: element.rotation || 0,
+                draggable: false,
+            });
+            
+            const ellipseShape = new Konva.Ellipse({
+                x: radiusX,
+                y: radiusY,
+                radiusX: radiusX,
+                radiusY: radiusY,
+                fill: element.fill || undefined,
+                stroke: element.stroke !== undefined ? element.stroke : '#000000',
+                strokeWidth: element.strokeWidth !== undefined ? element.strokeWidth : 2,
+                opacity: element.opacity !== undefined ? element.opacity : 1,
+            });
+            
+            ellipseGroup.add(ellipseShape);
+            konvaShape = ellipseGroup;
+            break;
+        case 'line':
+            if (element.points && element.points.length >= 4) {
+                konvaShape = new Konva.Line({
+                    points: element.points,
+                    stroke: element.stroke !== undefined ? element.stroke : '#000000',
+                    strokeWidth: element.strokeWidth !== undefined ? element.strokeWidth : 2,
+                    opacity: element.opacity !== undefined ? element.opacity : 1,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                    draggable: false,
+                });
+            }
+            break;
+        case 'arrow':
+            if (element.points && element.points.length >= 4) {
+                konvaShape = new Konva.Arrow({
+                    points: element.points,
+                    stroke: element.stroke !== undefined ? element.stroke : '#000000',
+                    strokeWidth: element.strokeWidth !== undefined ? element.strokeWidth : 2,
+                    fill: element.fill || element.stroke || '#000000',
+                    opacity: element.opacity !== undefined ? element.opacity : 1,
+                    pointerLength: element.pointerLength || 10,
+                    pointerWidth: element.pointerWidth || 10,
+                    draggable: false,
+                });
+            }
+            break;
+    }
+
+    if (konvaShape) {
+        layer.add(konvaShape);
+        layer.draw();
+    }
 };
 </script>
 

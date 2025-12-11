@@ -246,7 +246,8 @@ onMounted(() => {
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
 const isLibraryOpen = ref(false);
-const showLayoutEditor = ref(false);
+// Mode d'édition: 'standard' ou 'libre'
+const editMode = ref<'standard' | 'libre'>('standard');
 const sessionLayout = ref<any>(null);
 
 const sessionExercises = ref<SessionExercise[]>([]);
@@ -370,12 +371,22 @@ const loadSessionExercises = () => {
     }
 };
 
-onMounted(() => {
-    nextTick(() => {
-        loadSessionExercises();
-        // Charger la mise en page si elle existe
-        loadLayout();
-    });
+onMounted(async () => {
+    loadSessionExercises();
+    
+    // Déterminer le mode initial
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldOpenEditor = urlParams.get('editor') === 'true';
+    
+    if (shouldOpenEditor || props.session.has_custom_layout) {
+        // Mode Libre : charger la mise en page et ouvrir l'éditeur
+        editMode.value = 'libre';
+        await loadLayout();
+        await nextTick();
+    } else {
+        // Mode Standard par défaut
+        editMode.value = 'standard';
+    }
 });
 
 watch(() => props.session?.sessionExercises, () => {
@@ -1425,10 +1436,13 @@ const loadLayout = async () => {
     }
 };
 
-// Open layout editor
-const openLayoutEditor = async () => {
-    await loadLayout();
-    showLayoutEditor.value = true;
+// Switch edit mode
+const switchMode = async (mode: 'standard' | 'libre') => {
+    editMode.value = mode;
+    if (mode === 'libre') {
+        await loadLayout();
+        await nextTick();
+    }
 };
 
 // Handle layout saved
@@ -1447,7 +1461,8 @@ const handleLayoutSaved = async (sessionId: number) => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head :title="`Modifier: ${session.name || 'Séance'}`" />
 
-        <div class="mx-auto flex h-full w-full flex-1 flex-col gap-4 sm:gap-6 rounded-xl px-3 sm:px-6 py-3 sm:py-5">
+        <!-- Mode Standard -->
+        <div v-if="editMode === 'standard'" class="mx-auto flex h-full w-full flex-1 flex-col gap-4 sm:gap-6 rounded-xl px-3 sm:px-6 py-3 sm:py-5">
             <!-- Header -->
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                 <div class="flex flex-col gap-0.5">
@@ -1499,16 +1514,6 @@ const handleLayoutSaved = async (sessionId: number) => {
                             <span class="hidden sm:inline">Imprimer</span>
                         </Button>
                         <Button
-                            variant="outline"
-                            size="sm"
-                            class="sm:gap-2 text-xs sm:text-sm aspect-square sm:aspect-auto"
-                            @click="openLayoutEditor"
-                            :disabled="sessionExercises.length === 0"
-                        >
-                            <Layout class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            <span class="hidden sm:inline">Éditeur visuel</span>
-                        </Button>
-                        <Button
                             size="sm"
                             class="sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm aspect-square sm:aspect-auto"
                             @click="saveSession"
@@ -1521,10 +1526,11 @@ const handleLayoutSaved = async (sessionId: number) => {
                 </div>
             </div>
 
-            <!-- Contenu principal -->
-            <div class="flex-1 flex flex-col xl:flex-row overflow-hidden gap-4">
-                    <!-- Panneau gauche -->
-                    <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">          <div class="space-y-1">
+                    <!-- Contenu principal -->
+                    <div class="flex-1 flex flex-col xl:flex-row overflow-hidden gap-4">
+                        <!-- Panneau gauche -->
+                        <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
+                            <div class="space-y-1">
                         <Card class="shadow-md">
                             <CardContent class="space-y-2 pt-4">
                                 <!-- Nom de la séance -->
@@ -1694,8 +1700,8 @@ const handleLayoutSaved = async (sessionId: number) => {
                             />
                         </div>
                     </div>
-                </div>
-            </div>
+                    </div>
+        </div>
 
         <!-- Modal de sélection des clients -->
         <Dialog v-model:open="showCustomerModal">
@@ -1836,8 +1842,8 @@ const handleLayoutSaved = async (sessionId: number) => {
             </SheetContent>
         </Sheet>
 
-        <!-- Layout Editor -->
-        <div v-if="showLayoutEditor" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900">
+        <!-- Mode Libre -->
+        <div v-if="editMode === 'libre'" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900">
             <SessionLayoutEditor
                 :session-id="session.id"
                 :exercises="exercises"
@@ -1845,7 +1851,7 @@ const handleLayoutSaved = async (sessionId: number) => {
                 :customers="customers"
                 :session-name="session.name"
                 :session-customers="session.customers"
-                @close="() => { showLayoutEditor = false; loadLayout(); }"
+                @close="() => { switchMode('standard'); loadLayout(); }"
                 @saved="handleLayoutSaved"
             />
         </div>

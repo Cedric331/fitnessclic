@@ -29,7 +29,12 @@ const formatDate = (dateString?: string | null) => {
 };
 
 const handleEdit = () => {
-    router.visit(`/sessions/${props.session.id}/edit`);
+    // Si la séance a un layout personnalisé, ouvrir directement l'éditeur
+    if (props.session.has_custom_layout) {
+        router.visit(`/sessions/${props.session.id}/edit?editor=true`);
+    } else {
+        router.visit(`/sessions/${props.session.id}/edit`);
+    }
 };
 
 const handleDelete = () => {

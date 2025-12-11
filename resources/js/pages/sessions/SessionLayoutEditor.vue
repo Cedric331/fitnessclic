@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -93,9 +94,18 @@ const emit = defineEmits<{
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
 
-// Canvas dimensions (A4 portrait ratio)
+// Canvas dimensions (A4 portrait format - 210mm x 297mm)
+// Format A4 exact: 210mm x 297mm
+// Ratio: 297/210 = 1.4142857...
+// Pour correspondre exactement au PDF, on augmente la hauteur pour qu'elle corresponde
+// Si largeur = 800px, hauteur = 800 * 1.4142857 = 1131.43px
+// Pour éviter les espaces dans le PDF, on utilise une hauteur légèrement plus grande
 const canvasWidth = ref(800);
-const canvasHeight = ref(1000);
+// Pour correspondre exactement au format A4 (210mm x 297mm) dans le PDF
+// Ratio exact: 297/210 = 1.4142857...
+// Avec largeur 800px: 800 * 1.4142857 = 1131.43px
+// Pour éviter les espaces dans le PDF, on augmente légèrement
+const canvasHeight = ref(1140); // Augmenté pour correspondre exactement au PDF
 const scale = ref(1);
 
 // Konva stage and layers
@@ -158,7 +168,7 @@ onMounted(() => {
     // Load initial layout if provided
     if (props.initialLayout && props.initialLayout.layout_data) {
         canvasWidth.value = props.initialLayout.canvas_width || 800;
-        canvasHeight.value = props.initialLayout.canvas_height || 1000;
+        canvasHeight.value = props.initialLayout.canvas_height || 1140; // Format A4 par défaut
         
         // S'assurer que layout_data est un tableau
         if (Array.isArray(props.initialLayout.layout_data)) {
@@ -200,6 +210,13 @@ onMounted(() => {
     layer = new Konva.Layer();
     stage.add(layer);
     
+    // Forcer la mise à jour du canvas HTML pour s'assurer que les dimensions sont correctes
+    const stageContent = stage.getContent();
+    if (stageContent) {
+        stageContent.style.width = `${canvasWidth.value * scale.value}px`;
+        stageContent.style.height = `${canvasHeight.value * scale.value}px`;
+    }
+    
     // Forcer un premier dessin pour s'assurer que le canvas est visible
     layer.draw();
     
@@ -221,6 +238,10 @@ onMounted(() => {
         keepRatio: false,
         // Activer tous les ancres de redimensionnement
         enabledAnchors: ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'],
+        // Fonction personnalisée pour calculer le bounding box
+        boundBoxFunc: (oldBox, newBox) => {
+            return newBox;
+        },
     });
     layer.add(transformer);
 
@@ -230,13 +251,24 @@ onMounted(() => {
         if (layer) {
             layer.draw();
         }
+        // Forcer la mise à jour du canvas HTML après le chargement
+        nextTick(() => {
+            if (stage) {
+                const stageContent = stage.getContent();
+                if (stageContent) {
+                    stageContent.style.width = `${canvasWidth.value * scale.value}px`;
+                    stageContent.style.height = `${canvasHeight.value * scale.value}px`;
+                }
+            }
+        });
         // Initialize history with initial state
         saveToHistory();
     });
 
-    // Handle clicks on stage (deselect)
+    // Handle clicks on stage (deselect only if clicking on empty stage)
     stage.on('click', (e) => {
-        if (e.target === stage) {
+        // Ne pas désélectionner si on clique sur un élément (les éléments gèrent leur propre sélection)
+        if (e.target === stage || e.target === layer) {
             transformer.nodes([]);
             selectedElementId.value = null;
             layer?.draw();
@@ -270,6 +302,22 @@ onMounted(() => {
     });
 });
 
+// Watch canvas dimensions to recalculate footer position and update stage
+watch([canvasWidth, canvasHeight], () => {
+    if (stage && layer) {
+        // Mettre à jour les dimensions du stage
+        stage.width(canvasWidth.value * scale.value);
+        stage.height(canvasHeight.value * scale.value);
+        // Forcer la mise à jour du canvas HTML
+        stage.getContent().style.width = `${canvasWidth.value * scale.value}px`;
+        stage.getContent().style.height = `${canvasHeight.value * scale.value}px`;
+        // Recalculer la position du footer
+        recalculateFooterPosition();
+        // Redessiner
+        layer.draw();
+    }
+}, { immediate: false });
+
 onUnmounted(() => {
     if (stage) {
         stage.destroy();
@@ -299,10 +347,201 @@ const loadElementsToCanvas = async () => {
         }
     }
     
+    // Ajouter le footer par défaut si aucun footer n'existe
+    await addDefaultFooterIfNeeded();
+    
     // Redessiner le layer après avoir chargé tous les éléments
     if (layer) {
         layer.draw();
     }
+};
+
+// Recalculate footer position (useful when canvas dimensions change)
+const recalculateFooterPosition = () => {
+    const footerHeight = 60;
+    const footerY = canvasHeight.value - footerHeight;
+    
+    const footerElements = elements.value.filter(el => el.id && el.id.includes('footer'));
+    const footerTextEl = footerElements.find(el => el.id?.includes('footer-text'));
+    
+    footerElements.forEach(footerEl => {
+        if (footerEl.type === 'rect' && footerEl.id?.includes('footer-bg')) {
+            footerEl.y = footerY;
+            footerEl.width = canvasWidth.value;
+            if (footerEl.konvaNode) {
+                footerEl.konvaNode.y(footerY);
+                footerEl.konvaNode.width(canvasWidth.value);
+            }
+        } else if (footerEl.type === 'text' && footerEl.id?.includes('footer-text')) {
+            footerEl.x = canvasWidth.value / 2;
+            footerEl.y = footerY + footerHeight / 2;
+            if (footerEl.konvaNode) {
+                footerEl.konvaNode.x(canvasWidth.value / 2);
+                footerEl.konvaNode.y(footerY + footerHeight / 2);
+                footerEl.konvaNode.offsetX(footerEl.konvaNode.width() / 2);
+                footerEl.konvaNode.offsetY(footerEl.konvaNode.height() / 2);
+            }
+        } else if (footerEl.type === 'image' && footerEl.id?.includes('footer-logo')) {
+            const logoHeight = footerEl.height || 40;
+            footerEl.y = footerY + (footerHeight - logoHeight) / 2;
+            // Recalculer la position X du logo par rapport au texte
+            if (footerTextEl && footerTextEl.konvaNode && footerEl.konvaNode) {
+                const textWidth = footerTextEl.konvaNode.width();
+                const textX = canvasWidth.value / 2;
+                const textRight = textX + textWidth / 2;
+                const newLogoX = textRight + 15;
+                footerEl.x = newLogoX;
+                footerEl.konvaNode.x(newLogoX);
+            }
+            if (footerEl.konvaNode) {
+                footerEl.konvaNode.y(footerY + (footerHeight - logoHeight) / 2);
+            }
+        }
+    });
+    
+    if (layer) {
+        layer.draw();
+    }
+};
+
+// Add default footer if it doesn't exist
+const addDefaultFooterIfNeeded = async () => {
+    // Vérifier si un footer existe déjà (rechercher un élément avec id contenant 'footer')
+    const hasFooter = elements.value.some(el => el.id && el.id.includes('footer'));
+    
+    if (hasFooter) {
+        // Si le footer existe, recalculer sa position au cas où les dimensions ont changé
+        recalculateFooterPosition();
+        return;
+    }
+    
+    // Dimensions du footer
+    const footerHeight = 60;
+    const footerY = canvasHeight.value - footerHeight;
+    
+    // Créer le rectangle bleu clair du footer
+    const footerRect: LayoutElement = {
+        id: 'footer-bg-' + Date.now(),
+        type: 'rect',
+        x: 0,
+        y: footerY,
+        width: canvasWidth.value,
+        height: footerHeight,
+        fill: '#E3F2FD', // Bleu clair
+        stroke: undefined,
+        strokeWidth: 0,
+        opacity: 1,
+    };
+    
+    // Créer le texte du footer (centré)
+    const footerText: LayoutElement = {
+        id: 'footer-text-' + Date.now(),
+        type: 'text',
+        x: canvasWidth.value / 2,
+        y: footerY + footerHeight / 2,
+        text: 'Fitnessclic.com création de séances personnalisées en quelques clics.',
+        fontSize: 12,
+        fontFamily: 'Arial',
+        fill: '#000000',
+    };
+    
+    // Créer l'image du logo (charger d'abord pour obtenir les dimensions réelles)
+    const logoImageUrl = '/assets/logo_fitnessclic.png';
+    
+    // Charger l'image pour obtenir ses dimensions réelles
+    const logoImg = new Image();
+    logoImg.src = logoImageUrl;
+    
+    await new Promise<void>((resolve) => {
+        logoImg.onload = () => {
+            // Calculer les dimensions en respectant le ratio d'aspect
+            const maxHeight = footerHeight - 10; // Laisser un peu de marge
+            const maxWidth = 100;
+            
+            const aspectRatio = logoImg.width / logoImg.height;
+            let logoWidth = maxWidth;
+            let logoHeight = logoWidth / aspectRatio;
+            
+            // Si la hauteur dépasse, ajuster
+            if (logoHeight > maxHeight) {
+                logoHeight = maxHeight;
+                logoWidth = logoHeight * aspectRatio;
+            }
+            
+            // Position initiale du logo (sera ajustée après le chargement du texte)
+            // Estimation : le texte fait environ 400px de large, donc on place le logo à droite du texte
+            const estimatedTextWidth = 400;
+            const textX = canvasWidth.value / 2; // Le texte est centré
+            const textRight = textX + estimatedTextWidth / 2;
+            const logoX = textRight + 15; // 15px d'espacement après le texte
+            
+            const logoImage: LayoutElement = {
+                id: 'footer-logo-' + Date.now(),
+                type: 'image',
+                x: logoX,
+                y: footerY + (footerHeight - logoHeight) / 2, // Centré verticalement
+                width: logoWidth,
+                height: logoHeight,
+                imageUrl: logoImageUrl,
+            };
+            
+            // Ajouter les éléments au canvas
+            elements.value.push(footerRect);
+            elements.value.push(footerText);
+            elements.value.push(logoImage);
+            
+            // Créer les éléments Konva
+            addShapeToCanvas(footerRect);
+            addTextToCanvas(footerText);
+            addImageToCanvas(logoImage).then(() => {
+                // Ajuster la position du logo après que le texte soit chargé
+                if (footerText.konvaNode && logoImage.konvaNode) {
+                    const textWidth = footerText.konvaNode.width();
+                    const textX = canvasWidth.value / 2;
+                    const textRight = textX + textWidth / 2;
+                    const newLogoX = textRight + 15; // 15px d'espacement après le texte
+                    
+                    // Mettre à jour la position
+                    logoImage.x = newLogoX;
+                    logoImage.konvaNode.x(newLogoX);
+                    if (layer) {
+                        layer.draw();
+                    }
+                }
+            }).then(() => {
+                // Rendre le footer non déplaçable
+                if (footerRect.konvaNode) {
+                    footerRect.konvaNode.draggable(false);
+                }
+                if (footerText.konvaNode) {
+                    footerText.konvaNode.draggable(false);
+                    // Centrer le texte
+                    footerText.konvaNode.offsetX(footerText.konvaNode.width() / 2);
+                    footerText.konvaNode.offsetY(footerText.konvaNode.height() / 2);
+                }
+                if (logoImage.konvaNode) {
+                    logoImage.konvaNode.draggable(false);
+                }
+                resolve();
+            });
+        };
+        logoImg.onerror = () => {
+            // Si l'image ne charge pas, continuer sans logo
+            elements.value.push(footerRect);
+            elements.value.push(footerText);
+            addShapeToCanvas(footerRect);
+            addTextToCanvas(footerText);
+            if (footerRect.konvaNode) {
+                footerRect.konvaNode.draggable(false);
+            }
+            if (footerText.konvaNode) {
+                footerText.konvaNode.draggable(false);
+                footerText.konvaNode.offsetX(footerText.konvaNode.width() / 2);
+                footerText.konvaNode.offsetY(footerText.konvaNode.height() / 2);
+            }
+            resolve();
+        };
+    });
 };
 
 // Add image to canvas
@@ -323,14 +562,34 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     src: imageObj.src
                 });
                 
-                // Définir une taille par défaut si l'image n'a pas de dimensions
-                let width = element.width || imageObj.width || 200;
-                let height = element.height || imageObj.height || 200;
+                // Obtenir les dimensions naturelles de l'image
+                const naturalWidth = imageObj.width || 200;
+                const naturalHeight = imageObj.height || 200;
+                const aspectRatio = naturalWidth / naturalHeight;
                 
-                // Si l'image n'a pas de dimensions naturelles, utiliser une taille par défaut
-                if (!imageObj.width || !imageObj.height) {
-                    width = 200;
-                    height = 200;
+                // Si des dimensions sont spécifiées dans l'élément, les utiliser
+                // Sinon, utiliser les dimensions naturelles
+                let width = element.width;
+                let height = element.height;
+                
+                // Si les deux dimensions sont spécifiées, vérifier qu'elles respectent le ratio
+                if (width && height) {
+                    const specifiedRatio = width / height;
+                    // Si le ratio est différent, ajuster pour respecter le ratio d'origine
+                    if (Math.abs(specifiedRatio - aspectRatio) > 0.01) {
+                        // Ajuster la hauteur pour respecter le ratio
+                        height = width / aspectRatio;
+                    }
+                } else if (width) {
+                    // Si seule la largeur est spécifiée, calculer la hauteur
+                    height = width / aspectRatio;
+                } else if (height) {
+                    // Si seule la hauteur est spécifiée, calculer la largeur
+                    width = height * aspectRatio;
+                } else {
+                    // Si aucune dimension n'est spécifiée, utiliser les dimensions naturelles
+                    width = naturalWidth;
+                    height = naturalHeight;
                 }
                 
                 // Limiter la taille si l'image est trop grande
@@ -602,6 +861,16 @@ const updateElementPosition = (id: string, x: number, y: number) => {
     if (element) {
         element.x = x;
         element.y = y;
+        
+        // Pour les ellipses dans un groupe, mettre à jour la position du groupe
+        if (element.type === 'ellipse' && element.konvaNode && (element.konvaNode as any)._ellipseShape) {
+            const ellipseShape = (element.konvaNode as any)._ellipseShape;
+            const radiusX = ellipseShape.radiusX();
+            const radiusY = ellipseShape.radiusY();
+            // Le groupe doit être positionné au coin supérieur gauche
+            element.konvaNode.x(x - radiusX);
+            element.konvaNode.y(y - radiusY);
+        }
     }
 };
 
@@ -631,21 +900,32 @@ const updateElementTransform = (id: string, node: any) => {
         element.rotation = newRotation;
         
         if (element.type === 'ellipse') {
-            const currentRadiusX = node.radiusX();
-            const currentRadiusY = node.radiusY();
-            const scaleX = node.scaleX();
-            const scaleY = node.scaleY();
-            
-            const newRadiusX = currentRadiusX * scaleX;
-            const newRadiusY = currentRadiusY * scaleY;
-            
-            node.radiusX(newRadiusX);
-            node.radiusY(newRadiusY);
-            node.scaleX(1);
-            node.scaleY(1);
-            
-            element.radiusX = newRadiusX;
-            element.radiusY = newRadiusY;
+            // Pour les ellipses, le node est un Group qui contient l'ellipse
+            const ellipseShape = (node as any)._ellipseShape;
+            if (ellipseShape) {
+                const currentRadiusX = ellipseShape.radiusX();
+                const currentRadiusY = ellipseShape.radiusY();
+                const scaleX = node.scaleX();
+                const scaleY = node.scaleY();
+                
+                const newRadiusX = currentRadiusX * scaleX;
+                const newRadiusY = currentRadiusY * scaleY;
+                
+                ellipseShape.radiusX(newRadiusX);
+                ellipseShape.radiusY(newRadiusY);
+                // Mettre à jour la position de l'ellipse dans le groupe
+                ellipseShape.x(newRadiusX);
+                ellipseShape.y(newRadiusY);
+                
+                node.scaleX(1);
+                node.scaleY(1);
+                
+                element.radiusX = newRadiusX;
+                element.radiusY = newRadiusY;
+                // Mettre à jour la position de l'élément (centre du groupe)
+                element.x = node.x() + newRadiusX;
+                element.y = node.y() + newRadiusY;
+            }
         } else if (element.type === 'line' || element.type === 'arrow') {
             if (node.points) {
                 const points = node.points();
@@ -695,11 +975,24 @@ const updateElementTransform = (id: string, node: any) => {
 // Select element
 const selectElement = (id: string, node: any) => {
     if (!transformer || !node) return;
+    
+    // Si l'élément est déjà sélectionné, le désélectionner
+    if (selectedElementId.value === id) {
+        transformer.nodes([]);
+        selectedElementId.value = null;
+        if (layer) {
+            layer.draw();
+        }
+        return;
+    }
+    
+    // Sinon, sélectionner l'élément
     selectedElementId.value = id;
     
     // S'assurer que le nœud est bien attaché au transformer
     transformer.nodes([node]);
     
+    // Pour les ellipses dans un groupe, le transformer devrait fonctionner normalement
     // Forcer le transformer à se mettre à jour
     transformer.forceUpdate();
     
@@ -708,10 +1001,13 @@ const selectElement = (id: string, node: any) => {
         layer.draw();
     }
     
+    const element = elements.value.find(el => el.id === id);
     console.log('Element selected:', {
         id,
+        elementType: element?.type,
         nodeSize: { width: node.width(), height: node.height() },
-        nodePosition: { x: node.x(), y: node.y() }
+        nodePosition: { x: node.x(), y: node.y() },
+        selectedElement: selectedElement.value
     });
 };
 
@@ -1032,22 +1328,38 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
         elements.value.push(element);
         addShapeToCanvas(element);
         shapeStartPos.value = null;
-        isDrawingShape.value = false;
-        drawingShapeType.value = null;
+        // Ne pas désactiver le mode de dessin pour permettre de continuer à dessiner
+        // Le mode reste actif jusqu'à ce que l'utilisateur clique sur un autre bouton ou désélectionne
         
-        // Clean up event handlers
-        if (currentDrawingHandlers.mousedown) {
-            stage.off('mousedown', currentDrawingHandlers.mousedown);
-        }
-        if (currentDrawingHandlers.mousemove) {
-            stage.off('mousemove', currentDrawingHandlers.mousemove);
-        }
-        if (currentDrawingHandlers.mouseup) {
-            stage.off('mouseup', currentDrawingHandlers.mouseup);
-        }
+        // Sélectionner automatiquement la forme créée
+        nextTick(() => {
+            const createdElement = elements.value.find(el => el.id === element.id);
+            if (createdElement && createdElement.konvaNode) {
+                // Pour les ellipses, attendre plus longtemps et forcer plusieurs mises à jour
+                if (createdElement.type === 'ellipse') {
+                    setTimeout(() => {
+                        if (createdElement.konvaNode && transformer && layer) {
+                            selectedElementId.value = createdElement.id;
+                            transformer.nodes([createdElement.konvaNode]);
+                            transformer.forceUpdate();
+                            layer.draw();
+                            // Forcer une deuxième mise à jour
+                            setTimeout(() => {
+                                if (transformer && layer) {
+                                    transformer.forceUpdate();
+                                    layer.draw();
+                                }
+                            }, 100);
+                        }
+                    }, 100);
+                } else {
+                    selectElement(createdElement.id, createdElement.konvaNode);
+                }
+            }
+        });
         
-        // Reset handlers
-        currentDrawingHandlers = {};
+        // Ne pas nettoyer les événements pour permettre de continuer à dessiner
+        // Les événements seront nettoyés quand l'utilisateur changera de mode de dessin
     };
     
     // Store handlers for cleanup
@@ -1086,27 +1398,32 @@ const addShapeToCanvas = (element: LayoutElement) => {
         case 'ellipse':
             const radiusX = element.radiusX !== undefined ? element.radiusX : 50;
             const radiusY = element.radiusY !== undefined ? element.radiusY : 50;
-            konvaShape = new Konva.Ellipse({
-                x: element.x,
-                y: element.y,
+            
+            // Créer un groupe pour envelopper l'ellipse et faciliter le calcul du transformer
+            const ellipseGroup = new Konva.Group({
+                x: element.x - radiusX,
+                y: element.y - radiusY,
+                draggable: true,
+                rotation: element.rotation || 0,
+            });
+            
+            // Créer l'ellipse à l'intérieur du groupe, positionnée au centre du groupe
+            const ellipseShape = new Konva.Ellipse({
+                x: radiusX,
+                y: radiusY,
                 radiusX: radiusX,
                 radiusY: radiusY,
                 fill: element.fill || undefined,
                 stroke: element.stroke !== undefined ? element.stroke : shapeStrokeColor.value,
                 strokeWidth: element.strokeWidth !== undefined ? element.strokeWidth : shapeStrokeWidth.value,
                 opacity: element.opacity !== undefined ? element.opacity : shapeOpacity.value,
-                draggable: true,
-                rotation: element.rotation || 0,
             });
-            konvaShape.getClientRect = function() {
-                const box = Konva.Ellipse.prototype.getClientRect.call(this);
-                return {
-                    x: box.x,
-                    y: box.y,
-                    width: this.radiusX() * 2,
-                    height: this.radiusY() * 2,
-                };
-            };
+            
+            ellipseGroup.add(ellipseShape);
+            konvaShape = ellipseGroup;
+            
+            // Stocker une référence à l'ellipse interne pour les mises à jour
+            (konvaShape as any)._ellipseShape = ellipseShape;
             break;
         case 'line':
             if (element.points && element.points.length >= 4) {
@@ -1141,7 +1458,17 @@ const addShapeToCanvas = (element: LayoutElement) => {
         konvaShape.id(element.id);
         
         konvaShape.on('dragend', () => {
-            updateElementPosition(element.id, konvaShape.x(), konvaShape.y());
+            // Pour les ellipses dans un groupe, calculer la position du centre
+            if (element.type === 'ellipse' && (konvaShape as any)._ellipseShape) {
+                const ellipseShape = (konvaShape as any)._ellipseShape;
+                const radiusX = ellipseShape.radiusX();
+                const radiusY = ellipseShape.radiusY();
+                const centerX = konvaShape.x() + radiusX;
+                const centerY = konvaShape.y() + radiusY;
+                updateElementPosition(element.id, centerX, centerY);
+            } else {
+                updateElementPosition(element.id, konvaShape.x(), konvaShape.y());
+            }
         });
         
         konvaShape.on('transformend', () => {
@@ -1215,6 +1542,38 @@ const editText = (element: LayoutElement) => {
     showTextDialog.value = true;
 };
 
+// Get selected element
+const selectedElement = computed(() => {
+    if (!selectedElementId.value) return null;
+    return elements.value.find(el => el.id === selectedElementId.value) || null;
+});
+
+// Update selected element properties
+const updateSelectedElementProperty = (property: string, value: any) => {
+    if (!selectedElement.value || !selectedElement.value.konvaNode || !layer) return;
+    
+    saveToHistory();
+    
+    const element = selectedElement.value;
+    const node = element.konvaNode;
+    
+    // Update element data
+    (element as any)[property] = value;
+    
+    // Update Konva node
+    if (property === 'stroke') {
+        node.stroke(value || undefined);
+    } else if (property === 'strokeWidth') {
+        node.strokeWidth(value);
+    } else if (property === 'opacity') {
+        node.opacity(value);
+    } else if (property === 'fill') {
+        node.fill(value || undefined);
+    }
+    
+    layer.draw();
+};
+
 // Delete selected element
 const deleteSelected = () => {
     if (!selectedElementId.value || !layer) return;
@@ -1233,6 +1592,17 @@ const deleteSelected = () => {
 };
 
 // Save layout
+// Handle back button
+const handleBack = () => {
+    // Si on a un sessionId, rediriger vers la page Show
+    if (props.sessionId) {
+        router.visit(`/sessions/${props.sessionId}`);
+    } else {
+        // Sinon, émettre l'événement close
+        emit('close');
+    }
+};
+
 const saveLayout = async () => {
     isSaving.value = true;
 
@@ -1303,48 +1673,93 @@ const exportToPDF = async () => {
     if (!stage) return;
 
     try {
-        // Convert canvas to image
-        const dataURL = stage.toDataURL({ pixelRatio: 2 });
+        notifySuccess('Génération du PDF en cours...');
         
-        // Create a new window with the image and trigger print
-        const printWindow = window.open();
-        if (printWindow) {
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Mise en page</title>
-                    <style>
-                        body { margin: 0; padding: 0; }
-                        img { width: 100%; height: auto; display: block; }
-                        @media print {
-                            body { margin: 0; }
-                            img { width: 100%; page-break-after: avoid; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <img src="${dataURL}" alt="Mise en page" />
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-            printWindow.onload = () => {
-                setTimeout(() => {
-                    printWindow.print();
-                }, 250);
-            };
-        } else {
-            // Fallback: download as image
-            const link = document.createElement('a');
-            link.download = `mise-en-page-${Date.now()}.png`;
-            link.href = dataURL;
-            link.click();
-            notifySuccess('Image téléchargée. Utilisez "Imprimer" dans votre navigateur pour créer un PDF.');
+        // S'assurer que le footer est bien en bas avant l'export
+        // Utiliser la fonction de recalcul du footer
+        recalculateFooterPosition();
+        
+        // Utiliser les dimensions réelles du canvas (sans le scale d'affichage)
+        // Les éléments sont positionnés selon ces dimensions, pas selon les dimensions du stage
+        const realCanvasWidth = canvasWidth.value;
+        const realCanvasHeight = canvasHeight.value;
+        
+        // Temporairement ajuster le stage pour qu'il corresponde aux dimensions réelles
+        // Cela garantit que toDataURL capture l'image avec les bonnes dimensions
+        const originalStageWidth = stage.width();
+        const originalStageHeight = stage.height();
+        stage.width(realCanvasWidth);
+        stage.height(realCanvasHeight);
+        
+        // Redessiner le layer avec les nouvelles dimensions
+        if (layer) {
+            layer.draw();
         }
+        
+        // Convert canvas to image with high quality
+        const dataURL = stage.toDataURL({ 
+            pixelRatio: 2,
+            mimeType: 'image/png',
+            quality: 1
+        });
+        
+        // Restaurer les dimensions originales du stage
+        stage.width(originalStageWidth);
+        stage.height(originalStageHeight);
+        if (layer) {
+            layer.draw();
+        }
+        
+        // Load jsPDF from CDN
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        document.head.appendChild(script);
+        
+        await new Promise((resolve, reject) => {
+            script.onload = resolve;
+            script.onerror = reject;
+        });
+        
+        // @ts-ignore - jsPDF is loaded from CDN
+        const { jsPDF } = window.jspdf;
+        
+        // Convertir les dimensions du canvas en mm (1px = 0.264583mm à 96 DPI)
+        const pxToMm = 0.264583;
+        const pdfWidth = realCanvasWidth * pxToMm;
+        const pdfHeight = realCanvasHeight * pxToMm;
+        
+        // Create PDF with exact canvas dimensions (in mm)
+        const pdf = new jsPDF({
+            orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
+            unit: 'mm',
+            format: [pdfWidth, pdfHeight] // Dimensions personnalisées correspondant exactement au canvas
+        });
+        
+        // Les dimensions de l'image correspondent exactement au PDF
+        const imgWidth = pdfWidth;
+        const imgHeight = pdfHeight;
+        
+        // Positionner l'image à (0, 0) pour qu'elle remplisse toute la page
+        const x = 0;
+        const y = 0;
+        
+        // L'image correspond exactement au PDF, pas besoin de redimensionner
+        pdf.addImage(dataURL, 'PNG', x, y, imgWidth, imgHeight);
+        
+        // Generate filename
+        const name = sessionName.value || 'mise-en-page';
+        const fileName = `${name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.pdf`;
+        
+        // Download the PDF
+        pdf.save(fileName);
+        
+        // Remove script tag
+        document.head.removeChild(script);
+        
+        notifySuccess('PDF téléchargé avec succès');
     } catch (error: any) {
-        notifyError('Erreur lors de l\'export');
-        console.error(error);
+        console.error('Error exporting PDF:', error);
+        notifyError('Erreur lors de l\'export PDF: ' + (error.message || 'Erreur inconnue'));
     }
 };
 
@@ -1417,11 +1832,16 @@ const setupDragAndDrop = () => {
 </script>
 
 <template>
-    <div class="flex flex-col h-full">
-        <!-- Toolbar -->
-        <div class="flex items-center justify-between p-4 border-b bg-white dark:bg-neutral-900">
+    <AppLayout>
+        <div class="flex flex-col h-full">
+                    <!-- Toolbar -->
+                    <div class="flex items-center justify-between p-4 border-b bg-white dark:bg-neutral-900">
             <div class="flex items-center gap-2">
-                <Button variant="ghost" size="sm" @click="emit('close')">
+                <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    @click="handleBack"
+                >
                     <ArrowLeft class="h-4 w-4 mr-2" />
                     Retour
                 </Button>
@@ -1492,16 +1912,6 @@ const setupDragAndDrop = () => {
             
             <!-- Boutons d'action à droite -->
             <div class="flex items-center gap-2">
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    @click="deleteSelected"
-                    :disabled="!selectedElementId"
-                    title="Supprimer l'élément sélectionné (Suppr)"
-                >
-                    <Trash2 class="h-4 w-4 mr-2" />
-                    Supprimer
-                </Button>
                 <Button variant="outline" size="sm" @click="exportToPDF">
                     <Download class="h-4 w-4 mr-2" />
                     Exporter PDF
@@ -1517,7 +1927,8 @@ const setupDragAndDrop = () => {
         <div class="flex-1 flex overflow-hidden">
             <!-- Left Sidebar: Session Info -->
             <div class="w-80 border-r bg-white dark:bg-neutral-900 flex flex-col overflow-hidden">
-                <div class="p-4 border-b">
+                <!-- Informations de la séance -->
+                <div class="p-4 border-b flex-1 overflow-y-auto">
                     <h3 class="font-semibold mb-4">Informations de la séance</h3>
                     
                     <!-- Session Name -->
@@ -1801,6 +2212,7 @@ const setupDragAndDrop = () => {
         </Card>
         </div>
     </div>
+    </AppLayout>
 </template>
 
 <style scoped>

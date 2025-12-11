@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { urlIsActive } from '@/lib/utils';
 import { type NavItem, type User } from '@/types';
 import { Link, usePage, router, type InertiaLinkProps } from '@inertiajs/vue3';
-import { computed, toRef } from 'vue';
+import { computed, toRef, ref } from 'vue';
 import {
     Plus,
     Dumbbell,
@@ -25,6 +25,8 @@ import {
     Star,
     Settings,
     LogOut,
+    FileText,
+    Layout,
 } from 'lucide-vue-next';
 import { useInitials } from '@/composables/useInitials';
 import { logout } from '@/routes';
@@ -92,6 +94,46 @@ const filteredNavItems = computed(() => {
 const isCurrentRoute = computed(
     () => (url: NonNullable<InertiaLinkProps['href']>) => urlIsActive(url, page.url),
 );
+
+// Mode d'édition (Standard ou Libre) - État global persistant
+const getStoredMode = (): 'standard' | 'libre' => {
+    if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('editMode');
+        if (stored === 'libre' || stored === 'standard') {
+            return stored;
+        }
+    }
+    return 'standard'; // Par défaut: Standard
+};
+
+const setStoredMode = (mode: 'standard' | 'libre') => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('editMode', mode);
+    }
+};
+
+// Mode actuel - toujours depuis localStorage (comme le dark mode)
+const currentEditMode = ref<'standard' | 'libre'>(getStoredMode());
+
+// Initialiser le mode au montage
+if (typeof window !== 'undefined') {
+    currentEditMode.value = getStoredMode();
+}
+
+const switchMode = (mode: 'standard' | 'libre') => {
+    // Stocker le mode dans localStorage
+    setStoredMode(mode);
+    currentEditMode.value = mode;
+    
+    // Si on est sur la page de création de session, recharger pour appliquer le mode
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/sessions/create')) {
+        // Recharger complètement la page pour que le composant détecte le nouveau mode
+        window.location.reload();
+    }
+    // Pour la page Edit, le mode est déterminé par has_custom_layout de la séance, pas par le mode global
+    // Sur les autres pages, pas besoin de recharger, le mode sera utilisé lors de la prochaine navigation
+};
 
 const handleLogout = () => {
     router.post(logout.url());
@@ -200,6 +242,38 @@ const handleLogout = () => {
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarGroup>
+
+            <!-- Toggle Mode d'édition -->
+            <div class="px-2 py-4 border-t border-slate-700">
+                <div class="flex gap-2">
+                    <Button
+                        :variant="currentEditMode === 'standard' ? 'default' : 'outline'"
+                        :class="[
+                            'flex-1 h-9 text-sm',
+                            currentEditMode === 'standard' 
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500' 
+                                : 'bg-transparent hover:bg-slate-800 text-slate-400 border-slate-600'
+                        ]"
+                        @click="switchMode('standard')"
+                    >
+                        <FileText class="size-3.5 mr-1.5 group-data-[collapsible=icon]:mr-0" />
+                        <span class="group-data-[collapsible=icon]:hidden">Standard</span>
+                    </Button>
+                    <Button
+                        :variant="currentEditMode === 'libre' ? 'default' : 'outline'"
+                        :class="[
+                            'flex-1 h-9 text-sm',
+                            currentEditMode === 'libre' 
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500' 
+                                : 'bg-transparent hover:bg-slate-800 text-slate-400 border-slate-600'
+                        ]"
+                        @click="switchMode('libre')"
+                    >
+                        <Layout class="size-3.5 mr-1.5 group-data-[collapsible=icon]:mr-0" />
+                        <span class="group-data-[collapsible=icon]:hidden">Libre</span>
+                    </Button>
+                </div>
+            </div>
         </SidebarContent>
 
         <SidebarFooter class="border-t border-slate-700 px-2 py-4">

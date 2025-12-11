@@ -211,6 +211,17 @@ const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
 
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>(getDefaultViewMode());
 
+// Fonction pour obtenir le mode depuis localStorage
+const getEditMode = (): 'standard' | 'libre' => {
+    if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('editMode');
+        if (stored === 'libre' || stored === 'standard') {
+            return stored;
+        }
+    }
+    return 'standard'; // Par défaut: Standard
+};
+
 onMounted(() => {
     const handleResize = () => {
         if (window.innerWidth < 640 && viewMode.value !== 'grid-6') {
@@ -222,6 +233,12 @@ onMounted(() => {
     
     window.addEventListener('resize', handleResize);
     handleResize();
+    
+    // Si le mode est "libre", ouvrir directement l'éditeur
+    const editMode = getEditMode();
+    if (editMode === 'libre') {
+        showLayoutEditor.value = true;
+    }
 });
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
