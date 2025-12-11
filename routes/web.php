@@ -56,6 +56,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/sessions/{session}/pdf', [SessionsController::class, 'pdf'])->name('sessions.pdf');
     Route::post('/sessions/pdf-preview', [SessionsController::class, 'pdfPreview'])->name('sessions.pdf-preview');
     Route::post('/sessions/{session}/send-email', [SessionsController::class, 'sendEmail'])->name('sessions.send-email');
+    
+    // Session layouts routes
+    Route::post('/sessions/{session}/layout', [SessionsController::class, 'saveLayout'])->name('sessions.layout.save');
+    Route::post('/sessions/layout', [SessionsController::class, 'saveLayout'])->name('sessions.layout.save-new');
+    Route::get('/sessions/{session}/layout', [SessionsController::class, 'getLayout'])->name('sessions.layout.get');
+    Route::get('/sessions/{session}/layout/pdf', [SessionsController::class, 'pdfFromLayout'])->name('sessions.layout.pdf');
 
     // Subscription routes
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'index'])->name('subscription.index');

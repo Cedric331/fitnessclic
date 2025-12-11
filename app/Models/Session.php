@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Session extends Model
@@ -80,6 +81,14 @@ class Session extends Model
     public function sessionExercises(): HasMany
     {
         return $this->hasMany(SessionExercise::class, 'session_id')->orderBy('order');
+    }
+
+    /**
+     * Relation with session layout (one-to-one)
+     */
+    public function layout(): HasOne
+    {
+        return $this->hasOne(SessionLayout::class, 'session_id');
     }
 
     /**

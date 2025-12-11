@@ -78,6 +78,13 @@ export interface Session {
     session_date?: string;
     notes?: string;
     exercises_count?: number;
+    has_custom_layout?: boolean;
+    layout?: {
+        id?: number;
+        layout_data?: any[];
+        canvas_width?: number;
+        canvas_height?: number;
+    } | null;
     exercises?: Array<{
         id: number;
         title: string;

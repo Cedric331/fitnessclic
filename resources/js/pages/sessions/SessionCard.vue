@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Pencil, Trash2, Send } from 'lucide-vue-next';
+import { Eye, Pencil, Trash2, Send, Layout } from 'lucide-vue-next';
 import { router } from '@inertiajs/vue3';
 import type { Session } from './types';
 
@@ -75,12 +75,23 @@ const remainingExercises = computed(() => {
                             {{ formatDate(session.session_date || session.created_at) }}
                         </p>
                     </div>
-                    <Badge
-                        variant="secondary"
-                        class="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs px-2 py-0.5"
-                    >
-                        {{ session.exercises_count || 0 }} exercice{{ (session.exercises_count || 0) > 1 ? 's' : '' }}
-                    </Badge>
+                    <div class="flex items-center gap-1.5">
+                        <Badge
+                            v-if="session.has_custom_layout"
+                            variant="default"
+                            class="bg-blue-600 text-white text-xs px-2 py-0.5 flex items-center gap-1"
+                            title="Mise en page personnalisée"
+                        >
+                            <Layout class="size-3" />
+                            Personnalisée
+                        </Badge>
+                        <Badge
+                            variant="secondary"
+                            class="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs px-2 py-0.5"
+                        >
+                            {{ session.exercises_count || 0 }} exercice{{ (session.exercises_count || 0) > 1 ? 's' : '' }}
+                        </Badge>
+                    </div>
                 </div>
 
                 <!-- Clients -->

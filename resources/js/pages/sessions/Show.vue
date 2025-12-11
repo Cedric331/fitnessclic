@@ -5,15 +5,36 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Trash2, Download, Calendar, Users, FileText } from 'lucide-vue-next';
-import { computed, ref, watch, nextTick } from 'vue';
+import { ArrowLeft, Edit, Trash2, Download, Calendar, Users, FileText, Layout } from 'lucide-vue-next';
+import { computed, ref, watch, nextTick, onMounted } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import SessionDeleteDialog from './SessionDeleteDialog.vue';
+import SessionLayoutEditor from './SessionLayoutEditor.vue';
+import SessionLayoutViewer from './SessionLayoutViewer.vue';
 import type { Session } from './types';
 import { useNotifications } from '@/composables/useNotifications';
 
 interface Props {
     session: Session;
+    exercises?: Array<{
+        id: number;
+        title: string;
+        description?: string;
+        image_url?: string;
+        suggested_duration?: string;
+        user_id?: number;
+        categories?: Array<{
+            id: number;
+            name: string;
+        }>;
+    }>;
+    customers?: Array<{
+        id: number;
+        first_name: string;
+        last_name: string;
+        email?: string;
+        full_name: string;
+    }>;
 }
 
 const props = defineProps<Props>();
@@ -68,6 +89,9 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 const isDeleteDialogOpen = ref(false);
 const isDeleteProcessing = ref(false);
+const showLayoutEditor = ref(false);
+const sessionLayout = ref<any>(null);
+const customers = computed(() => props.customers || []);
 
 const formatDate = (value?: string | null) => {
     if (!value) {
@@ -95,6 +119,59 @@ const formatShortDate = (value?: string | null) => {
 
 const handleEdit = () => {
     router.visit(`/sessions/${props.session.id}/edit`);
+};
+
+// Load layout
+const loadLayout = async () => {
+    if (!props.session.has_custom_layout) {
+        sessionLayout.value = null;
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/sessions/${props.session.id}/layout`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'include',
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.layout) {
+                sessionLayout.value = {
+                    layout_data: data.layout.layout_data || [],
+                    canvas_width: data.layout.canvas_width || 800,
+                    canvas_height: data.layout.canvas_height || 1000,
+                };
+            } else {
+                sessionLayout.value = null;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading layout:', error);
+        sessionLayout.value = null;
+    }
+};
+
+// Open layout editor
+const openLayoutEditor = async () => {
+    try {
+        await loadLayout();
+        showLayoutEditor.value = true;
+    } catch (error) {
+        console.error('Error opening layout editor:', error);
+        notifyError('Erreur lors de l\'ouverture de l\'éditeur');
+    }
+};
+
+// Handle layout saved
+const handleLayoutSaved = async (sessionId: number) => {
+    // La notification est déjà affichée par l'éditeur, pas besoin de la dupliquer
+    await loadLayout();
+    // Recharger la page pour mettre à jour has_custom_layout
+    router.reload({
+        only: ['session'],
+    });
 };
 
 const handleDelete = () => {
@@ -126,6 +203,13 @@ const handleDownloadPdf = () => {
 watch(isDeleteDialogOpen, (open) => {
     if (!open) {
         isDeleteProcessing.value = false;
+    }
+});
+
+// Charger la mise en page au montage si elle existe
+onMounted(() => {
+    if (props.session.has_custom_layout) {
+        loadLayout();
     }
 });
 
@@ -408,6 +492,16 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                         <span>PDF</span>
                     </Button>
                     <Button
+                        v-if="session.has_custom_layout"
+                        variant="outline"
+                        size="sm"
+                        class="inline-flex items-center gap-2 w-full sm:w-auto"
+                        @click="openLayoutEditor"
+                    >
+                        <Layout class="size-4" />
+                        <span>Éditer mise en page</span>
+                    </Button>
+                    <Button
                         variant="outline"
                         size="sm"
                         class="inline-flex items-center gap-2 w-full sm:w-auto"
@@ -456,19 +550,21 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                             </div>
                         </div>
 
-                        <!-- Notes -->
-                        <div v-if="session.notes">
-                            <p class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">
-                                Notes
-                            </p>
-                            <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                                {{ session.notes }}
-                            </p>
-                        </div>
-                        <div v-else>
-                            <p class="text-xs text-slate-400 dark:text-slate-500">
-                                Aucune note pour cette séance.
-                            </p>
+                        <!-- Notes (masqué pour les séances personnalisées) -->
+                        <div v-if="!session.has_custom_layout">
+                            <div v-if="session.notes">
+                                <p class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">
+                                    Notes
+                                </p>
+                                <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                                    {{ session.notes }}
+                                </p>
+                            </div>
+                            <div v-else>
+                                <p class="text-xs text-slate-400 dark:text-slate-500">
+                                    Aucune note pour cette séance.
+                                </p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -485,7 +581,8 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                                 {{ session.session_date ? formatDate(session.session_date) : 'Non définie' }}
                             </p>
                         </div>
-                        <div>
+                        <!-- Nombre d'exercices (masqué pour les séances personnalisées) -->
+                        <div v-if="!session.has_custom_layout">
                             <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">Nombre d'exercices</p>
                             <p class="text-sm font-medium text-slate-900 dark:text-white">
                                 {{ sortedExercises.length }}
@@ -501,8 +598,23 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                 </Card>
             </div>
 
-            <!-- Liste des exercices -->
-            <Card>
+            <!-- Affichage de la mise en page personnalisée -->
+            <Card v-if="session.has_custom_layout && session.layout">
+                <CardHeader>
+                    <CardTitle class="flex items-center gap-2">
+                        <Layout class="size-5" />
+                        Mise en page personnalisée
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <SessionLayoutViewer
+                        :layout="session.layout"
+                    />
+                </CardContent>
+            </Card>
+
+            <!-- Liste des exercices (affichée seulement si pas de mise en page personnalisée) -->
+            <Card v-if="!session.has_custom_layout">
                 <CardHeader>
                     <CardTitle>
                         Exercices ({{ sortedExercises.length }})
@@ -729,6 +841,20 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                 :loading="isDeleteProcessing"
                 @confirm="confirmDelete"
             />
+
+            <!-- Layout Editor -->
+            <div v-if="showLayoutEditor" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900">
+                <SessionLayoutEditor
+                    :session-id="session.id"
+                    :exercises="props.exercises || []"
+                    :initial-layout="sessionLayout"
+                    :customers="customers"
+                    :session-name="session.name"
+                    :session-customers="session.customers"
+                    @close="() => { showLayoutEditor = false; loadLayout(); }"
+                    @saved="handleLayoutSaved"
+                />
+            </div>
         </div>
     </AppLayout>
 </template>

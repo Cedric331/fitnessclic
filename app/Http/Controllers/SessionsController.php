@@ -10,6 +10,7 @@ use App\Http\Requests\Sessions\UpdateSessionRequest;
 use App\Models\Customer;
 use App\Models\Exercise;
 use App\Models\Session;
+use App\Models\SessionLayout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,7 +32,7 @@ class SessionsController extends Controller
         $validated = $request->validated();
         
         $query = Session::where('user_id', Auth::id())
-            ->with(['customers', 'exercises.media'])
+            ->with(['customers', 'exercises.media', 'layout'])
             ->withCount('exercises');
 
         if (!empty($validated['search'])) {
@@ -69,6 +70,8 @@ class SessionsController extends Controller
                     'is_active' => (bool) $customer->is_active,
                 ];
             });
+            // Ajouter l'information sur la mise en page personnalisée
+            $session->has_custom_layout = $session->layout !== null;
             return $session;
         });
 
@@ -218,8 +221,44 @@ class SessionsController extends Controller
             abort(403);
         }
 
-        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets'])
+        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'layout'])
             ->loadCount('exercises');
+
+        // Charger les exercices pour l'éditeur de mise en page
+        $exercises = Exercise::where('is_shared', true)
+            ->with(['categories', 'media'])
+            ->orderBy('title')
+            ->get()
+            ->map(function ($exercise) {
+                return [
+                    'id' => $exercise->id,
+                    'title' => $exercise->title,
+                    'description' => $exercise->description,
+                    'image_url' => $exercise->image_url,
+                    'suggested_duration' => $exercise->suggested_duration,
+                    'user_id' => $exercise->user_id,
+                    'categories' => $exercise->categories->map(fn ($cat) => [
+                        'id' => $cat->id,
+                        'name' => $cat->name,
+                    ]),
+                ];
+            });
+
+        // Charger les clients pour l'éditeur
+        $customers = Customer::where('user_id', Auth::id())
+            ->where('is_active', true)
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get()
+            ->map(function ($customer) {
+                return [
+                    'id' => $customer->id,
+                    'first_name' => $customer->first_name,
+                    'last_name' => $customer->last_name,
+                    'email' => $customer->email,
+                    'full_name' => $customer->full_name,
+                ];
+            });
 
         $sessionData = [
             'id' => $session->id,
@@ -228,6 +267,13 @@ class SessionsController extends Controller
             'notes' => $session->notes,
             'created_at' => $session->created_at,
             'exercises_count' => $session->exercises_count,
+            'has_custom_layout' => $session->layout !== null,
+            'layout' => $session->layout ? [
+                'id' => $session->layout->id,
+                'layout_data' => $session->layout->layout_data,
+                'canvas_width' => $session->layout->canvas_width,
+                'canvas_height' => $session->layout->canvas_height,
+            ] : null,
             'customers' => $session->customers->map(fn ($customer) => [
                 'id' => $customer->id,
                 'first_name' => $customer->first_name,
@@ -280,6 +326,8 @@ class SessionsController extends Controller
 
         return Inertia::render('sessions/Show', [
             'session' => $sessionData,
+            'exercises' => $exercises,
+            'customers' => $customers,
         ]);
     }
 
@@ -292,7 +340,7 @@ class SessionsController extends Controller
             abort(403);
         }
 
-        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets']);
+        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'layout']);
 
         $searchTerm = trim((string) $request->input('search', ''));
         $categoryId = $request->input('category_id');
@@ -632,6 +680,133 @@ class SessionsController extends Controller
             return redirect()->route($redirectRoute, $redirectParams)
                 ->with('error', 'Une erreur est survenue lors de l\'envoi de l\'email.');
         }
+    }
+
+    /**
+     * Save or update session layout.
+     */
+    public function saveLayout(Request $request, ?Session $session = null)
+    {
+        $validated = $request->validate([
+            'layout_data' => 'required|array',
+            'canvas_width' => 'required|integer|min:100|max:2000',
+            'canvas_height' => 'required|integer|min:100|max:3000',
+            'session_id' => 'nullable|exists:training_sessions,id',
+            'session_name' => 'nullable|string|max:255',
+            'customer_ids' => 'nullable|array',
+            'customer_ids.*' => 'exists:customers,id',
+        ]);
+
+        // Si pas de session fournie mais session_id dans la requête, charger la session
+        if (!$session && isset($validated['session_id'])) {
+            $session = Session::where('id', $validated['session_id'])
+                ->where('user_id', Auth::id())
+                ->firstOrFail();
+        }
+
+        // Si toujours pas de session, créer une nouvelle session temporaire
+        if (!$session) {
+            $session = Session::create([
+                'user_id' => Auth::id(),
+                'name' => $validated['session_name'] ?? 'Séance avec mise en page',
+                'session_date' => now(),
+            ]);
+        }
+
+        // Vérifier que l'utilisateur est propriétaire de la session
+        if ($session->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Non autorisé'], 403);
+        }
+
+        // Mettre à jour le nom de la séance si fourni et non vide
+        if (isset($validated['session_name']) && !empty(trim($validated['session_name']))) {
+            $session->name = trim($validated['session_name']);
+            $session->save();
+        }
+
+        // Mettre à jour les clients associés si fournis
+        if (isset($validated['customer_ids'])) {
+            // Si customer_ids est un tableau vide, on désassocie tous les clients
+            // Sinon, on synchronise avec les IDs fournis
+            $session->customers()->sync($validated['customer_ids'] ?? []);
+        }
+
+        $layout = SessionLayout::updateOrCreate(
+            ['session_id' => $session->id],
+            [
+                'layout_data' => $validated['layout_data'],
+                'canvas_width' => $validated['canvas_width'],
+                'canvas_height' => $validated['canvas_height'],
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'layout' => $layout,
+            'session_id' => $session->id,
+        ]);
+    }
+
+    /**
+     * Get session layout.
+     */
+    public function getLayout(Session $session)
+    {
+        // Vérifier que l'utilisateur est propriétaire de la session
+        if ($session->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Non autorisé'], 403);
+        }
+
+        $layout = $session->layout;
+
+        if (!$layout) {
+            return response()->json([
+                'layout' => null,
+            ]);
+        }
+
+        return response()->json([
+            'layout' => [
+                'id' => $layout->id,
+                'session_id' => $layout->session_id,
+                'layout_data' => $layout->layout_data,
+                'canvas_width' => $layout->canvas_width,
+                'canvas_height' => $layout->canvas_height,
+                'created_at' => $layout->created_at,
+                'updated_at' => $layout->updated_at,
+            ],
+        ]);
+    }
+
+    /**
+     * Generate PDF from session layout.
+     */
+    public function pdfFromLayout(Session $session)
+    {
+        $user = Auth::user();
+        if (!$user->canExportPdf()) {
+            return response()->json([
+                'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.'
+            ], 403);
+        }
+
+        // Vérifier que l'utilisateur est propriétaire de la session
+        if ($session->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Non autorisé'], 403);
+        }
+
+        $layout = $session->layout;
+
+        if (!$layout) {
+            return response()->json(['error' => 'Aucune mise en page trouvée pour cette séance'], 404);
+        }
+
+        // Pour l'instant, retourner un JSON avec les données du layout
+        // L'export PDF réel sera implémenté dans le composant Vue avec jsPDF ou html2pdf
+        return response()->json([
+            'layout' => $layout,
+            'session' => $session,
+        ]);
     }
 }
 

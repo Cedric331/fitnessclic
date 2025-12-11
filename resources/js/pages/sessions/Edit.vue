@@ -25,12 +25,14 @@ import {
     AlertTriangle,
     Library,
     Printer,
-    ArrowLeft
+    ArrowLeft,
+    Layout
 } from 'lucide-vue-next';
 import type { EditSessionProps, Exercise, SessionExercise, Customer, Category, ExerciseSet, SessionBlock } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
 import SessionBlockSet from './SessionBlockSet.vue';
 import ExerciseLibrary from './ExerciseLibrary.vue';
+import SessionLayoutEditor from './SessionLayoutEditor.vue';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import InputError from '@/components/InputError.vue';
@@ -244,6 +246,8 @@ onMounted(() => {
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
 const isLibraryOpen = ref(false);
+const showLayoutEditor = ref(false);
+const sessionLayout = ref<any>(null);
 
 const sessionExercises = ref<SessionExercise[]>([]);
 
@@ -369,6 +373,8 @@ const loadSessionExercises = () => {
 onMounted(() => {
     nextTick(() => {
         loadSessionExercises();
+        // Charger la mise en page si elle existe
+        loadLayout();
     });
 });
 
@@ -1142,7 +1148,6 @@ const saveSession = () => {
             isSaving.value = false;
             router.reload({
                 only: ['session', 'exercises'],
-                preserveScroll: true,
             });
         },
         onError: (errors) => {
@@ -1388,6 +1393,54 @@ const duplicateExercises = computed(() => {
 });
 
 const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0);
+
+// Load layout
+const loadLayout = async () => {
+    try {
+        const response = await fetch(`/sessions/${props.session.id}/layout`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'include',
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.layout) {
+                sessionLayout.value = {
+                    layout_data: data.layout.layout_data || [],
+                    canvas_width: data.layout.canvas_width || 800,
+                    canvas_height: data.layout.canvas_height || 1000,
+                };
+                console.log('Layout loaded successfully:', sessionLayout.value);
+            } else {
+                sessionLayout.value = null;
+                console.log('No layout found for this session');
+            }
+        } else {
+            sessionLayout.value = null;
+        }
+    } catch (error) {
+        console.error('Error loading layout:', error);
+        sessionLayout.value = null;
+    }
+};
+
+// Open layout editor
+const openLayoutEditor = async () => {
+    await loadLayout();
+    showLayoutEditor.value = true;
+};
+
+// Handle layout saved
+const handleLayoutSaved = async (sessionId: number) => {
+    // La notification est déjà affichée par l'éditeur, pas besoin de la dupliquer
+    // Recharger la mise en page pour pouvoir l'éditer à nouveau
+    await loadLayout();
+    // Recharger la session pour mettre à jour has_custom_layout
+    router.reload({
+        only: ['session'],
+    });
+};
 </script>
 
 <template>
@@ -1444,6 +1497,16 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                         >
                             <Printer class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             <span class="hidden sm:inline">Imprimer</span>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            class="sm:gap-2 text-xs sm:text-sm aspect-square sm:aspect-auto"
+                            @click="openLayoutEditor"
+                            :disabled="sessionExercises.length === 0"
+                        >
+                            <Layout class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span class="hidden sm:inline">Éditeur visuel</span>
                         </Button>
                         <Button
                             size="sm"
@@ -1772,6 +1835,20 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
                 </div>
             </SheetContent>
         </Sheet>
+
+        <!-- Layout Editor -->
+        <div v-if="showLayoutEditor" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900">
+            <SessionLayoutEditor
+                :session-id="session.id"
+                :exercises="exercises"
+                :initial-layout="sessionLayout"
+                :customers="customers"
+                :session-name="session.name"
+                :session-customers="session.customers"
+                @close="() => { showLayoutEditor = false; loadLayout(); }"
+                @saved="handleLayoutSaved"
+            />
+        </div>
     </AppLayout>
 </template>
 

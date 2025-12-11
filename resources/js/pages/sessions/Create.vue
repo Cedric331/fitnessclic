@@ -24,12 +24,14 @@ import {
     Pause,
     AlertTriangle,
     Library,
-    Printer
+    Printer,
+    Layout
 } from 'lucide-vue-next';
 import type { CreateSessionProps, EditSessionProps, Exercise, SessionExercise, Customer, Category, SessionBlock } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
 import SessionBlockSet from './SessionBlockSet.vue';
 import ExerciseLibrary from './ExerciseLibrary.vue';
+import SessionLayoutEditor from './SessionLayoutEditor.vue';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import InputError from '@/components/InputError.vue';
@@ -58,6 +60,8 @@ const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
 const { success: notifySuccess, error: notifyError } = useNotifications();
 
 const isUpgradeModalOpen = ref(false);
+const showLayoutEditor = ref(false);
+const savedSessionId = ref<number | null>(null);
 
 const shownFlashMessages = ref(new Set<string>());
 
@@ -1395,6 +1399,16 @@ watch(sessionExercises, () => {
                             <span class="hidden sm:inline">Imprimer</span>
                         </Button>
                         <Button
+                            variant="outline"
+                            size="sm"
+                            class="sm:gap-2 text-xs sm:text-sm aspect-square sm:aspect-auto"
+                            @click="showLayoutEditor = true"
+                            :disabled="sessionExercises.length === 0"
+                        >
+                            <Layout class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span class="hidden sm:inline">Éditeur visuel</span>
+                        </Button>
+                        <Button
                             size="sm"
                             class="sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm aspect-square sm:aspect-auto"
                             @click="saveSession"
@@ -1770,6 +1784,18 @@ watch(sessionExercises, () => {
             v-model:open="isUpgradeModalOpen"
             feature="La sélection de clients et l'enregistrement des séances sont réservés aux abonnés Pro. Passez à Pro pour débloquer toutes les fonctionnalités."
         />
+
+        <!-- Layout Editor -->
+        <div v-if="showLayoutEditor" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900">
+            <SessionLayoutEditor
+                :session-id="savedSessionId || undefined"
+                :exercises="exercises"
+                :customers="customers"
+                :session-name="form.name"
+                @close="showLayoutEditor = false"
+                @saved="(id: number) => { savedSessionId = id; }"
+            />
+        </div>
     </AppLayout>
 </template>
 
