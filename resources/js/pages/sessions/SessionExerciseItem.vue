@@ -123,27 +123,29 @@ const addSet = () => {
     let currentSets: ExerciseSet[];
     if (props.sessionExercise.sets && props.sessionExercise.sets.length > 0) {
         currentSets = [...props.sessionExercise.sets];
+        // Ajouter un nouveau set
+        const newSet: ExerciseSet = {
+            set_number: currentSets.length + 1,
+            repetitions: null,
+            weight: null,
+            rest_time: null,
+            duration: null,
+            order: currentSets.length
+        };
+        const updatedSets = [...currentSets, newSet];
+        emit('update', { sets: updatedSets });
     } else {
-        currentSets = [{
+        // Si aucun set, créer le premier set
+        const firstSet: ExerciseSet = {
             set_number: 1,
             repetitions: props.sessionExercise.repetitions ?? null,
             weight: props.sessionExercise.weight ?? null,
             rest_time: props.sessionExercise.rest_time ?? null,
             duration: props.sessionExercise.duration ?? null,
             order: 0
-        }];
+        };
+        emit('update', { sets: [firstSet] });
     }
-    
-    const newSet: ExerciseSet = {
-        set_number: 1,
-        repetitions: null,
-        weight: null,
-        rest_time: null,
-        duration: null,
-        order: currentSets.length
-    };
-    const updatedSets = [...currentSets, newSet];
-    emit('update', { sets: updatedSets });
 };
 
 const removeSet = (setIndex: number) => {
@@ -152,8 +154,12 @@ const removeSet = (setIndex: number) => {
     }
     
     const currentSets = [...props.sessionExercise.sets];
-    if (currentSets.length <= 1) return;
     const updatedSets = currentSets.filter((_, index) => index !== setIndex);
+    // Si on supprime la dernière ligne, on met un tableau vide pour permettre d'avoir un exercice sans ligne
+    if (updatedSets.length === 0) {
+        emit('update', { sets: [] });
+        return;
+    }
     updatedSets.forEach((set, index) => {
         set.set_number = index + 1;
         set.order = index;
@@ -366,52 +372,77 @@ const confirmRemove = () => {
 
                 <!-- Séries multiples -->
                 <div class="space-y-1.5">
-                    <div class="flex items-center justify-end mb-1.5">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            @click="addSet"
-                            class="h-7 text-xs"
-                        >
-                            <Plus class="h-3 w-3 mr-1" />
-                            Ajouter une ligne
-                        </Button>
+                    <!-- Cas où il n'y a pas de ligne : afficher uniquement le bouton ajouter -->
+                    <div v-if="!props.sessionExercise.sets || props.sessionExercise.sets.length === 0" class="p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-md">
+                        <div class="grid grid-cols-[auto_1fr_1fr] sm:grid-cols-[auto_1fr_1fr_1fr_1fr_auto] gap-2 items-end">
+                            <!-- Bouton ajouter une ligne -->
+                            <div class="flex items-end">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    @click="addSet"
+                                    class="h-8 w-8 p-0 rounded-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex-shrink-0 flex items-center justify-center"
+                                    title="Ajouter une ligne"
+                                >
+                                    <Plus class="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <!-- Espaces vides pour aligner avec les autres lignes -->
+                            <div></div>
+                            <div></div>
+                            <div class="hidden sm:block"></div>
+                            <div class="hidden sm:block"></div>
+                            <div class="hidden sm:block"></div>
+                        </div>
                     </div>
-
+                    
                     <div class="space-y-1.5">
-                        <!-- Afficher les sets réels de l'exercice, ou un set par défaut si vide -->
+                        <!-- Afficher les sets réels de l'exercice -->
                         <div
-                            v-for="(set, setIndex) in (props.sessionExercise.sets && props.sessionExercise.sets.length > 0 ? props.sessionExercise.sets : [{ set_number: 1, repetitions: null, weight: null, rest_time: null, duration: null, order: 0 }])"
+                            v-for="(set, setIndex) in (props.sessionExercise.sets || [])"
                             :key="setIndex"
                             class="relative p-2 bg-neutral-50 dark:bg-neutral-800/50 rounded-md"
                         >
-                            <!-- Bouton supprimer la série - fixe en haut à gauche sur mobile, dans la grille sur desktop -->
+                            <!-- Bouton supprimer la série - fixe en haut à droite sur mobile -->
                             <Button
-                                v-if="sets.length > 1"
                                 variant="ghost"
                                 size="sm"
                                 @click="removeSet(setIndex)"
-                                class="absolute -top-2 -left-1 sm:hidden h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 z-10"
+                                class="absolute -top-2 -right-1 sm:hidden h-6 w-6 p-0 rounded-full bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 z-10 flex items-center justify-center"
                                 title="Supprimer cette ligne"
                             >
                                 <X class="h-3.5 w-3.5" />
                             </Button>
                             
-                            <!-- Champs organisés en grille responsive : 2 colonnes sur mobile, 5 sur desktop (avec bouton supprimer) -->
-                            <div class="grid grid-cols-2 sm:grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 items-end">
-                                <!-- Bouton supprimer la série - tout à gauche sur desktop uniquement -->
-                                <div class="hidden sm:flex items-end">
+                            <!-- Champs organisés en grille responsive : 3 colonnes sur mobile (avec espace/bouton ajouter), 6 sur desktop (avec espace/bouton ajouter + supprimer) -->
+                            <div class="grid grid-cols-[2rem_1fr_1fr] sm:grid-cols-[2rem_1fr_1fr_1fr_1fr_2rem] gap-2 items-end">
+                                <!-- Bouton ajouter une ligne - uniquement sur la première ligne -->
+                                <div v-if="setIndex === 0" class="hidden sm:flex items-end">
                                     <Button
-                                        v-if="sets.length > 1"
                                         variant="ghost"
                                         size="sm"
-                                        @click="removeSet(setIndex)"
-                                        class="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 flex-shrink-0"
-                                        title="Supprimer cette ligne"
+                                        @click="addSet"
+                                        class="h-8 w-8 p-0 rounded-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex-shrink-0 flex items-center justify-center"
+                                        title="Ajouter une ligne"
                                     >
-                                        <X class="h-3.5 w-3.5" />
+                                        <Plus class="h-4 w-4" />
                                     </Button>
                                 </div>
+                                <!-- Bouton ajouter une ligne - mobile uniquement sur la première ligne -->
+                                <div v-if="setIndex === 0" class="sm:hidden flex items-end">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        @click="addSet"
+                                        class="h-8 w-8 p-0 rounded-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex-shrink-0 flex items-center justify-center"
+                                        title="Ajouter une ligne"
+                                    >
+                                        <Plus class="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <!-- Espace vide pour aligner les autres lignes avec la première -->
+                                <div v-if="setIndex !== 0" class="hidden sm:flex items-end w-8"></div>
+                                <div v-if="setIndex !== 0" class="sm:hidden flex items-end w-8"></div>
                                 <!-- Numéro de série (éditable pour chaque ligne) -->
                                 <div>
                                     <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
@@ -522,6 +553,19 @@ const confirmRemove = () => {
                                         placeholder="30s"
                                         class="h-8 text-sm"
                                     />
+                                </div>
+                                
+                                <!-- Bouton supprimer la série - tout à droite sur desktop (toutes les lignes) -->
+                                <div class="hidden sm:flex items-end">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        @click="removeSet(setIndex)"
+                                        class="h-8 w-8 p-0 rounded-full bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex-shrink-0 flex items-center justify-center"
+                                        title="Supprimer cette ligne"
+                                    >
+                                        <X class="h-3.5 w-3.5" />
+                                    </Button>
                                 </div>
                             </div>
                         </div>
