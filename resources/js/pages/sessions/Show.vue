@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Edit, Trash2, Download, Calendar, Users, FileText, Layout } from 'lucide-vue-next';
-import { computed, ref, watch, nextTick, onMounted } from 'vue';
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import SessionDeleteDialog from './SessionDeleteDialog.vue';
 import SessionLayoutEditor from './SessionLayoutEditor.vue';
@@ -556,10 +556,126 @@ watch(isDeleteDialogOpen, (open) => {
     }
 });
 
+// PDF preview state
+const pdfUrl = ref<string | null>(null);
+const pdfLoading = ref(false);
+const pdfError = ref<string | null>(null);
+const pdfContainer = ref<HTMLDivElement | null>(null);
+
+// Charger le PDF pour la prévisualisation avec PDF.js
+const loadPdfPreview = async () => {
+    if (props.session.has_custom_layout) {
+        return;
+    }
+    
+    pdfLoading.value = true;
+    pdfError.value = null;
+    
+    // Attendre que le conteneur soit disponible
+    await nextTick();
+    let retries = 0;
+    while (!pdfContainer.value && retries < 10) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        retries++;
+    }
+    
+    if (!pdfContainer.value) {
+        pdfError.value = 'Impossible de charger le conteneur PDF';
+        pdfLoading.value = false;
+        return;
+    }
+    
+    try {
+        // Charger PDF.js depuis CDN
+        if (!(window as any).pdfjsLib) {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+            document.head.appendChild(script);
+            
+            await new Promise((resolve, reject) => {
+                script.onload = () => {
+                    (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                    resolve(undefined);
+                };
+                script.onerror = reject;
+            });
+        }
+        
+        const response = await fetch(`/sessions/${props.session.id}/pdf-preview`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'include',
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erreur lors du chargement du PDF');
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const pdf = await (window as any).pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        // Nettoyer le conteneur
+        if (pdfContainer.value) {
+            pdfContainer.value.innerHTML = '';
+            
+            // Afficher toutes les pages avec une taille fixe standard (comme le format libre)
+            const standardWidth = 800; // Largeur standard comme pour le format libre
+            
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                const viewport = page.getViewport({ scale: 1.0 });
+                
+                // Calculer l'échelle pour avoir une largeur fixe de 800px
+                const scale = standardWidth / viewport.width;
+                const scaledViewport = page.getViewport({ scale: scale });
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = scaledViewport.height;
+                canvas.width = scaledViewport.width;
+                
+                if (context) {
+                    await page.render({
+                        canvasContext: context,
+                        viewport: scaledViewport,
+                    }).promise;
+                }
+                
+                // Taille fixe, centré
+                canvas.className = 'mb-4 shadow-sm';
+                canvas.style.width = `${standardWidth}px`;
+                canvas.style.height = 'auto';
+                canvas.style.display = 'block';
+                canvas.style.margin = '0 auto';
+                pdfContainer.value.appendChild(canvas);
+            }
+        }
+        
+        pdfUrl.value = URL.createObjectURL(new Blob([arrayBuffer], { type: 'application/pdf' }));
+    } catch (error: any) {
+        console.error('Error loading PDF:', error);
+        pdfError.value = error.message || 'Erreur lors du chargement du PDF';
+    } finally {
+        pdfLoading.value = false;
+    }
+};
+
 // Charger la mise en page au montage si elle existe
 onMounted(() => {
     if (props.session.has_custom_layout) {
         loadLayout();
+    } else {
+        nextTick(() => {
+            loadPdfPreview();
+        });
+    }
+});
+
+// Nettoyer l'URL blob au démontage
+onUnmounted(() => {
+    if (pdfUrl.value) {
+        URL.revokeObjectURL(pdfUrl.value);
     }
 });
 
@@ -890,226 +1006,29 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                         </CardContent>
                     </Card>
 
-                    <!-- Liste des exercices (affichée seulement si pas de mise en page personnalisée) -->
+                    <!-- Prévisualisation PDF (affichée seulement si pas de mise en page personnalisée) -->
                     <Card v-if="!session.has_custom_layout">
                         <CardHeader>
                             <CardTitle>
-                                Exercices ({{ sortedExercises.length }})
+                                Prévisualisation PDF
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                    <div v-if="orderedItems.length > 0" class="space-y-[18px]">
-                        <template v-for="item in orderedItems" :key="item.key">
-                            <!-- Super Set -->
-                            <div
-                                v-if="item.type === 'set' && item.block"
-                                class="relative rounded-lg bg-[#f7f7f7] p-2"
-                            >
-                                <div class="flex gap-3">
-                                    <!-- Numéro du Super Set sur le côté gauche -->
-                                    <div class="flex-shrink-0 w-10 flex items-start justify-center pt-1 border-l-2 border-[#212121] pl-2">
-                                        <span class="text-2xl font-bold text-[#212121]">{{ item.displayIndex + 1 }}</span>
-                                    </div>
-                                    
-                                    <!-- Contenu du Super Set -->
-                                    <div class="flex-1">
-                                        <!-- Label Super Set -->
-                                        <div
-                                            v-if="item.block.exercises[0]?.additional_description || item.block.exercises[0]?.description"
-                                            class="text-right mb-3 mr-6 text-xs"
-                                        >
-                                            <span class="font-bold">Super set :</span> {{ item.block.exercises[0]?.additional_description || item.block.exercises[0]?.description }}
-                                        </div>
-                                        
-                                        <!-- Exercices du Super Set -->
-                                        <div class="space-y-3">
-                                            <div
-                                                v-for="(sessionExercise, exerciseIndex) in item.block.exercises"
-                                                :key="sessionExercise.id || `ex-${item.block.id}-${exerciseIndex}`"
-                                                class="flex gap-3"
-                                            >
-                                                <!-- Image de l'exercice à gauche (plus grande, prend toute la hauteur) -->
-                                                <div
-                                                    v-if="sessionExercise.exercise?.image_url"
-                                                    class="flex-shrink-0 self-start"
-                                                >
-                                                    <img
-                                                        :src="sessionExercise.exercise.image_url"
-                                                        :alt="sessionExercise.exercise.title"
-                                                        class="w-24 h-auto max-h-28 object-contain rounded"
-                                                    />
-                                                </div>
-                                                <div
-                                                    v-else
-                                                    class="flex-shrink-0 w-24 h-28 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center self-start"
-                                                >
-                                                    <FileText class="size-6 text-slate-400" />
-                                                </div>
-
-                                                <!-- Titre et lignes de séries à droite -->
-                                                <div class="flex-1 flex flex-col">
-                                                    <!-- Titre de l'exercice -->
-                                                    <div class="mb-2">
-                                                        <h3 class="font-bold text-sm text-[#212121] mb-1">
-                                                            {{ sessionExercise.custom_exercise_name || sessionExercise.exercise?.title || 'Exercice inconnu' }}
-                                                        </h3>
-                                                    </div>
-
-                                                    <!-- Lignes de séries avec style PDF -->
-                                                    <div class="space-y-0.5">
-                                                        <table
-                                                            v-if="sessionExercise.sets && sessionExercise.sets.length > 0"
-                                                            v-for="(set, setIndex) in sessionExercise.sets"
-                                                            :key="set.id || `set-${item.block.id}-${exerciseIndex}-${setIndex}`"
-                                                            class="w-full text-xs border-collapse mt-1"
-                                                        >
-                                                            <tr>
-                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                                    <strong>{{ formatSeriesData(set, sessionExercise).serie }}</strong> série{{ formatSeriesData(set, sessionExercise).serie > 1 ? 's' : '' }}
-                                                                </td>
-                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                                    <strong>{{ formatSeriesData(set, sessionExercise).reps.value }}</strong> {{ formatSeriesData(set, sessionExercise).reps.label }}{{ formatSeriesData(set, sessionExercise).reps.value > 1 ? 's' : '' }}
-                                                                </td>
-                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                                    charge : <strong>{{ formatSeriesData(set, sessionExercise).charge }}</strong>
-                                                                </td>
-                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 w-1/4">
-                                                                    repos inter-séries : <strong>{{ formatSeriesData(set, sessionExercise).rest }}</strong>
-                                                                </td>
-                                                            </tr>
-                                                        </table>
-                                                        <!-- Fallback pour les anciennes données (sans sets) -->
-                                                        <table
-                                                            v-else-if="sessionExercise.repetitions || sessionExercise.duration || sessionExercise.rest_time || sessionExercise.weight || sessionExercise.use_bodyweight"
-                                                            class="w-full text-xs border-collapse mt-1"
-                                                        >
-                                                            <tr>
-                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                                    <strong>{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).serie }}</strong> série{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).serie > 1 ? 's' : '' }}
-                                                                </td>
-                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                                    <strong>{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).reps.value }}</strong> {{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).reps.label }}{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).reps.value > 1 ? 's' : '' }}
-                                                                </td>
-                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                                    charge : <strong>{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).charge }}</strong>
-                                                                </td>
-                                                                <td class="bg-[#e0f4fc] text-center py-1.5 px-2 w-1/4">
-                                                                    repos inter-séries : <strong>{{ formatSeriesDataFallback(sessionExercise, sessionExercise.sets_count || 1).rest }}</strong>
-                                                                </td>
-                                                            </tr>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <div class="w-full" style="min-height: 800px;">
+                                <div v-if="pdfLoading" class="flex items-center justify-center h-[800px]">
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Chargement du PDF...</p>
                                 </div>
-                            </div>
-
-                            <!-- Exercice standard -->
-                            <div
-                                v-else-if="item.type === 'standard' && item.exercise"
-                                :key="item.key"
-                                class="relative rounded-lg bg-[#f7f7f7] p-2"
-                            >
-                                <div class="flex gap-3">
-                                    <!-- Numéro d'exercice sur le côté gauche -->
-                                    <div class="flex-shrink-0 w-10 flex items-start justify-center pt-1 border-l-2 border-[#212121] pl-2">
-                                        <span class="text-2xl font-bold text-[#212121]">{{ item.displayIndex + 1 }}</span>
-                                    </div>
-                                    
-                                    <!-- Contenu de l'exercice -->
-                                    <div class="flex-1 flex gap-4">
-                                        <!-- Image de l'exercice à gauche (plus grande, prend toute la hauteur) -->
-                                        <div
-                                            v-if="item.exercise.exercise?.image_url"
-                                            class="flex-shrink-0 self-start"
-                                        >
-                                            <img
-                                                :src="item.exercise.exercise.image_url"
-                                                :alt="item.exercise.exercise.title"
-                                                class="w-28 h-auto max-h-32 object-contain rounded"
-                                            />
-                                        </div>
-                                        <div
-                                            v-else
-                                            class="flex-shrink-0 w-28 h-32 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center self-start"
-                                        >
-                                            <FileText class="size-8 text-slate-400" />
-                                        </div>
-
-                                        <!-- Titre et lignes de séries à droite -->
-                                        <div class="flex-1 flex flex-col">
-                                            <!-- Titre de l'exercice -->
-                                            <div class="mb-2">
-                                                <h3 class="font-bold text-base text-[#212121] mb-1">
-                                                    {{ item.exercise.custom_exercise_name || item.exercise.exercise?.title || 'Exercice inconnu' }}
-                                                </h3>
-                                                <p
-                                                    v-if="item.exercise.additional_description"
-                                                    class="text-xs text-slate-600 dark:text-slate-400"
-                                                >
-                                                    {{ item.exercise.additional_description }}
-                                                </p>
-                                            </div>
-
-                                            <!-- Lignes de séries avec style PDF -->
-                                            <div class="space-y-0.5">
-                                                <table
-                                                    v-if="item.exercise.sets && item.exercise.sets.length > 0"
-                                                    v-for="(set, setIndex) in item.exercise.sets"
-                                                    :key="set.id || `set-${item.exercise.id}-${setIndex}`"
-                                                    class="w-full text-xs border-collapse mt-1"
-                                                >
-                                                    <tr>
-                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                            <strong>{{ formatSeriesData(set, item.exercise).serie }}</strong> série{{ formatSeriesData(set, item.exercise).serie > 1 ? 's' : '' }}
-                                                        </td>
-                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                            <strong>{{ formatSeriesData(set, item.exercise).reps.value }}</strong> {{ formatSeriesData(set, item.exercise).reps.label }}{{ formatSeriesData(set, item.exercise).reps.value > 1 ? 's' : '' }}
-                                                        </td>
-                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                            charge : <strong>{{ formatSeriesData(set, item.exercise).charge }}</strong>
-                                                        </td>
-                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 w-1/4">
-                                                            repos inter-séries : <strong>{{ formatSeriesData(set, item.exercise).rest }}</strong>
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                                <!-- Fallback pour les anciennes données (sans sets) -->
-                                                <table
-                                                    v-else-if="item.exercise.repetitions || item.exercise.duration || item.exercise.rest_time || item.exercise.weight || item.exercise.use_bodyweight"
-                                                    class="w-full text-xs border-collapse mt-1"
-                                                >
-                                                    <tr>
-                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                            <strong>{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).serie }}</strong> série{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).serie > 1 ? 's' : '' }}
-                                                        </td>
-                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                            <strong>{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).reps.value }}</strong> {{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).reps.label }}{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).reps.value > 1 ? 's' : '' }}
-                                                        </td>
-                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 border-r border-gray-300 w-1/4">
-                                                            charge : <strong>{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).charge }}</strong>
-                                                        </td>
-                                                        <td class="bg-[#e0f4fc] text-center py-1.5 px-2 w-1/4">
-                                                            repos inter-séries : <strong>{{ formatSeriesDataFallback(item.exercise, item.exercise.sets_count || 1).rest }}</strong>
-                                                        </td>
-                                                    </tr>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div v-else-if="pdfError" class="flex items-center justify-center h-[800px]">
+                                    <p class="text-sm text-red-500">{{ pdfError }}</p>
                                 </div>
+                                <div
+                                    ref="pdfContainer"
+                                    class="w-full flex flex-col items-center"
+                                    :class="{ 'hidden': pdfLoading || pdfError }"
+                                ></div>
                             </div>
-                        </template>
-                    </div>
-                    <div v-else class="text-center py-8">
-                        <p class="text-sm text-slate-500 dark:text-slate-400">
-                            Aucun exercice dans cette séance.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <!-- Colonne droite (25% - 1 colonne sur 4) : Informations et Détails -->

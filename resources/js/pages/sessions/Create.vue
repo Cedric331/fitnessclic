@@ -1443,9 +1443,9 @@ watch(sessionExercises, () => {
                     
                     <!-- Panneau gauche -->
                     <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
-                        <div class="space-y-1">
-                        <Card class="shadow-md">
-                            <CardContent class="space-y-2 pt-4">
+                        <div class="space-y-6">
+                        <Card class="shadow-md py-4">
+                            <CardContent class="space-y-4">
                                 <!-- Nom de la séance -->
                                 <div class="space-y-2">
                                     <Label for="session-name">Nom de la séance <span class="text-red-500">*</span></Label>
@@ -1511,7 +1511,7 @@ watch(sessionExercises, () => {
                         </Card>
 
                         <!-- Liste des exercices de la séance -->
-                        <Card class="shadow-md">
+                        <Card class="shadow-md py-3">
                             <CardContent
                                 @dragover.prevent="handleDragOverMain"
                                 @dragleave="handleDragLeaveMain"

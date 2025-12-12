@@ -16,7 +16,6 @@ import {
 } from 'lucide-vue-next';
 import type { Exercise, Category } from './types';
 
-// État pour suivre quel exercice est en cours de drag
 const draggingExerciseId = ref<number | null>(null);
 
 const page = usePage();
@@ -43,12 +42,10 @@ const emit = defineEmits<{
 // Valeur locale de recherche pour une mise à jour immédiate de l'input
 const localSearchValue = ref(props.searchTerm);
 
-// Synchroniser avec la prop searchTerm quand elle change depuis l'extérieur
 watch(() => props.searchTerm, (newValue) => {
     localSearchValue.value = newValue;
 });
 
-// Debounce pour la recherche - émet seulement après 300ms d'inactivité
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(localSearchValue, (newValue) => {
     if (searchTimeout) {
@@ -59,10 +56,6 @@ watch(localSearchValue, (newValue) => {
     }, 300);
 });
 
-// Classes CSS pour les différents modes d'affichage
-// Sur mobile : permettre 2 colonnes pour grid-4, 1 pour grid-2
-// Sur tablette (md) : 2 colonnes pour grid-2, 3 colonnes pour grid-4
-// Sur grand écran (lg+) : utiliser le mode sélectionné
 const gridColsClass = computed(() => {
     switch (props.viewMode) {
         case 'grid-2':
@@ -132,7 +125,6 @@ const handleDragStart = (event: DragEvent, exercise: Exercise) => {
         }, 0);
     }
     
-    // On met à jour l'état APRÈS la création du dragImage pour éviter que le clone hérite de l'opacité
     draggingExerciseId.value = exercise.id;
 };
 
@@ -145,7 +137,7 @@ const handleDragEnd = () => {
 
 <template>
     <div class="flex flex-col h-full">
-        <Card class="flex flex-col h-full flex-1 overflow-hidden shadow-md">
+        <Card class="flex flex-col h-full flex-1 overflow-hidden shadow-md py-2">
             <CardHeader class="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b pb-4 space-y-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">

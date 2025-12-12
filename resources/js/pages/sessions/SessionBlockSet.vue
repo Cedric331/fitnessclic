@@ -207,7 +207,7 @@ const exerciseToRemoveName = computed(() => {
         class="relative superset-block transform transition-all duration-200 hover:shadow-lg hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50"
     >
         <!-- Numéro de bloc en haut à gauche -->
-        <div v-if="displayIndex !== undefined" class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
+        <div v-if="displayIndex !== undefined" class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-white text-black text-sm font-bold shadow-md border border-neutral-400">
             {{ displayIndex + 1 }}
         </div>
         <CardContent class="p-1.5">

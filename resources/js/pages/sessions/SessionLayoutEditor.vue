@@ -39,7 +39,8 @@ import {
     Underline,
     AlignLeft,
     AlignCenter,
-    AlignRight
+    AlignRight,
+    Pencil
 } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
 import Konva from 'konva';
@@ -69,10 +70,23 @@ interface ExerciseInstructionsStyle {
     borderRadius?: number;
 }
 
+interface ExerciseTitleStyle {
+    fontSize?: number;
+    fontFamily?: string;
+    fill?: string;
+    backgroundColor?: string;
+    stroke?: string;
+    strokeWidth?: number;
+}
+
 interface ExerciseData {
     title?: string;
     showTitle?: boolean;
     titlePosition?: 'above' | 'below'; // Position du titre par rapport à l'image
+    titleStyle?: ExerciseTitleStyle; // Style du titre
+    imageFrame?: boolean; // Encadrer l'image
+    imageFrameColor?: string; // Couleur du cadre de l'image
+    imageFrameWidth?: number; // Épaisseur du cadre de l'image
     instructions?: string; // Consignes globales
     showInstructions?: boolean;
     instructionsPosition?: 'above' | 'below'; // Position des consignes par rapport à l'image
@@ -80,9 +94,13 @@ interface ExerciseData {
     rows: ExerciseInstructionRow[];
 }
 
+interface TableData {
+    rows: ExerciseInstructionRow[];
+}
+
 interface LayoutElement {
     id: string;
-    type: 'image' | 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight';
+    type: 'image' | 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight' | 'table';
     x: number;
     y: number;
     width?: number;
@@ -91,6 +109,7 @@ interface LayoutElement {
     imageUrl?: string;
     exerciseId?: number;
     exerciseData?: ExerciseData;
+    tableData?: TableData;
     text?: string;
     fontSize?: number;
     fontFamily?: string;
@@ -113,6 +132,7 @@ interface LayoutElement {
     tableGroup?: any;
     titleNode?: any;
     textFrameNode?: any; // Rectangle autour du texte pour le cadre
+    imageFrameNode?: any; // Rectangle autour de l'image pour le cadre
 }
 
 const props = defineProps<{
@@ -204,6 +224,44 @@ const exerciseData = ref<ExerciseData>({
     titlePosition: 'above',
     instructions: '',
     rows: [{ series: 1, reps: 20, recovery: 30, load: 10, useDuration: false, useBodyweight: false }]
+});
+
+// Table editing state
+const showTableModal = ref(false);
+const editingTableElement = ref<LayoutElement | null>(null);
+const tableData = ref<TableData>({
+    rows: [{ series: 1, reps: 20, recovery: 30, load: 10, useDuration: false, useBodyweight: false }]
+});
+
+// Exercise image editing state
+const showExerciseImageModal = ref(false);
+const editingExerciseImageElement = ref<LayoutElement | null>(null);
+const exerciseImageData = ref<{
+    title: string;
+    showTitle: boolean;
+    titlePosition: 'above' | 'below';
+    fontSize: number;
+    fontFamily: string;
+    fill: string;
+    backgroundColor: string | undefined;
+    stroke: string | undefined;
+    strokeWidth: number;
+    imageFrame: boolean;
+    imageFrameColor: string;
+    imageFrameWidth: number;
+}>({
+    title: '',
+    showTitle: true,
+    titlePosition: 'above',
+    fontSize: 14,
+    fontFamily: 'Arial',
+    fill: '#000000',
+    backgroundColor: undefined,
+    stroke: undefined,
+    strokeWidth: 0,
+    imageFrame: false,
+    imageFrameColor: '#000000',
+    imageFrameWidth: 2
 });
 
 // Session info
@@ -406,15 +464,17 @@ const loadElementsToCanvas = async (addFooter: boolean = true) => {
         try {
             if (element.type === 'image' && element.imageUrl) {
                 await addImageToCanvas(element);
-                // Si l'élément a des données d'exercice, créer le tableau et le titre après le chargement
+                // Si l'élément a des données d'exercice, créer le titre après le chargement (plus de tableau pour les exercices)
                 if (element.exerciseData) {
                     nextTick(() => {
-                        createExerciseTable(element);
                         createExerciseTitle(element);
+                        createImageFrame(element);
                     });
                 }
             } else if (element.type === 'text' && element.text) {
                 addTextToCanvas(element);
+            } else if (element.type === 'table' && element.tableData) {
+                addTableToCanvas(element);
             } else if (['rect', 'ellipse', 'line', 'arrow', 'highlight'].includes(element.type)) {
                 addShapeToCanvas(element);
             }
@@ -745,78 +805,64 @@ const addImageToCanvas = async (element: LayoutElement) => {
 
                 // Si c'est une image d'exercice, ajouter les boutons
                 if (element.exerciseId) {
-                    // Bouton "+ Consignes" en bas à droite
-                    const instructionsButtonText = '+ Consignes';
-                    const instructionsButtonPadding = 8;
-                    const instructionsButtonFontSize = 12;
-                    
-                    // Créer un texte temporaire pour mesurer la largeur
-                    const tempText = new Konva.Text({
-                        text: instructionsButtonText,
-                        fontSize: instructionsButtonFontSize,
-                        fontFamily: 'Arial',
-                    });
-                    const textWidth = tempText.width();
-                    tempText.destroy();
-                    
-                    const instructionsButtonWidth = textWidth + instructionsButtonPadding * 2;
-                    const instructionsButtonHeight = 28;
-                    const instructionsButtonX = width - instructionsButtonWidth - 5;
-                    const instructionsButtonY = height - instructionsButtonHeight - 5;
+                    // Bouton d'édition en haut à gauche
+                    const editButtonSize = 28;
+                    const editButtonX = 5;
+                    const editButtonY = 5;
+                    const editButtonCenterX = editButtonX + editButtonSize / 2;
+                    const editButtonCenterY = editButtonY + editButtonSize / 2;
 
-                    // Rectangle de fond du bouton "+ Consignes"
-                    const instructionsButtonBg = new Konva.Rect({
-                        x: instructionsButtonX,
-                        y: instructionsButtonY,
-                        width: instructionsButtonWidth,
-                        height: instructionsButtonHeight,
+                    // Cercle de fond du bouton d'édition
+                    const editButtonBg = new Konva.Circle({
+                        x: editButtonCenterX,
+                        y: editButtonCenterY,
+                        radius: editButtonSize / 2,
                         fill: '#3B82F6',
                         stroke: '#ffffff',
                         strokeWidth: 2,
                         opacity: 0.9,
-                        cornerRadius: 4,
                     });
 
-                    // Texte "+ Consignes" sur le bouton (bien centré)
-                    const instructionsButtonTextNode = new Konva.Text({
-                        x: instructionsButtonX + instructionsButtonWidth / 2,
-                        y: instructionsButtonY + instructionsButtonHeight / 2,
-                        text: instructionsButtonText,
-                        fontSize: instructionsButtonFontSize,
+                    // Icône crayon sur le bouton d'édition (simulée avec du texte)
+                    const editButtonIcon = new Konva.Text({
+                        x: editButtonCenterX,
+                        y: editButtonCenterY,
+                        text: '✎',
+                        fontSize: 16,
                         fontFamily: 'Arial',
                         fill: '#ffffff',
                         align: 'center',
                         verticalAlign: 'middle',
-                        offsetX: textWidth / 2,
-                        offsetY: instructionsButtonFontSize / 2.5,
                     });
+                    editButtonIcon.offsetX(editButtonIcon.width() / 2);
+                    editButtonIcon.offsetY(editButtonIcon.height() / 2);
 
-                    const instructionsButtonGroup = new Konva.Group({
+                    const editButtonGroup = new Konva.Group({
                         x: 0,
                         y: 0,
                     });
-                    instructionsButtonGroup.add(instructionsButtonBg);
-                    instructionsButtonGroup.add(instructionsButtonTextNode);
+                    editButtonGroup.add(editButtonBg);
+                    editButtonGroup.add(editButtonIcon);
 
-                    instructionsButtonGroup.on('click', (e) => {
-                    e.cancelBubble = true;
-                        openExerciseInstructionsModal(element);
+                    editButtonGroup.on('click', (e) => {
+                        e.cancelBubble = true;
+                        openExerciseImageModal(element);
                     });
 
-                    instructionsButtonGroup.on('mouseenter', () => {
+                    editButtonGroup.on('mouseenter', () => {
                         document.body.style.cursor = 'pointer';
-                        instructionsButtonBg.fill('#2563EB');
+                        editButtonBg.fill('#2563EB');
                         layer?.draw();
                     });
 
-                    instructionsButtonGroup.on('mouseleave', () => {
+                    editButtonGroup.on('mouseleave', () => {
                         document.body.style.cursor = 'default';
-                        instructionsButtonBg.fill('#3B82F6');
+                        editButtonBg.fill('#3B82F6');
                         layer?.draw();
                     });
 
-                    imageGroup.add(instructionsButtonGroup);
-                    element.buttonNode = instructionsButtonGroup;
+                    imageGroup.add(editButtonGroup);
+                    element.buttonNode = editButtonGroup;
 
                     // Bouton de suppression en haut à droite
                     const deleteButtonSize = 24;
@@ -882,19 +928,16 @@ const addImageToCanvas = async (element: LayoutElement) => {
 
                 imageGroup.on('dragend', () => {
                     updateElementPosition(element.id, imageGroup.x(), imageGroup.y());
-                    // Mettre à jour la position du tableau si présent
-                    updateExerciseTablePosition(element);
                 });
 
                 imageGroup.on('transformend', () => {
                     updateElementTransform(element.id, imageGroup);
-                    updateExerciseTablePosition(element);
                 });
 
                 imageGroup.on('click', (e) => {
                     // Ne pas sélectionner si on clique sur les boutons
                     if (e.target !== imageGroup && e.target.parent === imageGroup) {
-                        // Vérifier si c'est le bouton "+ Consignes"
+                        // Vérifier si c'est le bouton d'édition
                         if (element.buttonNode && (
                             e.target === element.buttonNode || 
                             e.target.parent === element.buttonNode || 
@@ -938,6 +981,16 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 // Forcer le layer à se redessiner pour que le groupe calcule correctement son bounding box
                 layer.draw();
 
+                // Si l'élément a déjà des données d'exercice, créer le titre et le cadre (plus de tableau pour les exercices)
+                // Le titre doit être créé après que le groupe soit ajouté au layer
+                if (element.exerciseData) {
+                    // Utiliser nextTick pour s'assurer que le groupe est complètement initialisé
+                    nextTick(() => {
+                        createExerciseTitle(element);
+                        createImageFrame(element);
+                    });
+                }
+
                 // S'assurer que le groupe calcule correctement son bounding box en incluant tous les enfants
                 // Le transformer devrait automatiquement utiliser getClientRect() qui inclut tous les enfants
                 // Mais on force un recalcul pour être sûr
@@ -961,12 +1014,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
                         });
                     }
                 });
-
-                // Si l'élément a déjà des données d'exercice, créer le tableau et le titre
-                if (element.exerciseData) {
-                    createExerciseTable(element);
-                    createExerciseTitle(element);
-                }
                 
                 // Mettre à jour les dimensions dans l'élément
                 element.width = width;
@@ -1268,6 +1315,317 @@ const addTextToCanvas = (element: LayoutElement) => {
     element.konvaNode = textGroup;
 };
 
+// Add table to canvas
+const addTableToCanvas = (element: LayoutElement) => {
+    if (!layer || !element.tableData) return;
+    
+    // Dimensions du tableau (réduites pour un rendu plus compact)
+    const cellPadding = 5;
+    const cellHeight = 28;
+    const colWidths = {
+        series: 55,
+        reps: 55,
+        recovery: 55,
+        load: 55
+    };
+    const tableWidth = Object.values(colWidths).reduce((a, b) => a + b, 0) + cellPadding * 5;
+    const headerHeight = 28;
+    const tableHeight = headerHeight + (element.tableData.rows.length * cellHeight) + cellPadding * 2;
+    
+    // Créer un groupe pour le tableau
+    const tableGroup = new Konva.Group({
+        x: element.x,
+        y: element.y,
+        draggable: true,
+        id: element.id,
+    });
+    
+    // Fond du tableau (blanc) avec ombre
+    const tableBg = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: tableWidth,
+        height: tableHeight,
+        fill: '#ffffff',
+        stroke: '#e5e7eb',
+        strokeWidth: 1,
+        cornerRadius: 4,
+        shadowColor: 'rgba(0, 0, 0, 0.15)',
+        shadowBlur: 8,
+        shadowOffset: { x: 0, y: 2 },
+        shadowOpacity: 1,
+    });
+    tableGroup.add(tableBg);
+    
+    // Fond de l'en-tête (bleu clair)
+    const headerBg = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: tableWidth,
+        height: headerHeight,
+        fill: '#E0F2FE', // Bleu clair (tailwind blue-100)
+        cornerRadius: 4, // Coins arrondis (les coins du bas seront cachés par le fond blanc)
+    });
+    tableGroup.add(headerBg);
+    
+    // En-têtes
+    const firstRow = element.tableData.rows[0];
+    const repsLabel = firstRow?.useDuration ? 'durée (s)' : 'répets';
+    const loadLabel = firstRow?.useBodyweight ? 'poids de corps' : 'charge';
+    
+    const headers = [
+        { text: 'série(s)', x: cellPadding, width: colWidths.series },
+        { text: repsLabel, x: cellPadding + colWidths.series, width: colWidths.reps },
+        { text: 'récup', x: cellPadding + colWidths.series + colWidths.reps, width: colWidths.recovery },
+        { text: loadLabel, x: cellPadding + colWidths.series + colWidths.reps + colWidths.recovery, width: colWidths.load }
+    ];
+    
+    // Ligne de séparation des en-têtes
+    const headerLine = new Konva.Line({
+        points: [0, headerHeight, tableWidth, headerHeight],
+        stroke: '#d1d5db',
+        strokeWidth: 1,
+    });
+    tableGroup.add(headerLine);
+    
+    headers.forEach(header => {
+        const headerText = new Konva.Text({
+            x: header.x,
+            y: cellPadding + 3,
+            text: header.text,
+            fontSize: 10,
+            fontFamily: 'Arial',
+            fill: '#374151',
+            width: header.width,
+            align: 'center',
+            fontStyle: 'bold',
+        });
+        tableGroup.add(headerText);
+    });
+    
+    // Lignes de données
+    element.tableData.rows.forEach((row, rowIndex) => {
+        const rowY = headerHeight + (rowIndex * cellHeight) + cellPadding;
+        
+        // Ligne de séparation
+        if (rowIndex > 0) {
+            const rowLine = new Konva.Line({
+                points: [0, rowY - cellPadding, tableWidth, rowY - cellPadding],
+                stroke: '#e5e7eb',
+                strokeWidth: 0.5,
+            });
+            tableGroup.add(rowLine);
+        }
+        
+        // Cellules avec les bonnes valeurs
+        const repsValue = row.useDuration ? (row.duration?.toString() || '') : (row.reps?.toString() || '');
+        const loadValue = row.useBodyweight ? 'Pdc' : (row.load?.toString() || '');
+        
+        const cells = [
+            { text: row.series?.toString() || '', x: cellPadding, width: colWidths.series },
+            { text: repsValue, x: cellPadding + colWidths.series, width: colWidths.reps },
+            { text: row.recovery?.toString() || '', x: cellPadding + colWidths.series + colWidths.reps, width: colWidths.recovery },
+            { text: loadValue, x: cellPadding + colWidths.series + colWidths.reps + colWidths.recovery, width: colWidths.load }
+        ];
+        
+        cells.forEach(cell => {
+            const cellText = new Konva.Text({
+                x: cell.x,
+                y: rowY + 5,
+                text: cell.text,
+                fontSize: 10,
+                fontFamily: 'Arial',
+                fill: '#111827',
+                width: cell.width,
+                align: 'center',
+            });
+            tableGroup.add(cellText);
+        });
+    });
+    
+    // Bouton de suppression en haut à droite
+    const deleteButtonSize = 24;
+    const deleteButtonX = tableWidth - deleteButtonSize - 5;
+    const deleteButtonY = 5;
+    const buttonCenterX = deleteButtonX + deleteButtonSize / 2;
+    const buttonCenterY = deleteButtonY + deleteButtonSize / 2;
+    
+    const deleteButtonBg = new Konva.Circle({
+        x: buttonCenterX,
+        y: buttonCenterY,
+        radius: deleteButtonSize / 2,
+        fill: '#EF4444',
+        stroke: '#ffffff',
+        strokeWidth: 2,
+    });
+    
+    const deleteButtonXIcon = new Konva.Text({
+        x: buttonCenterX,
+        y: buttonCenterY,
+        text: '×',
+        fontSize: 18,
+        fontFamily: 'Arial',
+        fill: '#ffffff',
+        fontStyle: 'bold',
+    });
+    deleteButtonXIcon.offsetX(deleteButtonXIcon.width() / 2);
+    deleteButtonXIcon.offsetY(deleteButtonXIcon.height() / 2);
+    
+    const deleteButtonGroup = new Konva.Group({
+        x: 0,
+        y: 0,
+    });
+    deleteButtonGroup.add(deleteButtonBg);
+    deleteButtonGroup.add(deleteButtonXIcon);
+    
+    deleteButtonGroup.on('click', (e) => {
+        e.cancelBubble = true;
+        if (!layer) return;
+        
+        saveToHistory();
+        
+        // Supprimer le tableau
+        if (element.konvaNode) {
+            element.konvaNode.destroy();
+        }
+        if (element.tableGroup) {
+            element.tableGroup.destroy();
+        }
+        
+        // Retirer de la liste des éléments
+        elements.value = elements.value.filter(el => el.id !== element.id);
+        
+        // Désélectionner si c'était l'élément sélectionné
+        if (selectedElementId.value === element.id) {
+            if (transformer) {
+                transformer.nodes([]);
+            }
+            selectedElementId.value = null;
+        }
+        
+        layer.draw();
+    });
+    
+    deleteButtonGroup.on('mouseenter', () => {
+        deleteButtonBg.fill('#DC2626');
+        layer?.draw();
+    });
+    
+    deleteButtonGroup.on('mouseleave', () => {
+        deleteButtonBg.fill('#EF4444');
+        layer?.draw();
+    });
+    
+    tableGroup.add(deleteButtonGroup);
+    element.deleteButtonNode = deleteButtonGroup;
+    
+    // Bouton "+ Consignes" en dessous du tableau
+    const instructionsButtonText = '+ Consignes';
+    const instructionsButtonPadding = 8;
+    const instructionsButtonFontSize = 12;
+    const tempText = new Konva.Text({
+        text: instructionsButtonText,
+        fontSize: instructionsButtonFontSize,
+        fontFamily: 'Arial',
+    });
+    const textWidth = tempText.width();
+    tempText.destroy();
+    const instructionsButtonWidth = textWidth + instructionsButtonPadding * 2;
+    const instructionsButtonHeight = 28;
+    const spacingBelowTable = 8; // Espacement entre le tableau et le bouton
+    const instructionsButtonX = (tableWidth - instructionsButtonWidth) / 2; // Centré sous le tableau
+    const instructionsButtonY = tableHeight + spacingBelowTable;
+    
+    // Rectangle de fond du bouton "+ Consignes"
+    const instructionsButtonBg = new Konva.Rect({
+        x: instructionsButtonX,
+        y: instructionsButtonY,
+        width: instructionsButtonWidth,
+        height: instructionsButtonHeight,
+        fill: '#3B82F6',
+        cornerRadius: 4,
+    });
+    
+    // Texte "+ Consignes" sur le bouton
+    const instructionsButtonTextNode = new Konva.Text({
+        x: instructionsButtonX + instructionsButtonWidth / 2,
+        y: instructionsButtonY + instructionsButtonHeight / 2,
+        text: instructionsButtonText,
+        fontSize: instructionsButtonFontSize,
+        fontFamily: 'Arial',
+        fill: '#ffffff',
+        fontStyle: 'bold',
+    });
+    instructionsButtonTextNode.offsetX(instructionsButtonTextNode.width() / 2);
+    instructionsButtonTextNode.offsetY(instructionsButtonFontSize / 2.5);
+    
+    const instructionsButtonGroup = new Konva.Group({
+        x: 0,
+        y: 0,
+    });
+    instructionsButtonGroup.add(instructionsButtonBg);
+    instructionsButtonGroup.add(instructionsButtonTextNode);
+    
+    instructionsButtonGroup.on('click', (e) => {
+        e.cancelBubble = true;
+        openTableModal(element);
+    });
+    
+    instructionsButtonGroup.on('mouseenter', () => {
+        instructionsButtonBg.fill('#2563EB');
+        layer?.draw();
+    });
+    
+    instructionsButtonGroup.on('mouseleave', () => {
+        instructionsButtonBg.fill('#3B82F6');
+        layer?.draw();
+    });
+    
+    tableGroup.add(instructionsButtonGroup);
+    element.buttonNode = instructionsButtonGroup;
+    
+    // Gestion du drag
+    tableGroup.on('dragend', () => {
+        updateElementPosition(element.id, tableGroup.x(), tableGroup.y());
+    });
+    
+    tableGroup.on('transformend', () => {
+        updateElementTransform(element.id, tableGroup);
+    });
+    
+    tableGroup.on('click', (e) => {
+        // Ne pas sélectionner si on clique sur les boutons
+        if (element.deleteButtonNode && (
+            e.target === element.deleteButtonNode || 
+            e.target.parent === element.deleteButtonNode || 
+            e.target.parent?.parent === element.deleteButtonNode ||
+            e.target.parent?.parent?.parent === element.deleteButtonNode
+        )) {
+            return;
+        }
+        // Vérifier si c'est le bouton "+ Consignes"
+        if (element.buttonNode && (
+            e.target === element.buttonNode || 
+            e.target.parent === element.buttonNode || 
+            e.target.parent?.parent === element.buttonNode ||
+            e.target.parent?.parent?.parent === element.buttonNode
+        )) {
+            return;
+        }
+        selectElement(element.id, tableGroup);
+    });
+    
+    // Sauvegarder les dimensions (incluant l'espace pour le bouton en dessous)
+    const buttonSpacing = 8;
+    const buttonHeight = 28;
+    element.width = tableWidth;
+    element.height = tableHeight + buttonSpacing + buttonHeight;
+    
+    layer.add(tableGroup);
+    element.konvaNode = tableGroup;
+    element.tableGroup = tableGroup;
+};
+
 // Save current state to history
 const saveToHistory = () => {
     // Remove any future history if we're not at the end
@@ -1364,10 +1722,6 @@ const updateElementPosition = (id: string, x: number, y: number) => {
             element.konvaNode.y(y - radiusY);
         }
         
-        // Mettre à jour la position du tableau si présent
-        if (element.type === 'image' && element.exerciseId) {
-            updateExerciseTablePosition(element);
-        }
     }
 };
 
@@ -1450,6 +1804,12 @@ const updateElementTransform = (id: string, node: any) => {
                 node.scaleY(1);
                 element.width = newWidth;
                 element.height = newHeight;
+                
+                // Mettre à jour le cadre de l'image s'il existe
+                if (element.imageFrameNode && element.exerciseData?.imageFrame) {
+                    element.imageFrameNode.width(newWidth);
+                    element.imageFrameNode.height(newHeight);
+                }
             } else {
                 // Fallback si pas d'image trouvée
                 const newWidth = node.width() * node.scaleX();
@@ -1460,9 +1820,13 @@ const updateElementTransform = (id: string, node: any) => {
                 node.scaleY(1);
                 element.width = newWidth;
                 element.height = newHeight;
+                
+                // Mettre à jour le cadre de l'image s'il existe
+                if (element.imageFrameNode && element.exerciseData?.imageFrame) {
+                    element.imageFrameNode.width(newWidth);
+                    element.imageFrameNode.height(newHeight);
+                }
             }
-            // Mettre à jour la position du tableau
-            updateExerciseTablePosition(element);
         } else if (element.type === 'text') {
             // Pour les textes, mettre à jour la taille de la police et recalculer le cadre
             const textNode = node.findOne('Text');
@@ -1559,6 +1923,11 @@ const selectElement = (id: string, node: any) => {
     
     // Sinon, sélectionner l'élément
     selectedElementId.value = id;
+    
+    // Mettre l'élément au premier plan (devant les autres)
+    if (node) {
+        node.moveToTop();
+    }
     
     // Pour les images dans un groupe, s'assurer que le transformer calcule le bounding box correctement
     const element = elements.value.find(el => el.id === id);
@@ -2226,6 +2595,38 @@ const confirmText = () => {
     showTextDialog.value = false;
 };
 
+// Add table to canvas
+const addTable = () => {
+    if (!layer) return;
+    
+    saveToHistory();
+    
+    // Créer un tableau par défaut avec une ligne
+    const defaultTableData: TableData = {
+        rows: [{
+            series: 1,
+            reps: 20,
+            recovery: 30,
+            load: 10,
+            useDuration: false,
+            useBodyweight: false
+        }]
+    };
+    
+    // Positionner le tableau au centre du canvas
+    const element: LayoutElement = {
+        id: `table-${Date.now()}`,
+        type: 'table',
+        x: canvasWidth.value / 2 - 120, // Centré approximativement
+        y: 200,
+        tableData: defaultTableData,
+    };
+    
+    elements.value.push(element);
+    addTableToCanvas(element);
+    layer.draw();
+};
+
 // Helper function to update text node properties
 const updateTextNode = (node: any, element: LayoutElement) => {
     // Vérifier si c'est un élément du footer (ne pas appliquer la logique d'alignement automatique)
@@ -2474,6 +2875,7 @@ const saveLayout = async () => {
             imageUrl: el.imageUrl,
             exerciseId: el.exerciseId,
             exerciseData: el.exerciseData,
+            tableData: el.tableData,
             text: el.text,
             fontSize: el.fontSize,
             fontFamily: el.fontFamily,
@@ -2546,6 +2948,13 @@ const exportToPDF = async () => {
             }
         });
         
+        // Masquer le transformer avant l'export
+        let transformerWasVisible = false;
+        if (transformer) {
+            transformerWasVisible = transformer.visible();
+            transformer.visible(false);
+        }
+        
         // S'assurer que le footer est bien en bas avant l'export
         // Utiliser la fonction de recalcul du footer
         recalculateFooterPosition();
@@ -2589,6 +2998,11 @@ const exportToPDF = async () => {
                 deleteButtonNode.visible(true);
             }
         });
+        
+        // Réafficher le transformer après l'export
+        if (transformer && transformerWasVisible) {
+            transformer.visible(true);
+        }
         
         if (layer) {
             layer.draw();
@@ -2715,6 +3129,209 @@ const addExerciseInstructionRow = () => {
     });
 };
 
+// Open table modal
+const openTableModal = (element: LayoutElement) => {
+    editingTableElement.value = element;
+    if (element.tableData) {
+        tableData.value = JSON.parse(JSON.stringify(element.tableData));
+    } else {
+        tableData.value = {
+            rows: [{ series: 1, reps: 20, recovery: 30, load: 10, useDuration: false, useBodyweight: false }]
+        };
+    }
+    showTableModal.value = true;
+};
+
+// Add row to table
+const addTableRow = () => {
+    tableData.value.rows.push({ 
+        series: 1, 
+        reps: 20, 
+        recovery: 30, 
+        load: 10, 
+        useDuration: false, 
+        useBodyweight: false 
+    });
+};
+
+// Remove row from table
+const removeTableRow = (index: number) => {
+    const rowIndex = Number(index);
+    if (tableData.value.rows.length > 0 && rowIndex >= 0 && rowIndex < tableData.value.rows.length) {
+        const newRows = tableData.value.rows.filter((_, i) => i !== rowIndex);
+        tableData.value.rows = newRows;
+        
+        // Si toutes les lignes sont supprimées, supprimer le tableau
+        if (newRows.length === 0 && editingTableElement.value && layer) {
+            saveToHistory();
+            
+            // Supprimer le tableau du canvas
+            if (editingTableElement.value.konvaNode) {
+                editingTableElement.value.konvaNode.destroy();
+            }
+            if (editingTableElement.value.tableGroup) {
+                editingTableElement.value.tableGroup.destroy();
+            }
+            
+            // Retirer de la liste des éléments
+            elements.value = elements.value.filter(el => el.id !== editingTableElement.value!.id);
+            
+            // Désélectionner si c'était l'élément sélectionné
+            if (selectedElementId.value === editingTableElement.value.id) {
+                if (transformer) {
+                    transformer.nodes([]);
+                }
+                selectedElementId.value = null;
+            }
+            
+            // Fermer la modal
+            showTableModal.value = false;
+            editingTableElement.value = null;
+            
+            layer.draw();
+        }
+    }
+};
+
+// Open exercise image modal
+const openExerciseImageModal = (element: LayoutElement) => {
+    editingExerciseImageElement.value = element;
+    if (element.exerciseData) {
+        exerciseImageData.value = {
+            title: element.exerciseData.title || '',
+            showTitle: element.exerciseData.showTitle !== undefined ? element.exerciseData.showTitle : true,
+            titlePosition: element.exerciseData.titlePosition || 'above',
+            fontSize: element.exerciseData.titleStyle?.fontSize || 14,
+            fontFamily: element.exerciseData.titleStyle?.fontFamily || 'Arial',
+            fill: element.exerciseData.titleStyle?.fill || '#000000',
+            backgroundColor: element.exerciseData.titleStyle?.backgroundColor,
+            stroke: element.exerciseData.titleStyle?.stroke,
+            strokeWidth: element.exerciseData.titleStyle?.strokeWidth || 0,
+            imageFrame: element.exerciseData.imageFrame || false,
+            imageFrameColor: element.exerciseData.imageFrameColor || '#000000',
+            imageFrameWidth: element.exerciseData.imageFrameWidth || 2
+        };
+    } else {
+        // Récupérer le titre de l'exercice
+        const exercise = props.exercises.find(ex => ex.id === element.exerciseId);
+        exerciseImageData.value = {
+            title: exercise?.title || '',
+            showTitle: true,
+            titlePosition: 'above',
+            fontSize: 14,
+            fontFamily: 'Arial',
+            fill: '#000000',
+            backgroundColor: undefined,
+            stroke: undefined,
+            strokeWidth: 0,
+            imageFrame: false,
+            imageFrameColor: '#000000',
+            imageFrameWidth: 2
+        };
+    }
+    showExerciseImageModal.value = true;
+};
+
+// Save exercise image modifications
+const saveExerciseImageData = () => {
+    if (!editingExerciseImageElement.value || !layer) return;
+    
+    saveToHistory();
+    
+    // Initialiser exerciseData si nécessaire
+    if (!editingExerciseImageElement.value.exerciseData) {
+        editingExerciseImageElement.value.exerciseData = {
+            title: '',
+            showTitle: true,
+            titlePosition: 'above',
+            rows: []
+        };
+    }
+    
+    // Mettre à jour les données
+    editingExerciseImageElement.value.exerciseData.title = exerciseImageData.value.title;
+    editingExerciseImageElement.value.exerciseData.showTitle = exerciseImageData.value.showTitle;
+    editingExerciseImageElement.value.exerciseData.titlePosition = exerciseImageData.value.titlePosition;
+    
+    // Mettre à jour le style du titre
+    if (!editingExerciseImageElement.value.exerciseData.titleStyle) {
+        editingExerciseImageElement.value.exerciseData.titleStyle = {};
+    }
+    editingExerciseImageElement.value.exerciseData.titleStyle.fontSize = exerciseImageData.value.fontSize;
+    editingExerciseImageElement.value.exerciseData.titleStyle.fontFamily = exerciseImageData.value.fontFamily;
+    editingExerciseImageElement.value.exerciseData.titleStyle.fill = exerciseImageData.value.fill;
+    editingExerciseImageElement.value.exerciseData.titleStyle.backgroundColor = exerciseImageData.value.backgroundColor || undefined;
+    editingExerciseImageElement.value.exerciseData.titleStyle.stroke = exerciseImageData.value.stroke || undefined;
+    editingExerciseImageElement.value.exerciseData.titleStyle.strokeWidth = exerciseImageData.value.strokeWidth;
+    
+    // Mettre à jour le cadre de l'image
+    editingExerciseImageElement.value.exerciseData.imageFrame = exerciseImageData.value.imageFrame;
+    editingExerciseImageElement.value.exerciseData.imageFrameColor = exerciseImageData.value.imageFrameColor;
+    editingExerciseImageElement.value.exerciseData.imageFrameWidth = exerciseImageData.value.imageFrameWidth;
+    
+    // Recréer le titre avec les nouvelles données
+    createExerciseTitle(editingExerciseImageElement.value);
+    
+    // Créer ou mettre à jour le cadre de l'image
+    createImageFrame(editingExerciseImageElement.value);
+    
+    showExerciseImageModal.value = false;
+    editingExerciseImageElement.value = null;
+};
+
+// Save table modifications
+const saveTableData = () => {
+    if (!editingTableElement.value || !layer) return;
+    
+    // Si toutes les lignes sont supprimées, supprimer le tableau
+    if (!tableData.value.rows || tableData.value.rows.length === 0) {
+        saveToHistory();
+        
+        // Supprimer le tableau du canvas
+        if (editingTableElement.value.konvaNode) {
+            editingTableElement.value.konvaNode.destroy();
+        }
+        if (editingTableElement.value.tableGroup) {
+            editingTableElement.value.tableGroup.destroy();
+        }
+        
+        // Retirer de la liste des éléments
+        elements.value = elements.value.filter(el => el.id !== editingTableElement.value!.id);
+        
+        // Désélectionner si c'était l'élément sélectionné
+        if (selectedElementId.value === editingTableElement.value.id) {
+            if (transformer) {
+                transformer.nodes([]);
+            }
+            selectedElementId.value = null;
+        }
+        
+        // Fermer la modal
+        showTableModal.value = false;
+        editingTableElement.value = null;
+        
+        layer.draw();
+        return;
+    }
+    
+    saveToHistory();
+    
+    // Mettre à jour les données du tableau
+    editingTableElement.value.tableData = JSON.parse(JSON.stringify(tableData.value));
+    
+    // Supprimer l'ancien tableau du canvas
+    if (editingTableElement.value.tableGroup) {
+        editingTableElement.value.tableGroup.destroy();
+        editingTableElement.value.tableGroup = null;
+    }
+    
+    // Recréer le tableau avec les nouvelles données
+    addTableToCanvas(editingTableElement.value);
+    
+    showTableModal.value = false;
+    editingTableElement.value = null;
+};
+
 // Remove row from exercise instructions
 const removeExerciseInstructionRow = (index: number) => {
     // S'assurer que l'index est bien un nombre
@@ -2752,6 +3369,9 @@ const deleteExerciseImage = (element: LayoutElement) => {
     }
     if (element.titleNode) {
         element.titleNode.destroy();
+    }
+    if (element.imageFrameNode) {
+        element.imageFrameNode.destroy();
     }
     
     elements.value = elements.value.filter(el => el.id !== element.id);
@@ -2827,30 +3447,197 @@ const createExerciseTitle = (element: LayoutElement) => {
     }
 
     if (!element.exerciseData.showTitle || !element.exerciseData.title) {
+        if (layer) {
+            layer.draw();
+        }
         return;
     }
 
     const imageNode = element.konvaNode;
     const imageWidth = element.width || 200;
     const imageHeight = element.height || 200;
-    const imageX = imageNode.x();
-    const imageY = imageNode.y();
-
+    
+    // Position relative au groupe (0, 0 est le coin supérieur gauche du groupe)
+    // Augmenter l'espacement pour éviter que le cadre touche l'image
+    const spacingAbove = 35; // Espacement au-dessus de l'image
+    const spacingBelow = 15; // Espacement en dessous de l'image
+    const titleY = element.exerciseData.titlePosition === 'above' ? -spacingAbove : imageHeight + spacingBelow;
+    
+    // Styles depuis exerciseData
+    const fontSize = element.exerciseData.titleStyle?.fontSize || 14;
+    const fontFamily = element.exerciseData.titleStyle?.fontFamily || 'Arial';
+    const fill = element.exerciseData.titleStyle?.fill || '#000000';
+    const backgroundColor = element.exerciseData.titleStyle?.backgroundColor;
+    const stroke = element.exerciseData.titleStyle?.stroke;
+    const strokeWidth = element.exerciseData.titleStyle?.strokeWidth || 0;
+    
+    // Créer un groupe pour le titre (pour gérer le fond et le contour)
+    const titleGroup = new Konva.Group({
+        x: 0,
+        y: titleY,
+    });
+    
+    // Créer le texte
     const titleText = new Konva.Text({
-        x: imageX,
-        y: element.exerciseData.titlePosition === 'above' ? imageY - 25 : imageY + imageHeight + 5,
+        x: 0,
+        y: 0,
         text: element.exerciseData.title,
-        fontSize: 14,
-        fontFamily: 'Arial',
-        fill: '#000000',
+        fontSize: fontSize,
+        fontFamily: fontFamily,
+        fill: fill,
         fontStyle: 'bold',
         width: imageWidth,
         align: 'left',
     });
+    
+    // Ajouter le texte au groupe d'abord pour pouvoir mesurer
+    titleGroup.add(titleText);
+    
+    // Ajouter un fond si nécessaire (après avoir ajouté le texte pour mesurer)
+    if (backgroundColor) {
+        // Utiliser nextTick pour s'assurer que le texte est rendu et mesurable
+        nextTick(() => {
+            const textWidth = titleText.width();
+            const textHeight = titleText.height();
+            const titleBg = new Konva.Rect({
+                x: -4,
+                y: -4,
+                width: textWidth + 8,
+                height: textHeight + 8,
+                fill: backgroundColor,
+                cornerRadius: 2,
+            });
+            // Insérer le fond avant le texte dans le groupe (au début)
+            titleGroup.add(titleBg);
+            titleBg.moveToBottom();
+            if (layer) {
+                layer.draw();
+            }
+        });
+    }
+    
+    // Ajouter un cadre autour du texte si nécessaire (avec 2px d'espace)
+    if (stroke && strokeWidth > 0) {
+        // Utiliser nextTick pour s'assurer que le texte est rendu et mesurable
+        nextTick(() => {
+            const textWidth = titleText.width();
+            const textHeight = titleText.height();
+            const padding = 2; // 2px d'espace autour du texte
+            const titleFrame = new Konva.Rect({
+                x: -padding,
+                y: -padding,
+                width: textWidth + (padding * 2),
+                height: textHeight + (padding * 2),
+                fill: undefined,
+                stroke: stroke,
+                strokeWidth: strokeWidth,
+                cornerRadius: 2,
+            });
+            // Ajouter le cadre après le texte mais avant le fond (si présent)
+            titleGroup.add(titleFrame);
+            // Le cadre doit être au-dessus du fond mais en dessous du texte
+            if (backgroundColor) {
+                titleFrame.moveUp();
+            }
+            if (layer) {
+                layer.draw();
+            }
+        });
+    }
+    
+    // Ajouter le titre directement au groupe de l'image (pour qu'il suive les transformations)
+    // imageNode est le imageGroup, donc on l'ajoute directement comme enfant
+    // Vérifier que imageNode est bien un groupe (toutes les images sont dans un groupe)
+    if (imageNode) {
+        // imageNode devrait toujours être un Konva.Group pour les images
+        // Utiliser add() qui fonctionne pour les groupes
+        try {
+            imageNode.add(titleGroup);
+        } catch (error) {
+            // Si l'ajout échoue, essayer d'ajouter au layer (fallback)
+            console.warn('Could not add title to image group, adding to layer instead', error);
+            if (layer) {
+                layer.add(titleGroup);
+            }
+        }
+    } else {
+        // Fallback si imageNode n'existe pas
+        if (layer) {
+            layer.add(titleGroup);
+        }
+    }
+    
+    element.titleNode = titleGroup;
+    
+    if (layer) {
+        layer.draw();
+    }
+};
 
-    layer.add(titleText);
-    element.titleNode = titleText;
-    layer.draw();
+// Create image frame
+const createImageFrame = (element: LayoutElement) => {
+    if (!layer || !element.konvaNode || !element.exerciseData) return;
+    
+    // Supprimer l'ancien cadre s'il existe
+    if (element.imageFrameNode) {
+        element.imageFrameNode.destroy();
+        element.imageFrameNode = null;
+    }
+    
+    // Si le cadre n'est pas activé, ne rien faire
+    if (!element.exerciseData.imageFrame) {
+        if (layer) {
+            layer.draw();
+        }
+        return;
+    }
+    
+    const imageNode = element.konvaNode;
+    const imageWidth = element.width || 200;
+    const imageHeight = element.height || 200;
+    
+    // Créer un rectangle pour le cadre autour de l'image
+    const frameColor = element.exerciseData.imageFrameColor || '#000000';
+    const frameWidth = element.exerciseData.imageFrameWidth || 2;
+    
+    const imageFrame = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: imageWidth,
+        height: imageHeight,
+        fill: undefined,
+        stroke: frameColor,
+        strokeWidth: frameWidth,
+        cornerRadius: 0,
+    });
+    
+    // Ajouter le cadre au groupe de l'image (pour qu'il suive les transformations)
+    if (imageNode) {
+        try {
+            imageNode.add(imageFrame);
+            // Le cadre doit être en dessous de l'image mais au-dessus des autres éléments
+            // On le place juste après l'image dans l'ordre de rendu
+            const imageShape = imageNode.findOne('Image');
+            if (imageShape) {
+                imageFrame.moveToBottom();
+            }
+        } catch (error) {
+            console.warn('Could not add image frame to image group', error);
+            if (layer) {
+                layer.add(imageFrame);
+            }
+        }
+    } else {
+        if (layer) {
+            layer.add(imageFrame);
+        }
+    }
+    
+    element.imageFrameNode = imageFrame;
+    
+    if (layer) {
+        layer.draw();
+    }
 };
 
 // Create exercise instructions
@@ -3166,6 +3953,10 @@ const setupDragAndDrop = () => {
                 <Button variant="outline" size="sm" @click="addText">
                     <Type class="h-4 w-4 mr-2" />
                     Texte
+                </Button>
+                <Button variant="outline" size="sm" @click="addTable">
+                    <Grid2x2 class="h-4 w-4 mr-2" />
+                    Consignes
                 </Button>
             </div>
             
@@ -3755,6 +4546,374 @@ const setupDragAndDrop = () => {
                 </div>
             </CardContent>
         </Card>
+        </div>
+
+        <!-- Table Modal -->
+        <div v-if="showTableModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card class="w-full max-w-5xl max-h-[90vh] flex flex-col">
+                <CardContent class="p-6 space-y-4 flex-1 overflow-hidden flex flex-col">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold">Éditer le tableau de consignes</h3>
+                        <Button variant="ghost" size="sm" @click="showTableModal = false">
+                            <X class="h-4 w-4" />
+                        </Button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto space-y-6">
+                        <!-- Tableau des séries -->
+                        <div class="space-y-3">
+                            <Label class="text-base font-semibold">Lignes du tableau</Label>
+                            <div class="space-y-3">
+                                <div
+                                    v-for="(row, index) in tableData.rows"
+                                    :key="`row-${index}-${row.series || 0}-${row.reps || 0}`"
+                                    class="grid grid-cols-12 gap-3 items-end p-4 border rounded-lg bg-neutral-50 dark:bg-neutral-900"
+                                >
+                                    <div class="space-y-1 col-span-2">
+                                        <Label class="text-xs">Série(s)</Label>
+                                        <Input
+                                            v-model.number="row.series"
+                                            type="number"
+                                            min="1"
+                                            class="w-full"
+                                            placeholder="1"
+                                        />
+                                    </div>
+                                    <div class="space-y-1 col-span-2">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <Label class="text-xs">{{ row.useDuration ? 'Durée (s)' : 'Répets' }}</Label>
+                                            <button
+                                                type="button"
+                                                @click="row.useDuration = !row.useDuration"
+                                                class="text-xs text-blue-600 hover:text-blue-700"
+                                            >
+                                                {{ row.useDuration ? 'Répets' : 'Durée' }}
+                                            </button>
+                                        </div>
+                                        <Input
+                                            v-if="!row.useDuration"
+                                            v-model.number="row.reps"
+                                            type="number"
+                                            min="1"
+                                            class="w-full"
+                                            placeholder="20"
+                                        />
+                                        <Input
+                                            v-else
+                                            v-model.number="row.duration"
+                                            type="number"
+                                            min="1"
+                                            class="w-full"
+                                            placeholder="30"
+                                        />
+                                    </div>
+                                    <div class="space-y-1 col-span-2">
+                                        <Label class="text-xs">Récup (s)</Label>
+                                        <Input
+                                            v-model.number="row.recovery"
+                                            type="number"
+                                            min="0"
+                                            class="w-full"
+                                            placeholder="30"
+                                        />
+                                    </div>
+                                    <div class="space-y-1 col-span-2">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <Label class="text-xs">{{ row.useBodyweight ? 'Poids de corps' : 'Charge (kg)' }}</Label>
+                                            <button
+                                                type="button"
+                                                @click="row.useBodyweight = !row.useBodyweight"
+                                                class="text-xs text-blue-600 hover:text-blue-700"
+                                            >
+                                                {{ row.useBodyweight ? 'Charge' : 'Pdc' }}
+                                            </button>
+                                        </div>
+                                        <Input
+                                            v-if="!row.useBodyweight"
+                                            v-model.number="row.load"
+                                            type="number"
+                                            min="0"
+                                            class="w-full"
+                                            placeholder="10"
+                                        />
+                                        <Input
+                                            v-else
+                                            value="Pdc"
+                                            disabled
+                                            class="w-full bg-neutral-200 dark:bg-neutral-800"
+                                        />
+                                    </div>
+                                    <div class="flex justify-end col-span-4">
+                                        <button
+                                            type="button"
+                                            @click.stop.prevent="removeTableRow(index)"
+                                            class="inline-flex items-center justify-center h-8 w-8 p-0 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        >
+                                            <X class="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-4 border-t">
+                        <div class="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                @click="addTableRow"
+                            >
+                                <Plus class="h-4 w-4 mr-2" />
+                                Ajouter une ligne
+                            </Button>
+                        </div>
+                        <div class="flex gap-2">
+                            <Button variant="outline" @click="showTableModal = false">
+                                Annuler
+                            </Button>
+                            <Button @click="saveTableData">
+                                Enregistrer
+                            </Button>
+                        </div>
+                </div>
+            </CardContent>
+        </Card>
+        </div>
+
+        <!-- Exercise Image Modal -->
+        <div v-if="showExerciseImageModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card class="w-full max-w-md">
+                <CardContent class="p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold">Éditer l'exercice</h3>
+                        <Button variant="ghost" size="sm" @click="showExerciseImageModal = false">
+                            <X class="h-4 w-4" />
+                        </Button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Nom de l'exercice -->
+                        <div class="space-y-2">
+                            <Label>Nom de l'exercice</Label>
+                            <Input
+                                v-model="exerciseImageData.title"
+                                placeholder="Entrez le nom de l'exercice..."
+                                class="w-full"
+                            />
+                        </div>
+
+                        <!-- Afficher le titre -->
+                        <div class="space-y-3 p-4 border rounded-lg">
+                            <div class="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    :checked="exerciseImageData.showTitle"
+                                    @change="(e: Event) => {
+                                        const target = e.target as HTMLInputElement;
+                                        exerciseImageData.showTitle = target.checked;
+                                    }"
+                                    class="rounded"
+                                    id="showExerciseTitle"
+                                />
+                                <Label for="showExerciseTitle" class="cursor-pointer">Afficher le nom de l'exercice</Label>
+                            </div>
+                            <div v-if="exerciseImageData.showTitle" class="space-y-4 ml-6">
+                                <div class="space-y-2">
+                                    <Label class="text-sm">Position du titre</Label>
+                                    <div class="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            :class="{ 'bg-primary text-primary-foreground': exerciseImageData.titlePosition === 'above' }"
+                                            @click="exerciseImageData.titlePosition = 'above'"
+                                        >
+                                            Au-dessus de l'image
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            :class="{ 'bg-primary text-primary-foreground': exerciseImageData.titlePosition === 'below' }"
+                                            @click="exerciseImageData.titlePosition = 'below'"
+                                        >
+                                            En dessous de l'image
+                                        </Button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Options de style -->
+                                <div class="space-y-3 pt-2 border-t">
+                                    <Label class="text-sm font-semibold">Style du texte</Label>
+                                    
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="space-y-2">
+                                            <Label class="text-xs">Taille (px)</Label>
+                                            <Input
+                                                v-model.number="exerciseImageData.fontSize"
+                                                type="number"
+                                                min="8"
+                                                max="200"
+                                                class="w-full"
+                                            />
+                                        </div>
+                                        <div class="space-y-2">
+                                            <Label class="text-xs">Police</Label>
+                                            <Select v-model="exerciseImageData.fontFamily">
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Arial">Arial</SelectItem>
+                                                    <SelectItem value="Helvetica">Helvetica</SelectItem>
+                                                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                                                    <SelectItem value="Courier New">Courier New</SelectItem>
+                                                    <SelectItem value="Verdana">Verdana</SelectItem>
+                                                    <SelectItem value="Georgia">Georgia</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="space-y-2">
+                                        <Label class="text-xs">Couleur du texte</Label>
+                                        <div class="flex gap-2">
+                                            <Input
+                                                v-model="exerciseImageData.fill"
+                                                type="color"
+                                                class="w-16 h-10"
+                                            />
+                                            <Input
+                                                v-model="exerciseImageData.fill"
+                                                placeholder="#000000"
+                                                class="flex-1"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="space-y-2">
+                                        <Label class="text-xs">Couleur de fond (surlignage)</Label>
+                                        <div class="flex gap-2">
+                                            <Input
+                                                v-model="exerciseImageData.backgroundColor"
+                                                type="color"
+                                                class="w-16 h-10"
+                                            />
+                                            <Input
+                                                v-model="exerciseImageData.backgroundColor"
+                                                placeholder="Optionnel"
+                                                class="flex-1"
+                                            />
+                                            <Button
+                                                v-if="exerciseImageData.backgroundColor"
+                                                variant="outline"
+                                                size="sm"
+                                                @click="exerciseImageData.backgroundColor = undefined"
+                                            >
+                                                <X class="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <Label class="text-xs">Encadré</Label>
+                                            <input
+                                                type="checkbox"
+                                                :checked="exerciseImageData.strokeWidth > 0"
+                                                @change="(e: Event) => {
+                                                    const target = e.target as HTMLInputElement;
+                                                    if (!target.checked) {
+                                                        exerciseImageData.stroke = undefined;
+                                                        exerciseImageData.strokeWidth = 0;
+                                                    } else {
+                                                        exerciseImageData.stroke = '#000000';
+                                                        exerciseImageData.strokeWidth = 1;
+                                                    }
+                                                }"
+                                                class="rounded"
+                                            />
+                                        </div>
+                                        <div v-if="exerciseImageData.strokeWidth > 0" class="flex gap-2">
+                                            <Input
+                                                v-model="exerciseImageData.stroke"
+                                                type="color"
+                                                class="w-16 h-10"
+                                            />
+                                            <Input
+                                                v-model="exerciseImageData.stroke"
+                                                placeholder="#000000"
+                                                class="flex-1"
+                                            />
+                                            <Input
+                                                v-model.number="exerciseImageData.strokeWidth"
+                                                type="number"
+                                                min="1"
+                                                max="10"
+                                                placeholder="1"
+                                                class="w-20"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Options de cadre pour l'image -->
+                        <div class="space-y-3 p-4 border rounded-lg">
+                            <div class="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    :checked="exerciseImageData.imageFrame"
+                                    @change="(e: Event) => {
+                                        const target = e.target as HTMLInputElement;
+                                        exerciseImageData.imageFrame = target.checked;
+                                    }"
+                                    class="rounded"
+                                    id="imageFrame"
+                                />
+                                <Label for="imageFrame" class="cursor-pointer">Encadrer l'image</Label>
+                            </div>
+                            <div v-if="exerciseImageData.imageFrame" class="space-y-3 ml-6">
+                                <div class="space-y-2">
+                                    <Label class="text-xs">Couleur du cadre</Label>
+                                    <div class="flex gap-2">
+                                        <Input
+                                            v-model="exerciseImageData.imageFrameColor"
+                                            type="color"
+                                            class="w-16 h-10"
+                                        />
+                                        <Input
+                                            v-model="exerciseImageData.imageFrameColor"
+                                            placeholder="#000000"
+                                            class="flex-1"
+                                        />
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <Label class="text-xs">Épaisseur du cadre (px)</Label>
+                                    <Input
+                                        v-model.number="exerciseImageData.imageFrameWidth"
+                                        type="number"
+                                        min="1"
+                                        max="20"
+                                        placeholder="2"
+                                        class="w-full"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-4 border-t">
+                        <Button variant="outline" @click="showExerciseImageModal = false">
+                            Annuler
+                        </Button>
+                        <Button @click="saveExerciseImageData">
+                            Enregistrer
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     </div>
     </AppLayout>

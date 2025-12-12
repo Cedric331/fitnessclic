@@ -566,6 +566,29 @@ class SessionsController extends Controller
     }
 
     /**
+     * Preview PDF for a saved session (always returns inline for preview).
+     */
+    public function showPdfPreview(Session $session)
+    {
+        if ($session->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'user']);
+
+        $pdf = Pdf::loadView('sessions.pdf', [
+            'session' => $session,
+        ])->setOption('enable-local-file-access', true);
+        
+        $fileName = $session->name ?: "seance-{$session->id}";
+        $fileName = Str::slug($fileName) . '.pdf';
+        
+        return response($pdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="' . $fileName . '"');
+    }
+
+    /**
      * Generate PDF from unsaved session data (from create page).
      */
     public function pdfPreview(PdfPreviewSessionRequest $request)

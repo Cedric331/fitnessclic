@@ -50,21 +50,16 @@ const exercise = computed(() => props.sessionExercise.exercise);
 
 // Initialiser les séries si elles n'existent pas
 const sets = computed(() => {
-    // TOUJOURS retourner les sets réels de l'exercice, même s'ils sont vides
-    // Ne pas créer de tableau par défaut ici, car cela empêche la sauvegarde
     if (props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0) {
         return props.sessionExercise.sets;
     }
-    // Si pas de séries, retourner un tableau vide
-    // Les sets seront initialisés lors de la première modification
+
     return [];
 });
 
 // S'assurer que les sets sont initialisés lors du montage si nécessaire
 onMounted(() => {
-    // Si les sets n'existent pas dans l'exercice, les initialiser avec un set par défaut
     if (!props.sessionExercise.sets || !Array.isArray(props.sessionExercise.sets) || props.sessionExercise.sets.length === 0) {
-        // Initialiser les sets dans l'exercice avec un set par défaut
         const defaultSet = [{
             set_number: 1,
             repetitions: props.sessionExercise.repetitions ?? null,
@@ -82,16 +77,11 @@ const updateField = (field: keyof SessionExercise, value: any) => {
 };
 
 const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
-    // TOUJOURS utiliser les sets réels de l'exercice, même s'ils sont vides
-    // Si les sets n'existent pas dans props, on doit les créer et les initialiser
     let currentSets: ExerciseSet[];
     
-    // Vérifier si les sets existent réellement dans props.sessionExercise.sets
-    // IMPORTANT: Vérifier aussi si les sets sont un tableau vide (length === 0)
     const hasSets = props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0;
     
     if (hasSets) {
-        // Les sets existent, les copier en profondeur
         currentSets = props.sessionExercise.sets.map(set => ({ 
             set_number: set.set_number ?? 1,
             repetitions: set.repetitions ?? null,
@@ -101,7 +91,6 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
             order: set.order ?? 0
         }));
     } else {
-        // Les sets n'existent pas ou sont vides, créer un set par défaut avec les valeurs existantes de l'exercice
         currentSets = [{
             set_number: 1,
             repetitions: props.sessionExercise.repetitions ?? null,
@@ -112,9 +101,7 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
         }];
     }
     
-    // S'assurer que le set à l'index existe
     if (!currentSets[setIndex]) {
-        // Créer le set s'il n'existe pas
         while (currentSets.length <= setIndex) {
             currentSets.push({
                 set_number: currentSets.length + 1,
@@ -129,19 +116,14 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
     
     currentSets[setIndex] = { ...currentSets[setIndex], [field]: value };
     
-    
-    // TOUJOURS émettre les sets, même si c'était un set par défaut
-    // C'est crucial pour que les sets soient sauvegardés dans sessionExercises.value
     emit('update', { sets: currentSets });
 };
 
 const addSet = () => {
-    // Utiliser les sets réels de l'exercice ou créer un tableau par défaut
     let currentSets: ExerciseSet[];
     if (props.sessionExercise.sets && props.sessionExercise.sets.length > 0) {
         currentSets = [...props.sessionExercise.sets];
     } else {
-        // Créer un set par défaut avec les valeurs existantes de l'exercice
         currentSets = [{
             set_number: 1,
             repetitions: props.sessionExercise.repetitions ?? null,
@@ -153,7 +135,7 @@ const addSet = () => {
     }
     
     const newSet: ExerciseSet = {
-        set_number: currentSets.length + 1,
+        set_number: 1,
         repetitions: null,
         weight: null,
         rest_time: null,
@@ -165,15 +147,13 @@ const addSet = () => {
 };
 
 const removeSet = (setIndex: number) => {
-    // Utiliser les sets réels de l'exercice
     if (!props.sessionExercise.sets || props.sessionExercise.sets.length === 0) {
-        return; // Pas de sets à supprimer
+        return;
     }
     
     const currentSets = [...props.sessionExercise.sets];
-    if (currentSets.length <= 1) return; // Garder au moins une série
+    if (currentSets.length <= 1) return;
     const updatedSets = currentSets.filter((_, index) => index !== setIndex);
-    // Renuméroter les séries
     updatedSets.forEach((set, index) => {
         set.set_number = index + 1;
         set.order = index;
@@ -189,24 +169,18 @@ const confirmRemove = () => {
     emit('remove');
     showRemoveDialog.value = false;
 };
-
-// Format pour le numéro de série (1er, 2e, 3e, etc.)
-const getSetLabel = (setNumber: number) => {
-    if (setNumber === 1) return '1er';
-    return `${setNumber}e`;
-};
 </script>
 
 <template>
     <div class="relative group">
-        <Card class="transform transition-all duration-200 hover:shadow-lg hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50">
+        <Card class="transform transition-all duration-200 hover:shadow-lg hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50 py-3">
             <!-- Numéro d'exercice en haut à gauche -->
-            <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold shadow-md">
+            <div class="absolute -top-2 -left-2 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-white text-black text-sm font-bold shadow-md border border-neutral-400">
                 {{ (displayIndex !== undefined ? displayIndex : index) + 1 }}
             </div>
             <CardContent class="p-1.5">
                 <!-- Contenu principal : Image, nom, commentaires avec icônes de drag and drop alignées -->
-                <div class="flex items-end gap-2 mb-2">
+                <div class="flex items-end gap-2 mb-0">
                     <!-- Poignée de drag et boutons de déplacement -->
                     <div 
                         class="flex flex-col items-center gap-0.5 flex-shrink-0 pt-0.5"

@@ -1537,9 +1537,9 @@ const handleLayoutSaved = async (sessionId: number) => {
                     <div class="flex-1 flex flex-col xl:flex-row overflow-hidden gap-4">
                         <!-- Panneau gauche -->
                         <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
-                            <div class="space-y-1">
+                            <div class="space-y-6">
                         <Card class="shadow-md">
-                            <CardContent class="space-y-2 pt-4">
+                            <CardContent class="space-y-4">
                                 <!-- Nom de la séance -->
                                 <div class="space-y-2">
                                     <Label for="session-name">Nom de la séance <span class="text-red-500">*</span></Label>

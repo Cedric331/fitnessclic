@@ -54,7 +54,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/sessions/{session}', [SessionsController::class, 'update'])->name('sessions.update');
     Route::delete('/sessions/{session}', [SessionsController::class, 'destroy'])->name('sessions.destroy');
     Route::get('/sessions/{session}/pdf', [SessionsController::class, 'pdf'])->name('sessions.pdf');
-    Route::post('/sessions/pdf-preview', [SessionsController::class, 'pdfPreview'])->name('sessions.pdf-preview');
+    Route::get('/sessions/{session}/pdf-preview', [SessionsController::class, 'showPdfPreview'])->name('sessions.pdf-preview');
+    Route::post('/sessions/pdf-preview', [SessionsController::class, 'pdfPreview'])->name('sessions.pdf-preview-post');
     Route::post('/sessions/{session}/send-email', [SessionsController::class, 'sendEmail'])->name('sessions.send-email');
     
     // Session layouts routes
