@@ -63,10 +63,29 @@ onUnmounted(() => {
     }
 });
 
+// Store references to footer elements
+const footerTextNode = ref<Konva.Text | null>(null);
+const footerLogoNode = ref<Konva.Image | null>(null);
+
+// Adjust footer logo position after text is loaded
+const adjustFooterLogoPosition = () => {
+    if (!layer || !footerTextNode.value || !footerLogoNode.value) return;
+    
+    const textWidth = footerTextNode.value.width();
+    const canvasWidth = props.layout.canvas_width;
+    const textX = canvasWidth / 2; // Le texte est centré
+    const textRight = textX + textWidth / 2;
+    const newLogoX = textRight + 15; // 15px d'espacement après le texte
+    
+    footerLogoNode.value.x(newLogoX);
+    layer.draw();
+};
+
 // Load elements to canvas
 const loadElementsToCanvas = async () => {
     if (!layer) return;
 
+    // Charger tous les éléments
     for (const element of props.layout.layout_data) {
         try {
             if (element.type === 'image' && element.imageUrl) {
@@ -79,6 +98,11 @@ const loadElementsToCanvas = async () => {
         } catch (error) {
             console.error('Error loading element:', error, element);
         }
+    }
+    
+    // Ajuster la position du logo du footer après que tous les éléments soient chargés
+    if (footerTextNode.value && footerLogoNode.value) {
+        adjustFooterLogoPosition();
     }
     
     if (layer) {
@@ -106,6 +130,13 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 });
 
                 layer.add(konvaImage);
+                
+                // Si c'est le logo du footer, stocker la référence
+                const isFooterLogo = element.id && element.id.includes('footer-logo');
+                if (isFooterLogo) {
+                    footerLogoNode.value = konvaImage;
+                }
+                
                 layer.draw();
                 resolve();
             } catch (error) {
@@ -140,6 +171,10 @@ const addImageToCanvas = async (element: LayoutElement) => {
 const addTextToCanvas = (element: LayoutElement) => {
     if (!layer) return;
 
+    // Vérifier si c'est un élément du footer
+    const isFooterElement = element.id && element.id.includes('footer');
+    const isFooterText = isFooterElement && element.id.includes('footer-text');
+    
     const konvaText = new Konva.Text({
         x: element.x,
         y: element.y,
@@ -150,8 +185,21 @@ const addTextToCanvas = (element: LayoutElement) => {
         draggable: false, // Lecture seule
     });
 
-    layer.add(konvaText);
-    layer.draw();
+    // Pour le footer, appliquer les offsets de centrage comme dans l'éditeur
+    if (isFooterText) {
+        // Attendre que le texte soit rendu pour obtenir ses dimensions
+        layer.add(konvaText);
+        layer.draw();
+        // Appliquer les offsets pour centrer le texte
+        konvaText.offsetX(konvaText.width() / 2);
+        konvaText.offsetY(konvaText.height() / 2);
+        // Stocker la référence pour ajuster la position du logo
+        footerTextNode.value = konvaText;
+        layer.draw();
+    } else {
+        layer.add(konvaText);
+        layer.draw();
+    }
 };
 
 // Add shape to canvas

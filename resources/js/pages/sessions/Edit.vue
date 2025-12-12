@@ -247,8 +247,16 @@ const showOnlyMine = ref(false);
 const isSaving = ref(false);
 const isLibraryOpen = ref(false);
 // Mode d'édition: 'standard' ou 'libre'
-const editMode = ref<'standard' | 'libre'>('standard');
+// Initialiser le mode en fonction de l'URL et des props
+const getInitialEditMode = (): 'standard' | 'libre' => {
+    if (typeof window === 'undefined') return 'standard';
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldOpenEditor = urlParams.get('editor') === 'true';
+    return (shouldOpenEditor || props.session.has_custom_layout) ? 'libre' : 'standard';
+};
+const editMode = ref<'standard' | 'libre'>(getInitialEditMode());
 const sessionLayout = ref<any>(null);
+const isLayoutLoading = ref(false);
 
 const sessionExercises = ref<SessionExercise[]>([]);
 
@@ -374,18 +382,14 @@ const loadSessionExercises = () => {
 onMounted(async () => {
     loadSessionExercises();
     
-    // Déterminer le mode initial
+    // Vérifier à nouveau le mode au cas où l'URL aurait changé
     const urlParams = new URLSearchParams(window.location.search);
     const shouldOpenEditor = urlParams.get('editor') === 'true';
-    
     if (shouldOpenEditor || props.session.has_custom_layout) {
-        // Mode Libre : charger la mise en page et ouvrir l'éditeur
         editMode.value = 'libre';
+        // Charger la mise en page avant d'afficher l'éditeur
         await loadLayout();
         await nextTick();
-    } else {
-        // Mode Standard par défaut
-        editMode.value = 'standard';
     }
 });
 
@@ -1407,6 +1411,7 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
 
 // Load layout
 const loadLayout = async () => {
+    isLayoutLoading.value = true;
     try {
         const response = await fetch(`/sessions/${props.session.id}/layout`, {
             headers: {
@@ -1433,6 +1438,8 @@ const loadLayout = async () => {
     } catch (error) {
         console.error('Error loading layout:', error);
         sessionLayout.value = null;
+    } finally {
+        isLayoutLoading.value = false;
     }
 };
 
@@ -1844,7 +1851,13 @@ const handleLayoutSaved = async (sessionId: number) => {
 
         <!-- Mode Libre -->
         <div v-if="editMode === 'libre'" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900">
+            <div v-if="isLayoutLoading" class="flex items-center justify-center h-full">
+                <div class="text-center">
+                    <p class="text-lg text-neutral-600 dark:text-neutral-400">Chargement de la mise en page...</p>
+                </div>
+            </div>
             <SessionLayoutEditor
+                v-else
                 :session-id="session.id"
                 :exercises="exercises"
                 :initial-layout="sessionLayout"

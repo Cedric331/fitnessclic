@@ -29,8 +29,9 @@ const formatDate = (dateString?: string | null) => {
 };
 
 const handleEdit = () => {
-    // Si la séance a un layout personnalisé, ouvrir directement l'éditeur
-    if (props.session.has_custom_layout) {
+    // Si la séance a un layout personnalisé OU si c'est une séance libre (sans exercices), ouvrir directement l'éditeur
+    const isFreeSession = (props.session.exercises_count || 0) === 0;
+    if (props.session.has_custom_layout || isFreeSession) {
         router.visit(`/sessions/${props.session.id}/edit?editor=true`);
     } else {
         router.visit(`/sessions/${props.session.id}/edit`);
@@ -85,10 +86,10 @@ const remainingExercises = computed(() => {
                             v-if="session.has_custom_layout"
                             variant="default"
                             class="bg-blue-600 text-white text-xs px-2 py-0.5 flex items-center gap-1"
-                            title="Mise en page personnalisée"
+                            title="Séance libre"
                         >
                             <Layout class="size-3" />
-                            Personnalisée
+                            Libre
                         </Badge>
                         <Badge
                             variant="secondary"
