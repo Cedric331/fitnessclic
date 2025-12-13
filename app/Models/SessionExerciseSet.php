@@ -22,6 +22,8 @@ class SessionExerciseSet extends Model
         'weight',
         'rest_time',
         'duration',
+        'use_duration',
+        'use_bodyweight',
         'order',
     ];
 
@@ -34,6 +36,8 @@ class SessionExerciseSet extends Model
     {
         return [
             'weight' => 'decimal:2',
+            'use_duration' => 'boolean',
+            'use_bodyweight' => 'boolean',
         ];
     }
 

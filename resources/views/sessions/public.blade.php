@@ -1136,23 +1136,30 @@
                       <tr>
                         <th style="width: 70px;">série(s)</th>
                         <th>{{ $useDuration ? 'durée' : 'repets' }}</th>
-                        <th>Charge</th>
+                        <th>{{ $useBodyweight ? 'Poids de corps' : 'Charge' }}</th>
                         <th>repos</th>
                       </tr>
                     @if($sets->count() > 0)
                       @foreach($sets as $set)
                         @php
+                          // Utiliser use_duration et use_bodyweight du set, sinon ceux de l'exercice
+                          $setUseDurationRaw = $set->use_duration ?? $sessionExercise->use_duration ?? false;
+                          $setUseBodyweightRaw = $set->use_bodyweight ?? $sessionExercise->use_bodyweight ?? false;
+                          $setUseDuration = $setUseDurationRaw === true || $setUseDurationRaw === 1 || $setUseDurationRaw === '1' || $setUseDurationRaw === 'true';
+                          $setUseBodyweight = $setUseBodyweightRaw === true || $setUseBodyweightRaw === 1 || $setUseBodyweightRaw === '1' || $setUseBodyweightRaw === 'true';
+                          
                           $durationOrReps = '-';
-                          if ($useDuration) {
+                          if ($setUseDuration) {
                             $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
                             $durationOrReps = formatDuration($rawDuration);
+                            $durationOrReps = 'Durée : ' . $durationOrReps;
                           } else {
                             $durationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
                           }
 
                           $charge = '-';
-                          if ($useBodyweight) {
-                            $charge = 'poids de corps';
+                          if ($setUseBodyweight) {
+                            $charge = 'Poids de corps';
                           } else {
                             $charge = !empty($set->weight) ? number_format($set->weight, 2, '.', '') . ' kg' : ($sessionExercise->weight ? number_format($sessionExercise->weight, 2, '.', '') . ' kg' : '-');
                           }
@@ -1180,7 +1187,7 @@
 
                         $charge = '-';
                         if ($useBodyweight) {
-                          $charge = 'poids de corps';
+                          $charge = 'Poids de corps';
                         } else {
                           $charge = !empty($sessionExercise->weight) ? number_format($sessionExercise->weight, 2, '.', '') . ' kg' : '-';
                         }
@@ -1204,17 +1211,24 @@
                     @if($sets->count() > 0)
                       @foreach($sets as $set)
                         @php
+                          // Utiliser use_duration et use_bodyweight du set, sinon ceux de l'exercice
+                          $setUseDurationRaw = $set->use_duration ?? $sessionExercise->use_duration ?? false;
+                          $setUseBodyweightRaw = $set->use_bodyweight ?? $sessionExercise->use_bodyweight ?? false;
+                          $setUseDuration = $setUseDurationRaw === true || $setUseDurationRaw === 1 || $setUseDurationRaw === '1' || $setUseDurationRaw === 'true';
+                          $setUseBodyweight = $setUseBodyweightRaw === true || $setUseBodyweightRaw === 1 || $setUseBodyweightRaw === '1' || $setUseBodyweightRaw === 'true';
+                          
                           $durationOrReps = '-';
-                          if ($useDuration) {
+                          if ($setUseDuration) {
                             $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
                             $durationOrReps = formatDuration($rawDuration);
+                            $durationOrReps = 'Durée : ' . $durationOrReps;
                           } else {
                             $durationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
                           }
 
                           $charge = '-';
-                          if ($useBodyweight) {
-                            $charge = 'poids de corps';
+                          if ($setUseBodyweight) {
+                            $charge = 'Poids de corps';
                           } else {
                             $charge = !empty($set->weight) ? number_format($set->weight, 2, '.', '') . ' kg' : ($sessionExercise->weight ? number_format($sessionExercise->weight, 2, '.', '') . ' kg' : '-');
                           }
@@ -1230,11 +1244,11 @@
                               <span class="set-data-value">{{ $set->set_number ?? $loop->iteration }}</span>
                             </div>
                             <div class="set-data-item">
-                              <span class="set-data-label">{{ $useDuration ? 'Durée' : 'Répétitions' }}</span>
+                              <span class="set-data-label">{{ $setUseDuration ? 'Durée' : 'Répétitions' }}</span>
                               <span class="set-data-value">{{ $durationOrReps }}</span>
                             </div>
                             <div class="set-data-item">
-                              <span class="set-data-label">Charge</span>
+                              <span class="set-data-label">{{ $setUseBodyweight ? 'Poids de corps' : 'Charge' }}</span>
                               <span class="set-data-value">{{ $charge }}</span>
                             </div>
                             <div class="set-data-item">
@@ -1256,7 +1270,7 @@
 
                         $charge = '-';
                         if ($useBodyweight) {
-                          $charge = 'poids de corps';
+                          $charge = 'Poids de corps';
                         } else {
                           $charge = !empty($sessionExercise->weight) ? number_format($sessionExercise->weight, 2, '.', '') . ' kg' : '-';
                         }
@@ -1276,7 +1290,7 @@
                             <span class="set-data-value">{{ $durationOrReps }}</span>
                           </div>
                           <div class="set-data-item">
-                            <span class="set-data-label">Charge</span>
+                            <span class="set-data-label">{{ $useBodyweight ? 'Poids de corps' : 'Charge' }}</span>
                             <span class="set-data-value">{{ $charge }}</span>
                           </div>
                             <div class="set-data-item">
@@ -1340,23 +1354,30 @@
                               <tr>
                                 <th style="width: 70px;">série(s)</th>
                                 <th>{{ $useDuration ? 'durée' : 'repets' }}</th>
-                                <th>{{ $useBodyweight ? 'poids de corps' : 'charge' }}</th>
+                                <th>{{ $useBodyweight ? 'Poids de corps' : 'Charge' }}</th>
                                 <th>repos</th>
                               </tr>
                             @if($sets->count() > 0)
                               @foreach($sets as $set)
                                 @php
+                                  // Utiliser use_duration et use_bodyweight du set, sinon ceux de l'exercice
+                                  $setUseDurationRaw = $set->use_duration ?? $sessionExercise->use_duration ?? false;
+                                  $setUseBodyweightRaw = $set->use_bodyweight ?? $sessionExercise->use_bodyweight ?? false;
+                                  $setUseDuration = $setUseDurationRaw === true || $setUseDurationRaw === 1 || $setUseDurationRaw === '1' || $setUseDurationRaw === 'true';
+                                  $setUseBodyweight = $setUseBodyweightRaw === true || $setUseBodyweightRaw === 1 || $setUseBodyweightRaw === '1' || $setUseBodyweightRaw === 'true';
+                                  
                                   $durationOrReps = '-';
-                                  if ($useDuration) {
+                                  if ($setUseDuration) {
                                     $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
                                     $durationOrReps = formatDuration($rawDuration);
+                                    $durationOrReps = 'Durée : ' . $durationOrReps;
                                   } else {
                                     $durationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
                                   }
 
                                   $charge = '-';
-                                  if ($useBodyweight) {
-                                    $charge = 'poids de corps';
+                                  if ($setUseBodyweight) {
+                                    $charge = 'Poids de corps';
                                   } else {
                                     $charge = !empty($set->weight) ? number_format($set->weight, 2, '.', '') . ' kg' : ($sessionExercise->weight ? number_format($sessionExercise->weight, 2, '.', '') . ' kg' : '-');
                                   }
@@ -1378,13 +1399,14 @@
                                 if ($useDuration) {
                                   $rawDuration = $sessionExercise->duration ?? '-';
                                   $durationOrReps = formatDuration($rawDuration);
+                                  $durationOrReps = 'Durée : ' . $durationOrReps;
                                 } else {
                                   $durationOrReps = $sessionExercise->repetitions ?? '-';
                                 }
 
                                 $charge = '-';
                                 if ($useBodyweight) {
-                                  $charge = 'poids de corps';
+                                  $charge = 'Poids de corps';
                                 } else {
                                   $charge = !empty($sessionExercise->weight) ? number_format($sessionExercise->weight, 2, '.', '') . ' kg' : '-';
                                 }
@@ -1408,17 +1430,24 @@
                             @if($sets->count() > 0)
                               @foreach($sets as $set)
                                 @php
+                                  // Utiliser use_duration et use_bodyweight du set, sinon ceux de l'exercice
+                                  $setUseDurationRaw = $set->use_duration ?? $sessionExercise->use_duration ?? false;
+                                  $setUseBodyweightRaw = $set->use_bodyweight ?? $sessionExercise->use_bodyweight ?? false;
+                                  $setUseDuration = $setUseDurationRaw === true || $setUseDurationRaw === 1 || $setUseDurationRaw === '1' || $setUseDurationRaw === 'true';
+                                  $setUseBodyweight = $setUseBodyweightRaw === true || $setUseBodyweightRaw === 1 || $setUseBodyweightRaw === '1' || $setUseBodyweightRaw === 'true';
+                                  
                                   $durationOrReps = '-';
-                                  if ($useDuration) {
+                                  if ($setUseDuration) {
                                     $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
                                     $durationOrReps = formatDuration($rawDuration);
+                                    $durationOrReps = 'Durée : ' . $durationOrReps;
                                   } else {
                                     $durationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
                                   }
 
                                   $charge = '-';
-                                  if ($useBodyweight) {
-                                    $charge = 'poids de corps';
+                                  if ($setUseBodyweight) {
+                                    $charge = 'Poids de corps';
                                   } else {
                                     $charge = !empty($set->weight) ? number_format($set->weight, 2, '.', '') . ' kg' : ($sessionExercise->weight ? number_format($sessionExercise->weight, 2, '.', '') . ' kg' : '-');
                                   }
@@ -1434,11 +1463,11 @@
                                       <span class="set-data-value">{{ $set->set_number ?? $loop->iteration }}</span>
                                     </div>
                                     <div class="set-data-item">
-                                      <span class="set-data-label">{{ $useDuration ? 'Durée' : 'Répétitions' }}</span>
+                                      <span class="set-data-label">{{ $setUseDuration ? 'Durée' : 'Répétitions' }}</span>
                                       <span class="set-data-value">{{ $durationOrReps }}</span>
                                     </div>
                                     <div class="set-data-item">
-                                      <span class="set-data-label">Charge</span>
+                                      <span class="set-data-label">{{ $setUseBodyweight ? 'Poids de corps' : 'Charge' }}</span>
                                       <span class="set-data-value">{{ $charge }}</span>
                                     </div>
                                     <div class="set-data-item">
@@ -1454,13 +1483,14 @@
                                 if ($useDuration) {
                                   $rawDuration = $sessionExercise->duration ?? '-';
                                   $durationOrReps = formatDuration($rawDuration);
+                                  $durationOrReps = 'Durée : ' . $durationOrReps;
                                 } else {
                                   $durationOrReps = $sessionExercise->repetitions ?? '-';
                                 }
 
                                 $charge = '-';
                                 if ($useBodyweight) {
-                                  $charge = 'poids de corps';
+                                  $charge = 'Poids de corps';
                                 } else {
                                   $charge = !empty($sessionExercise->weight) ? number_format($sessionExercise->weight, 2, '.', '') . ' kg' : '-';
                                 }
@@ -1480,7 +1510,7 @@
                                     <span class="set-data-value">{{ $durationOrReps }}</span>
                                   </div>
                                   <div class="set-data-item">
-                                    <span class="set-data-label">Charge</span>
+                                    <span class="set-data-label">{{ $useBodyweight ? 'Poids de corps' : 'Charge' }}</span>
                                     <span class="set-data-value">{{ $charge }}</span>
                                   </div>
                                     <div class="set-data-item">

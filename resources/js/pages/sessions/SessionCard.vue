@@ -108,7 +108,7 @@ const remainingExercises = computed(() => {
                         variant="outline"
                         class="text-xs"
                     >
-                        {{ customer.full_name }}
+                        {{ customer.last_name }} {{ customer.first_name }}{{ customer.email ? ` (${customer.email})` : '' }}
                     </Badge>
                 </div>
 

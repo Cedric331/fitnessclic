@@ -79,7 +79,18 @@ class SessionsController extends Controller
             ->where('is_active', true)
             ->orderBy('first_name')
             ->orderBy('last_name')
-            ->get();
+            ->get()
+            ->map(function ($customer) {
+                return [
+                    'id' => $customer->id,
+                    'first_name' => $customer->first_name,
+                    'last_name' => $customer->last_name,
+                    'email' => $customer->email,
+                    'phone' => $customer->phone,
+                    'full_name' => $customer->full_name,
+                    'is_active' => (bool) $customer->is_active,
+                ];
+            });
 
         return Inertia::render('sessions/Index', [
             'sessions' => $sessions,
@@ -202,6 +213,8 @@ class SessionsController extends Controller
                         'weight' => $setData['weight'] ?? null,
                         'rest_time' => $setData['rest_time'] ?? null,
                         'duration' => $setData['duration'] ?? null,
+                        'use_duration' => $setData['use_duration'] ?? false,
+                        'use_bodyweight' => $setData['use_bodyweight'] ?? false,
                         'order' => $setData['order'],
                     ]);
                 }
@@ -318,6 +331,8 @@ class SessionsController extends Controller
                         'weight' => $set->weight,
                         'rest_time' => $set->rest_time,
                         'duration' => $set->duration,
+                        'use_duration' => $set->use_duration ?? false,
+                        'use_bodyweight' => $set->use_bodyweight ?? false,
                         'order' => $set->order,
                     ]),
                 ];
@@ -435,6 +450,8 @@ class SessionsController extends Controller
                         'weight' => $set->weight,
                         'rest_time' => $set->rest_time,
                         'duration' => $set->duration,
+                        'use_duration' => $set->use_duration ?? false,
+                        'use_bodyweight' => $set->use_bodyweight ?? false,
                         'order' => $set->order,
                     ]),
                 ];
@@ -504,6 +521,8 @@ class SessionsController extends Controller
                         'weight' => $setData['weight'] ?? null,
                         'rest_time' => $setData['rest_time'] ?? null,
                         'duration' => $setData['duration'] ?? null,
+                        'use_duration' => $setData['use_duration'] ?? false,
+                        'use_bodyweight' => $setData['use_bodyweight'] ?? false,
                         'order' => $setData['order'],
                     ]);
                 }
@@ -626,13 +645,26 @@ class SessionsController extends Controller
                     'use_duration' => $exerciseData['use_duration'] ?? false,
                     'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
                     'sets' => isset($exerciseData['sets']) && is_array($exerciseData['sets']) 
-                        ? collect($exerciseData['sets'])->map(fn($set) => (object) $set)->sortBy('order')
+                        ? collect($exerciseData['sets'])->map(function($set) use ($exerciseData) {
+                            return (object) [
+                                'set_number' => $set['set_number'] ?? 1,
+                                'repetitions' => $set['repetitions'] ?? null,
+                                'weight' => $set['weight'] ?? null,
+                                'rest_time' => $set['rest_time'] ?? null,
+                                'duration' => $set['duration'] ?? null,
+                                'use_duration' => $set['use_duration'] ?? ($exerciseData['use_duration'] ?? false),
+                                'use_bodyweight' => $set['use_bodyweight'] ?? ($exerciseData['use_bodyweight'] ?? false),
+                                'order' => $set['order'] ?? 0,
+                            ];
+                        })->sortBy('order')
                         : collect([(object) [
                             'set_number' => 1,
                             'repetitions' => $exerciseData['repetitions'] ?? null,
                             'weight' => $exerciseData['weight'] ?? null,
                             'rest_time' => $exerciseData['rest_time'] ?? null,
                             'duration' => $exerciseData['duration'] ?? null,
+                            'use_duration' => $exerciseData['use_duration'] ?? false,
+                            'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
                             'order' => 0,
                         ]]),
                     'additional_description' => $exerciseData['description'] ?? null,

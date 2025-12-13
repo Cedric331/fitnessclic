@@ -322,6 +322,8 @@ const loadSessionExercises = () => {
                     weight: set.weight ?? null,
                     rest_time: set.rest_time ?? null,
                     duration: set.duration ?? null,
+                    use_duration: set.use_duration !== undefined ? set.use_duration : (se.use_duration ?? false),
+                    use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (se.use_bodyweight ?? false),
                     order: set.order ?? 0
                 }));
             } else if (se.repetitions || se.duration || se.rest_time || se.weight) {
@@ -331,6 +333,8 @@ const loadSessionExercises = () => {
                     weight: se.weight ?? null,
                     rest_time: se.rest_time ?? null,
                     duration: se.duration ?? null,
+                    use_duration: se.use_duration ?? false,
+                    use_bodyweight: se.use_bodyweight ?? false,
                     order: 0
                 }];
             } else {
@@ -340,6 +344,8 @@ const loadSessionExercises = () => {
                     weight: null,
                     rest_time: null,
                     duration: null,
+                    use_duration: se.use_duration ?? false,
+                    use_bodyweight: se.use_bodyweight ?? false,
                     order: 0
                 }];
             }
@@ -871,6 +877,8 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
                 weight: set.weight ?? null,
                 rest_time: set.rest_time ?? null,
                 duration: set.duration ?? null,
+                use_duration: set.use_duration !== undefined ? set.use_duration : (currentExercise.use_duration ?? false),
+                use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (currentExercise.use_bodyweight ?? false),
                 order: set.order ?? 0
             }))
             : [];
@@ -1126,6 +1134,8 @@ const saveSession = () => {
                     weight: set.weight ?? null,
                     rest_time: set.rest_time ?? null,
                     duration: set.duration ?? null,
+                    use_duration: set.use_duration !== undefined ? set.use_duration : (ex.use_duration ?? false),
+                    use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (ex.use_bodyweight ?? false),
                     order: set.order ?? idx
                 };
                 return formattedSet;
@@ -1200,6 +1210,8 @@ const generatePDF = () => {
             weight: set.weight ?? null,
             rest_time: set.rest_time ?? null,
             duration: set.duration ?? null,
+            use_duration: set.use_duration !== undefined ? set.use_duration : (ex.use_duration ?? false),
+            use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (ex.use_bodyweight ?? false),
             order: set.order ?? idx
         })) : undefined,
         repetitions: ex.repetitions ?? null,
@@ -1304,6 +1316,8 @@ const printPDF = () => {
             weight: set.weight ?? null,
             rest_time: set.rest_time ?? null,
             duration: set.duration ?? null,
+            use_duration: set.use_duration !== undefined ? set.use_duration : (ex.use_duration ?? false),
+            use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (ex.use_bodyweight ?? false),
             order: set.order ?? idx
         })) : undefined,
         repetitions: ex.repetitions ?? null,

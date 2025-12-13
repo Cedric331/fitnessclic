@@ -18,6 +18,8 @@ export interface ExerciseSet {
     weight?: number | null;
     rest_time?: string | null;
     duration?: string | null;
+    use_duration?: boolean; // true = utiliser durée, false = utiliser répétitions (par set)
+    use_bodyweight?: boolean; // true = poids de corps, false = charge (weight) (par set)
     order: number;
 }
 

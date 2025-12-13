@@ -1,39 +1,30 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch, onMounted } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
     Calendar, 
     FileText, 
     Save, 
     Trash2, 
     Search, 
-    Filter,
-    Grid3x3,
-    List,
-    Plus,
     X,
-    GripVertical,
-    Clock,
-    RotateCcw,
-    Pause,
     AlertTriangle,
     Library,
-    Printer,
-    Layout
+    Printer
 } from 'lucide-vue-next';
-import type { CreateSessionProps, EditSessionProps, Exercise, SessionExercise, Customer, Category, SessionBlock } from './types';
+import type { CreateSessionProps, Exercise, SessionExercise, SessionBlock, ExerciseSet } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
 import SessionBlockSet from './SessionBlockSet.vue';
 import ExerciseLibrary from './ExerciseLibrary.vue';
 import SessionLayoutEditor from './SessionLayoutEditor.vue';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import InputError from '@/components/InputError.vue';
 import { 
     Dialog,
@@ -513,7 +504,7 @@ const removeExerciseFromSession = (index: number) => {
     saveExercisesToStorage();
 };
 
-const handleExerciseUpdate = (exerciseId: number | undefined, updates: Partial<SessionExercise>) => {
+const handleExerciseUpdate = (exercise: SessionExercise | undefined, updates: Partial<SessionExercise>) => {
     if (!sessionExercises) {
         return;
     }
@@ -522,11 +513,62 @@ const handleExerciseUpdate = (exerciseId: number | undefined, updates: Partial<S
         sessionExercises.value = [];
     }
     
-    if (!exerciseId) {
+    if (!exercise) {
         return;
     }
     
-    const index = sessionExercises.value.findIndex((e: SessionExercise) => e.id === exerciseId);
+    let index = -1;
+    
+    // PRIORITÉ 1: Chercher par exercise_id ET order (le plus fiable car unique)
+    // C'est la meilleure méthode car exercise_id + order identifie de manière unique un exercice
+    index = sessionExercises.value.findIndex((e: SessionExercise) => 
+        e.exercise_id === exercise.exercise_id && 
+        e.order === exercise.order &&
+        (!e.block_id && !e.block_type) === (!exercise.block_id && !exercise.block_type)
+    );
+    
+    // PRIORITÉ 2: Si pas trouvé, chercher par ID (peut être dupliqué, donc moins fiable)
+    if (index === -1 && exercise.id) {
+        // Si plusieurs exercices ont le même ID, chercher celui avec le même exercise_id et order
+        const candidatesById = sessionExercises.value
+            .map((e, idx) => ({ e, idx }))
+            .filter(({ e }) => e.id === exercise.id);
+        
+        if (candidatesById.length === 1) {
+            index = candidatesById[0].idx;
+        } else if (candidatesById.length > 1) {
+            // Si plusieurs exercices avec le même ID, prendre celui avec le même exercise_id et order
+            const bestMatch = candidatesById.find(({ e }) => 
+                e.exercise_id === exercise.exercise_id && 
+                e.order === exercise.order
+            );
+            if (bestMatch) {
+                index = bestMatch.idx;
+            } else {
+                // Si pas de match parfait, prendre le premier avec le même exercise_id
+                const sameExerciseId = candidatesById.find(({ e }) => e.exercise_id === exercise.exercise_id);
+                index = sameExerciseId ? sameExerciseId.idx : candidatesById[0].idx;
+            }
+        }
+    }
+    
+    // PRIORITÉ 3: Dernier recours - chercher uniquement par exercise_id
+    if (index === -1 && exercise.exercise_id) {
+        const candidates = sessionExercises.value
+            .map((e, idx) => ({ e, idx }))
+            .filter(({ e }) => 
+                e.exercise_id === exercise.exercise_id && 
+                (!e.block_id && !e.block_type) === (!exercise.block_id && !exercise.block_type)
+            );
+        
+        if (candidates.length === 1) {
+            index = candidates[0].idx;
+        } else if (candidates.length > 1) {
+            // Si plusieurs correspondances, prendre celui avec le même order ou le dernier
+            const sameOrder = candidates.find(({ e }) => e.order === exercise.order);
+            index = sameOrder ? sameOrder.idx : candidates[candidates.length - 1].idx;
+        }
+    }
     
     if (index !== -1) {
         updateSessionExercise(index, updates);
@@ -538,14 +580,16 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
     
     if (updates.sets) {
         const setsArray = Array.isArray(updates.sets) 
-            ? updates.sets.map(set => ({
+            ? updates.sets.map((set: any) => ({
                 set_number: set.set_number ?? 1,
                 repetitions: set.repetitions ?? null,
                 weight: set.weight ?? null,
                 rest_time: set.rest_time ?? null,
                 duration: set.duration ?? null,
+                use_duration: set.use_duration !== undefined ? set.use_duration : (currentExercise.use_duration ?? false),
+                use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (currentExercise.use_bodyweight ?? false),
                 order: set.order ?? 0
-            }))
+            } as ExerciseSet))
             : [];
         
         const { sets: _, ...updatesWithoutSets } = updates;
@@ -1040,15 +1084,17 @@ const saveSession = () => {
         let sets = undefined;
         
         if (hasSets) {
-            sets = setsArray.map((set, idx) => {
+            sets = setsArray.map((set: any, idx) => {
                 const formattedSet = {
-                    set_number: set.set_number || idx + 1,
+                    set_number: set.set_number || 1,
                     repetitions: set.repetitions ?? null,
                     weight: set.weight ?? null,
                     rest_time: set.rest_time ?? null,
                     duration: set.duration ?? null,
+                    use_duration: set.use_duration !== undefined ? set.use_duration : (ex.use_duration ?? false),
+                    use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (ex.use_bodyweight ?? false),
                     order: set.order ?? idx
-                };
+                } as ExerciseSet;
                 return formattedSet;
             });
         }
@@ -1241,14 +1287,16 @@ const printPDF = () => {
     // Formater les exercices pour l'envoi au backend
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
-        sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
+        sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set: any, idx) => ({
             set_number: set.set_number || idx + 1,
             repetitions: set.repetitions ?? null,
             weight: set.weight ?? null,
+            use_duration: set.use_duration !== undefined ? set.use_duration : (ex.use_duration ?? false),
+            use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (ex.use_bodyweight ?? false),
             rest_time: set.rest_time ?? null,
             duration: set.duration ?? null,
             order: set.order ?? idx
-        })) : undefined,
+        } as ExerciseSet)) : undefined,
         repetitions: ex.repetitions ?? null,
         weight: ex.weight ?? null,
         rest_time: ex.rest_time ?? null,
@@ -1416,16 +1464,6 @@ watch(sessionExercises, () => {
                             <span class="hidden sm:inline">Imprimer</span>
                         </Button>
                         <Button
-                            variant="outline"
-                            size="sm"
-                            class="sm:gap-2 text-xs sm:text-sm aspect-square sm:aspect-auto"
-                            @click="showLayoutEditor = true"
-                            :disabled="sessionExercises.length === 0"
-                        >
-                            <Layout class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            <span class="hidden sm:inline">Éditeur visuel</span>
-                        </Button>
-                        <Button
                             size="sm"
                             class="sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm aspect-square sm:aspect-auto"
                             @click="saveSession"
@@ -1584,7 +1622,7 @@ watch(sessionExercises, () => {
                                                 :display-index="item.displayIndex"
                                                 :draggable="true"
                                                 :total-count="orderedItems.length"
-                                                @update="(updates: Partial<SessionExercise>) => handleExerciseUpdate(item.exercise?.id, updates)"
+                                                @update="(updates: Partial<SessionExercise>) => handleExerciseUpdate(item.exercise, updates)"
                                                 @remove="handleRemoveExercise(item)"
                                                 @move-up="() => handleMoveUp(item)"
                                                 @move-down="() => handleMoveDown(item)"

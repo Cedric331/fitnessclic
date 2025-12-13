@@ -66,6 +66,8 @@ onMounted(() => {
             weight: props.sessionExercise.weight ?? null,
             rest_time: props.sessionExercise.rest_time ?? null,
             duration: props.sessionExercise.duration ?? null,
+            use_duration: props.sessionExercise.use_duration ?? false,
+            use_bodyweight: props.sessionExercise.use_bodyweight ?? false,
             order: 0
         }];
         emit('update', { sets: defaultSet });
@@ -77,19 +79,26 @@ const updateField = (field: keyof SessionExercise, value: any) => {
 };
 
 const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
+    console.log('updateSet called - setIndex:', setIndex, 'field:', field, 'value:', value);
+    console.log('Current sets:', props.sessionExercise.sets);
+    
     let currentSets: ExerciseSet[];
     
     const hasSets = props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0;
     
     if (hasSets) {
-        currentSets = props.sessionExercise.sets.map(set => ({ 
+        // Préserver toutes les propriétés existantes du set, y compris use_duration et use_bodyweight
+        currentSets = props.sessionExercise.sets!.map((set: any) => ({ 
             set_number: set.set_number ?? 1,
             repetitions: set.repetitions ?? null,
             weight: set.weight ?? null,
             rest_time: set.rest_time ?? null,
             duration: set.duration ?? null,
+            // Préserver use_duration et use_bodyweight s'ils existent, sinon utiliser la valeur par défaut
+            use_duration: set.use_duration !== undefined ? set.use_duration : (props.sessionExercise.use_duration ?? false),
+            use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (props.sessionExercise.use_bodyweight ?? false),
             order: set.order ?? 0
-        }));
+        } as ExerciseSet));
     } else {
         currentSets = [{
             set_number: 1,
@@ -97,8 +106,10 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
             weight: props.sessionExercise.weight ?? null,
             rest_time: props.sessionExercise.rest_time ?? null,
             duration: props.sessionExercise.duration ?? null,
+            use_duration: props.sessionExercise.use_duration ?? false,
+            use_bodyweight: props.sessionExercise.use_bodyweight ?? false,
             order: 0
-        }];
+        } as ExerciseSet];
     }
     
     if (!currentSets[setIndex]) {
@@ -109,12 +120,17 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
                 weight: null,
                 rest_time: null,
                 duration: null,
+                use_duration: props.sessionExercise.use_duration ?? false,
+                use_bodyweight: props.sessionExercise.use_bodyweight ?? false,
                 order: currentSets.length
-            });
+            } as ExerciseSet);
         }
     }
     
+    console.log('Before update - currentSets[setIndex]:', currentSets[setIndex]);
     currentSets[setIndex] = { ...currentSets[setIndex], [field]: value };
+    console.log('After update - currentSets[setIndex]:', currentSets[setIndex]);
+    console.log('All sets after update:', currentSets);
     
     emit('update', { sets: currentSets });
 };
@@ -123,27 +139,32 @@ const addSet = () => {
     let currentSets: ExerciseSet[];
     if (props.sessionExercise.sets && props.sessionExercise.sets.length > 0) {
         currentSets = [...props.sessionExercise.sets];
-        // Ajouter un nouveau set
-        const newSet: ExerciseSet = {
-            set_number: currentSets.length + 1,
+        // Ajouter un nouveau set avec le bon numéro de série
+        const newSetNumber = 1;
+        const newSet = {
+            set_number: newSetNumber,
             repetitions: null,
             weight: null,
             rest_time: null,
             duration: null,
+            use_duration: props.sessionExercise.use_duration ?? false,
+            use_bodyweight: props.sessionExercise.use_bodyweight ?? false,
             order: currentSets.length
-        };
+        } as ExerciseSet;
         const updatedSets = [...currentSets, newSet];
         emit('update', { sets: updatedSets });
     } else {
         // Si aucun set, créer le premier set
-        const firstSet: ExerciseSet = {
+        const firstSet = {
             set_number: 1,
             repetitions: props.sessionExercise.repetitions ?? null,
             weight: props.sessionExercise.weight ?? null,
             rest_time: props.sessionExercise.rest_time ?? null,
             duration: props.sessionExercise.duration ?? null,
+            use_duration: props.sessionExercise.use_duration ?? false,
+            use_bodyweight: props.sessionExercise.use_bodyweight ?? false,
             order: 0
-        };
+        } as ExerciseSet;
         emit('update', { sets: [firstSet] });
     }
 };
@@ -155,7 +176,6 @@ const removeSet = (setIndex: number) => {
     
     const currentSets = [...props.sessionExercise.sets];
     const updatedSets = currentSets.filter((_, index) => index !== setIndex);
-    // Si on supprime la dernière ligne, on met un tableau vide pour permettre d'avoir un exercice sans ligne
     if (updatedSets.length === 0) {
         emit('update', { sets: [] });
         return;
@@ -416,7 +436,7 @@ const confirmRemove = () => {
                             
                             <!-- Champs organisés en grille responsive : 3 colonnes sur mobile (avec espace/bouton ajouter), 6 sur desktop (avec espace/bouton ajouter + supprimer) -->
                             <div class="grid grid-cols-[2rem_1fr_1fr] sm:grid-cols-[2rem_1fr_1fr_1fr_1fr_2rem] gap-2 items-end">
-                                <!-- Bouton ajouter une ligne - uniquement sur la première ligne -->
+                                <!-- Bouton ajouter une ligne - visible uniquement sur la première ligne -->
                                 <div v-if="setIndex === 0" class="hidden sm:flex items-end">
                                     <Button
                                         variant="ghost"
@@ -428,7 +448,9 @@ const confirmRemove = () => {
                                         <Plus class="h-4 w-4" />
                                     </Button>
                                 </div>
-                                <!-- Bouton ajouter une ligne - mobile uniquement sur la première ligne -->
+                                <!-- Espace vide pour les autres lignes sur desktop -->
+                                <div v-if="setIndex !== 0" class="hidden sm:block"></div>
+                                <!-- Bouton ajouter une ligne - mobile visible uniquement sur la première ligne -->
                                 <div v-if="setIndex === 0" class="sm:hidden flex items-end">
                                     <Button
                                         variant="ghost"
@@ -440,9 +462,8 @@ const confirmRemove = () => {
                                         <Plus class="h-4 w-4" />
                                     </Button>
                                 </div>
-                                <!-- Espace vide pour aligner les autres lignes avec la première -->
-                                <div v-if="setIndex !== 0" class="hidden sm:flex items-end w-8"></div>
-                                <div v-if="setIndex !== 0" class="sm:hidden flex items-end w-8"></div>
+                                <!-- Espace vide pour les autres lignes sur mobile -->
+                                <div v-if="setIndex !== 0" class="sm:hidden block"></div>
                                 <!-- Numéro de série (éditable pour chaque ligne) -->
                                 <div>
                                     <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
@@ -465,11 +486,15 @@ const confirmRemove = () => {
                                 <div>
                                     <div class="flex items-center justify-between mb-1">
                                         <Label class="text-xs text-neutral-500">
-                                            {{ sessionExercise.use_duration ? 'Durée (seconde)' : 'Rep' }}
+                                            {{ (set.use_duration !== undefined ? set.use_duration : (props.sessionExercise.use_duration ?? false)) ? 'Durée (seconde)' : 'Rep' }}
                                         </Label>
                                         <button
                                             type="button"
-                                            @click.stop="updateField('use_duration', !sessionExercise.use_duration)"
+                                            @click.stop="() => {
+                                                const currentValue = set.use_duration !== undefined ? set.use_duration : (props.sessionExercise.use_duration ?? false);
+                                                console.log('Switch use_duration - setIndex:', setIndex, 'set:', set, 'currentValue:', currentValue, 'newValue:', !currentValue);
+                                                updateSet(setIndex, 'use_duration', !currentValue);
+                                            }"
                                             class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
                                             title="Basculer entre Rep et Durée"
                                         >
@@ -477,7 +502,7 @@ const confirmRemove = () => {
                                         </button>
                                     </div>
                                     <Input
-                                        v-if="!sessionExercise.use_duration"
+                                        v-if="!(set.use_duration !== undefined ? set.use_duration : (props.sessionExercise.use_duration ?? false))"
                                         type="number"
                                         :model-value="set.repetitions"
                                         @update:model-value="(value: string | number) => {
@@ -506,11 +531,15 @@ const confirmRemove = () => {
                                 <div>
                                     <div class="flex items-center justify-between mb-1">
                                         <Label class="text-xs text-neutral-500">
-                                            {{ sessionExercise.use_bodyweight ? 'Poids de corps' : 'Charge (kg)' }}
+                                            {{ (set.use_bodyweight !== undefined ? set.use_bodyweight : (props.sessionExercise.use_bodyweight ?? false)) ? 'Poids de corps' : 'Charge (kg)' }}
                                         </Label>
                                         <button
                                             type="button"
-                                            @click.stop="updateField('use_bodyweight', !sessionExercise.use_bodyweight)"
+                                            @click.stop="() => {
+                                                const currentValue = set.use_bodyweight !== undefined ? set.use_bodyweight : (props.sessionExercise.use_bodyweight ?? false);
+                                                console.log('Switch use_bodyweight - setIndex:', setIndex, 'set:', set, 'currentValue:', currentValue, 'newValue:', !currentValue);
+                                                updateSet(setIndex, 'use_bodyweight', !currentValue);
+                                            }"
                                             class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
                                             title="Basculer entre Charge et Poids de corps"
                                         >
@@ -518,7 +547,7 @@ const confirmRemove = () => {
                                         </button>
                                     </div>
                                     <Input
-                                        v-if="!sessionExercise.use_bodyweight"
+                                        v-if="!(set.use_bodyweight !== undefined ? set.use_bodyweight : (props.sessionExercise.use_bodyweight ?? false))"
                                         type="number"
                                         step="0.5"
                                         :model-value="set.weight"
@@ -531,7 +560,6 @@ const confirmRemove = () => {
                                         placeholder="20"
                                         class="h-8 text-sm"
                                         min="0"
-                                        :disabled="sessionExercise.use_bodyweight"
                                     />
                                     <div
                                         v-else

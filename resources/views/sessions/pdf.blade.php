@@ -640,8 +640,14 @@
                         @php
                           $setNumber = $set->set_number ?? $loop->iteration;
                           
+                          // Utiliser use_duration et use_bodyweight du set, sinon ceux de l'exercice
+                          $setUseDurationRaw = $set->use_duration ?? $sessionExercise->use_duration ?? false;
+                          $setUseBodyweightRaw = $set->use_bodyweight ?? $sessionExercise->use_bodyweight ?? false;
+                          $setUseDuration = $setUseDurationRaw === true || $setUseDurationRaw === 1 || $setUseDurationRaw === '1' || $setUseDurationRaw === 'true';
+                          $setUseBodyweight = $setUseBodyweightRaw === true || $setUseBodyweightRaw === 1 || $setUseBodyweightRaw === '1' || $setUseBodyweightRaw === 'true';
+                          
                           $setDurationOrReps = '-';
-                          if ($useDuration) {
+                          if ($setUseDuration) {
                             $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
                             $durationSeconds = extractDurationSeconds($rawDuration);
                             $repsLabel = 'Durée';
@@ -656,7 +662,7 @@
 
                           $setCharge = '-';
                           $chargeLabel = 'Charges';
-                          if ($useBodyweight) {
+                          if ($setUseBodyweight) {
                             $setCharge = 'poids de corps';
                             $chargeLabel = 'Poids de corps';
                           } else {
@@ -672,7 +678,7 @@
                           
                           // Construire le texte de la charge
                           $chargeText = '';
-                          if ($useBodyweight) {
+                          if ($setUseBodyweight) {
                             $chargeText = 'Poids de corps';
                           } else {
                             $chargeText = $chargeLabel . ' : ' . $setCharge;
@@ -681,8 +687,20 @@
                         <table class="series-table">
                           <tr>
                             <td><strong>{{ $setNumber }}</strong> série{{ $setNumber > 1 ? 's' : '' }}</td>
-                            <td><strong>{{ $repsValue }}</strong> {{ $useDuration ? 'seconde' . ($repsValue > 1 ? 's' : '') : $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}</td>
-                            <td>charge : <strong>{{ $useBodyweight ? 'poids de corps' : ($setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-') }}</strong></td>
+                            <td>
+                              @if($setUseDuration)
+                                Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}
+                              @else
+                                <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
+                              @endif
+                            </td>
+                            <td>
+                              @if($setUseBodyweight)
+                                <strong>Poids de corps</strong>
+                              @else
+                                charge : <strong>{{ $setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-' }}</strong>
+                              @endif
+                            </td>
                             <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
                           </tr>
                         </table>
@@ -720,8 +738,20 @@
                       <table class="series-table">
                         <tr>
                           <td><strong>{{ $setsCount }}</strong> série{{ $setsCount > 1 ? 's' : '' }}</td>
-                          <td><strong>{{ $repsValue }}</strong> {{ $useDuration ? 'seconde' . ($repsValue > 1 ? 's' : '') : $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}</td>
-                          <td>charge : <strong>{{ $useBodyweight ? 'poids de corps' : ($chargeValue !== '-' && $chargeValue !== null && $chargeValue !== 'poids de corps' ? $chargeValue . 'kg' : ($useBodyweight ? 'poids de corps' : '-')) }}</strong></td>
+                          <td>
+                            @if($useDuration)
+                              Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}
+                            @else
+                              <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
+                            @endif
+                          </td>
+                          <td>
+                            @if($useBodyweight)
+                              <strong>Poids de corps</strong>
+                            @else
+                              charge : <strong>{{ $chargeValue !== '-' && $chargeValue !== null && $chargeValue !== 'poids de corps' ? $chargeValue . 'kg' : '-' }}</strong>
+                            @endif
+                          </td>
                           <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
                         </tr>
                       </table>
@@ -828,8 +858,14 @@
                                 @php
                                   $setNumber = $set->set_number ?? $loop->iteration;
                                   
+                                  // Utiliser use_duration et use_bodyweight du set, sinon ceux de l'exercice
+                                  $setUseDurationRaw = $set->use_duration ?? $sessionExercise->use_duration ?? false;
+                                  $setUseBodyweightRaw = $set->use_bodyweight ?? $sessionExercise->use_bodyweight ?? false;
+                                  $setUseDuration = $setUseDurationRaw === true || $setUseDurationRaw === 1 || $setUseDurationRaw === '1' || $setUseDurationRaw === 'true';
+                                  $setUseBodyweight = $setUseBodyweightRaw === true || $setUseBodyweightRaw === 1 || $setUseBodyweightRaw === '1' || $setUseBodyweightRaw === 'true';
+                                  
                                   $setDurationOrReps = '-';
-                                  if ($useDuration) {
+                                  if ($setUseDuration) {
                                     $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
                                     $durationSeconds = extractDurationSeconds($rawDuration);
                                     $repsLabel = 'Durée (secondes)';
@@ -844,7 +880,7 @@
 
                                   $setCharge = '-';
                                   $chargeLabel = 'Charges';
-                                  if ($useBodyweight) {
+                                  if ($setUseBodyweight) {
                                     $setCharge = 'poids de corps';
                                     $chargeLabel = 'Poids de corps';
                                   } else {
@@ -860,7 +896,7 @@
                                   
                                   // Construire le texte de la charge
                                   $chargeText = '';
-                                  if ($useBodyweight) {
+                                  if ($setUseBodyweight) {
                                     $chargeText = 'Poids de corps';
                                   } else {
                                     $chargeText = $chargeLabel . ' : ' . $setCharge;
@@ -869,8 +905,20 @@
                                 <table class="series-table">
                                   <tr>
                                     <td><strong>{{ $setNumber }}</strong> série{{ $setNumber > 1 ? 's' : '' }}</td>
-                                    <td><strong>{{ $repsValue }}</strong> {{ $useDuration ? 'seconde' . ($repsValue > 1 ? 's' : '') : $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}</td>
-                                    <td>charge : <strong>{{ $useBodyweight ? 'poids de corps' : ($setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-') }}</strong></td>
+                                    <td>
+                                      @if($setUseDuration)
+                                        Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}
+                                      @else
+                                        <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
+                                      @endif
+                                    </td>
+                                    <td>
+                                      @if($setUseBodyweight)
+                                        <strong>Poids de corps</strong>
+                                      @else
+                                        charge : <strong>{{ $setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-' }}</strong>
+                                      @endif
+                                    </td>
                                     <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
                                   </tr>
                                 </table>
@@ -908,8 +956,20 @@
                               <table class="series-table">
                                 <tr>
                                   <td><strong>{{ $setsCount }}</strong> série{{ $setsCount > 1 ? 's' : '' }}</td>
-                                  <td><strong>{{ $repsValue }}</strong> {{ $useDuration ? 'seconde' . ($repsValue > 1 ? 's' : '') : $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}</td>
-                                  <td>charge : <strong>{{ $useBodyweight ? 'poids de corps' : ($chargeValue !== '-' && $chargeValue !== null && $chargeValue !== 'poids de corps' ? $chargeValue . 'kg' : ($useBodyweight ? 'poids de corps' : '-')) }}</strong></td>
+                                  <td>
+                                    @if($useDuration)
+                                      Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}
+                                    @else
+                                      <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
+                                    @endif
+                                  </td>
+                                  <td>
+                                    @if($useBodyweight)
+                                      <strong>Poids de corps</strong>
+                                    @else
+                                      charge : <strong>{{ $chargeValue !== '-' && $chargeValue !== null && $chargeValue !== 'poids de corps' ? $chargeValue . 'kg' : '-' }}</strong>
+                                    @endif
+                                  </td>
                                   <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
                                 </tr>
                               </table>

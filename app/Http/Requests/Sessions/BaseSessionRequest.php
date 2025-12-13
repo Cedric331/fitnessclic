@@ -22,6 +22,8 @@ abstract class BaseSessionRequest extends FormRequest
             'exercises.*.sets.*.weight' => ['nullable', 'numeric'],
             'exercises.*.sets.*.rest_time' => ['nullable', 'string'],
             'exercises.*.sets.*.duration' => ['nullable', 'string'],
+            'exercises.*.sets.*.use_duration' => ['nullable', 'boolean'],
+            'exercises.*.sets.*.use_bodyweight' => ['nullable', 'boolean'],
             'exercises.*.sets.*.order' => ['required', 'integer', 'min:0'],
             'exercises.*.repetitions' => ['nullable', 'integer'],
             'exercises.*.weight' => ['nullable', 'numeric'],

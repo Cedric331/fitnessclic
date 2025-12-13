@@ -58,39 +58,20 @@ const handleDelete = (event: Event) => {
     emit('delete', props.exercise);
 };
 
-// Classes pour ajuster la taille des images selon le mode d'affichage
-// Pour les modes avec plusieurs colonnes, on ne réduit pas l'image car object-cover remplit tout l'espace
-const imageScaleClass = computed(() => {
-    if (!props.viewMode) return '';
-    
-    // Seulement pour grid-2, on peut avoir besoin d'ajustements
-    // Pour les autres modes, object-cover remplit tout l'espace sans besoin de scale
-    return '';
-});
 
-// Afficher le contenu texte uniquement pour grid-2 (1-2 par ligne)
-const showContent = computed(() => {
-    return props.viewMode === 'grid-2';
-});
-
-// Afficher l'overlay au survol uniquement pour grid-2 (1-2 par ligne)
 const showOverlay = computed(() => {
-    return props.viewMode === 'grid-2';
+    return true;
 });
 
-// Rendre l'image cliquable pour ouvrir la page show (sauf pour grid-2 où on a déjà les boutons)
 const handleImageClick = () => {
     if (props.viewMode !== 'grid-2') {
         handleView();
     }
 };
 
-// Classes pour l'object-fit selon le mode d'affichage
 const imageObjectFit = computed(() => {
     if (!props.viewMode) return 'object-contain';
-    
-    // Pour grid-2, on garde object-contain pour voir l'image complète
-    // Pour les autres modes, on utilise object-cover pour remplir tout l'espace
+
     return props.viewMode === 'grid-2' ? 'object-contain' : 'object-cover';
 });
 </script>
@@ -123,7 +104,6 @@ const imageObjectFit = computed(() => {
             
             <!-- Overlay au survol avec titre et catégories - uniquement pour grid-2 -->
             <div 
-                v-if="showOverlay"
                 class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-4"
             >
                 <div class="flex flex-col items-center gap-3">
@@ -194,7 +174,7 @@ const imageObjectFit = computed(() => {
         </div>
 
         <!-- Contenu visible uniquement pour grid-2 (1-2 par ligne) -->
-        <div v-if="showContent" class="flex flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-4 md:hidden">
+        <div class="flex flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-4 md:hidden">
             <!-- Titre et badge -->
             <div class="flex flex-col gap-1.5">
                 <h3
