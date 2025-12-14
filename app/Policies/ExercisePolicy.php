@@ -41,4 +41,3 @@ class ExercisePolicy
         return $user->isPro();
     }
 }
-

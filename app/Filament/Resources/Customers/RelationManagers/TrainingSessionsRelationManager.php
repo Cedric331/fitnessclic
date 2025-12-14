@@ -85,4 +85,3 @@ class TrainingSessionsRelationManager extends RelationManager
             ]);
     }
 }
-

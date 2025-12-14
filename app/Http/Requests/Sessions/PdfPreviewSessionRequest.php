@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\Sessions;
 
-use Illuminate\Foundation\Http\FormRequest;
-
 class PdfPreviewSessionRequest extends BaseSessionRequest
 {
     /**
@@ -38,4 +36,3 @@ class PdfPreviewSessionRequest extends BaseSessionRequest
         }
     }
 }
-

@@ -39,4 +39,3 @@ class CustomerPolicy
         return $user->id === $customer->user_id && $user->isPro();
     }
 }
-

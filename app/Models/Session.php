@@ -65,6 +65,7 @@ class Session extends Model
 
     /**
      * Relation with exercises (many-to-many with details)
+     *
      * @deprecated Use sessionExercises() instead for better control
      */
     public function exercises(): BelongsToMany

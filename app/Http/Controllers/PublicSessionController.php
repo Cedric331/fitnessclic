@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Session;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class PublicSessionController extends Controller
@@ -23,7 +22,7 @@ class PublicSessionController extends Controller
             ])
             ->first();
 
-        if (!$session) {
+        if (! $session) {
             return view('sessions.public-error', [
                 'message' => 'Cette séance n\'existe plus ou le lien de partage est invalide.',
                 'title' => 'Séance introuvable',
@@ -54,14 +53,14 @@ class PublicSessionController extends Controller
             ->with('layout')
             ->first();
 
-        if (!$session) {
+        if (! $session) {
             return response()->view('sessions.public-error', [
                 'message' => 'Cette séance n\'existe plus ou le lien de partage est invalide.',
                 'title' => 'Séance introuvable',
             ], 404);
         }
 
-        if (!$session->layout) {
+        if (! $session->layout) {
             return response()->view('sessions.public-error', [
                 'message' => 'Cette séance ne contient pas de mise en page.',
                 'title' => 'Mise en page introuvable',
@@ -71,7 +70,7 @@ class PublicSessionController extends Controller
         $layout = $session->layout;
 
         // Vérifier que le PDF existe
-        if (!$layout->pdf_path || !Storage::disk('local')->exists($layout->pdf_path)) {
+        if (! $layout->pdf_path || ! Storage::disk('local')->exists($layout->pdf_path)) {
             return response()->view('sessions.public-error', [
                 'message' => 'Le document PDF de cette séance n\'est plus disponible.',
                 'title' => 'Document introuvable',
@@ -80,14 +79,14 @@ class PublicSessionController extends Controller
 
         $pdfContent = Storage::disk('local')->get($layout->pdf_path);
 
-        $fileName = $session->name 
-            ? \Illuminate\Support\Str::slug($session->name) 
+        $fileName = $session->name
+            ? \Illuminate\Support\Str::slug($session->name)
             : "seance-{$session->id}";
         $fileName .= '.pdf';
 
         return response($pdfContent, 200)
             ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'inline; filename="' . $fileName . '"')
+            ->header('Content-Disposition', 'inline; filename="'.$fileName.'"')
             ->header('Cache-Control', 'public, max-age=3600');
     }
 }

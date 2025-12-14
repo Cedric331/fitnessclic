@@ -45,4 +45,3 @@ class SessionLayout extends Model
         return $this->belongsTo(Session::class);
     }
 }
-

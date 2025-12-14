@@ -28,4 +28,3 @@ class IndexCategoryRequest extends FormRequest
         ];
     }
 }
-

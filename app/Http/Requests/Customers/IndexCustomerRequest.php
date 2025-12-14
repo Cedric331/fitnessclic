@@ -26,4 +26,3 @@ class IndexCustomerRequest extends FormRequest
         ];
     }
 }
-

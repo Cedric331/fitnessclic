@@ -2,17 +2,17 @@
 
 namespace App\Mail;
 
-use App\Models\Session;
 use App\Models\Customer;
+use App\Models\Session;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SessionEmail extends Mailable
 {
@@ -24,8 +24,7 @@ class SessionEmail extends Mailable
     public function __construct(
         public Session $session,
         public Customer $customer
-    ) {
-    }
+    ) {}
 
     /**
      * Get the message envelope.
@@ -33,7 +32,7 @@ class SessionEmail extends Mailable
     public function envelope(): Envelope
     {
         $sessionName = $this->session->name ?: 'Séance d\'entraînement';
-        
+
         return new Envelope(
             subject: "Votre séance d'entraînement : {$sessionName}",
         );
@@ -46,7 +45,7 @@ class SessionEmail extends Mailable
     {
         $coachName = $this->session->user->name ?? 'Votre coach';
         $sessionName = $this->session->name ?: 'Séance d\'entraînement';
-        $sessionDate = $this->session->session_date 
+        $sessionDate = $this->session->session_date
             ? $this->session->session_date->format('d/m/Y')
             : 'Non définie';
 
@@ -75,7 +74,7 @@ class SessionEmail extends Mailable
      */
     private function optimizeImageForPdf(string $imagePath, int $maxWidth = 200, int $quality = 60): ?string
     {
-        if (!file_exists($imagePath)) {
+        if (! file_exists($imagePath)) {
             return null;
         }
 
@@ -85,7 +84,7 @@ class SessionEmail extends Mailable
 
         try {
             $imageInfo = getimagesize($imagePath);
-            if (!$imageInfo) {
+            if (! $imageInfo) {
                 return null;
             }
 
@@ -99,9 +98,9 @@ class SessionEmail extends Mailable
 
             $newHeight = (int) (($maxWidth / $originalWidth) * $originalHeight);
 
-            $tempPath = storage_path('app/temp/' . uniqid('pdf_img_', true) . '.jpg');
+            $tempPath = storage_path('app/temp/'.uniqid('pdf_img_', true).'.jpg');
             $tempDir = dirname($tempPath);
-            if (!is_dir($tempDir)) {
+            if (! is_dir($tempDir)) {
                 mkdir($tempDir, 0755, true);
             }
 
@@ -119,12 +118,12 @@ class SessionEmail extends Mailable
                     return $imagePath;
             }
 
-            if (!$source) {
+            if (! $source) {
                 return $imagePath;
             }
 
             $destination = imagecreatetruecolor($maxWidth, $newHeight);
-            
+
             if ($mimeType === 'image/png') {
                 imagealphablending($destination, false);
                 imagesavealpha($destination, true);
@@ -172,7 +171,7 @@ class SessionEmail extends Mailable
             'sessionExercises.exercise.media',
             'sessionExercises.sets',
             'user',
-            'layout'
+            'layout',
         ]);
 
         // Vérifier si c'est une séance libre (avec layout personnalisé)
@@ -182,18 +181,18 @@ class SessionEmail extends Mailable
             // Pour les séances libres, utiliser le PDF stocké s'il existe
             try {
                 $layout = $this->session->layout;
-                
+
                 // Vérifier que le layout a les données nécessaires
-                if (!$layout || !$layout->canvas_width || !$layout->canvas_height) {
+                if (! $layout || ! $layout->canvas_width || ! $layout->canvas_height) {
                     throw new \Exception('Layout incomplet : dimensions manquantes');
                 }
-                
+
                 // Si un PDF est déjà stocké, l'utiliser
                 if ($layout->pdf_path && Storage::disk('local')->exists($layout->pdf_path)) {
                     $pdfContent = Storage::disk('local')->get($layout->pdf_path);
-                    
-                    $fileName = $this->session->name 
-                        ? Str::slug($this->session->name) 
+
+                    $fileName = $this->session->name
+                        ? Str::slug($this->session->name)
                         : "seance-{$this->session->id}";
                     $fileName .= '.pdf';
 
@@ -202,38 +201,38 @@ class SessionEmail extends Mailable
                             ->withMime('application/pdf'),
                     ];
                 }
-                
+
                 // Sinon, générer le PDF avec DomPDF (fallback)
                 // Décoder layout_data si c'est une chaîne JSON
                 $layoutData = $layout->layout_data;
                 if (is_string($layoutData)) {
                     $layoutData = json_decode($layoutData, true);
                     if (json_last_error() !== JSON_ERROR_NONE) {
-                        throw new \Exception('Erreur de décodage JSON du layout: ' . json_last_error_msg());
+                        throw new \Exception('Erreur de décodage JSON du layout: '.json_last_error_msg());
                     }
                 }
-                
+
                 $pxToPoints = 0.75;
                 $pdfWidthPoints = $layout->canvas_width * $pxToPoints;
                 $pdfHeightPoints = $layout->canvas_height * $pxToPoints;
-                
+
                 $pdfWidthPoints = max(28, min(2835, $pdfWidthPoints));
                 $pdfHeightPoints = max(28, min(2835, $pdfHeightPoints));
-                
+
                 $customPaper = [0, 0, $pdfWidthPoints, $pdfHeightPoints];
-                
+
                 $pdf = Pdf::loadView('sessions.pdf-free', [
                     'session' => $this->session,
                     'layout' => $layout,
                     'layoutData' => $layoutData ?? [],
                 ])->setPaper($customPaper)
-                  ->setOption('enable-local-file-access', true)
-                  ->setOption('isHtml5ParserEnabled', true)
-                  ->setOption('isRemoteEnabled', true)
-                  ->setOption('dpi', 96);
+                    ->setOption('enable-local-file-access', true)
+                    ->setOption('isHtml5ParserEnabled', true)
+                    ->setOption('isRemoteEnabled', true)
+                    ->setOption('dpi', 96);
 
-                $fileName = $this->session->name 
-                    ? Str::slug($this->session->name) 
+                $fileName = $this->session->name
+                    ? Str::slug($this->session->name)
                     : "seance-{$this->session->id}";
                 $fileName .= '.pdf';
 
@@ -277,13 +276,13 @@ class SessionEmail extends Mailable
                 'session' => $this->session,
                 'use_optimized_images' => true,
             ])->setPaper('a4', 'portrait')
-              ->setOption('enable-local-file-access', true)
-              ->setOption('isHtml5ParserEnabled', true)
-              ->setOption('isRemoteEnabled', false)
-              ->setOption('dpi', 96);
+                ->setOption('enable-local-file-access', true)
+                ->setOption('isHtml5ParserEnabled', true)
+                ->setOption('isRemoteEnabled', false)
+                ->setOption('dpi', 96);
 
-            $fileName = $this->session->name 
-                ? Str::slug($this->session->name) 
+            $fileName = $this->session->name
+                ? Str::slug($this->session->name)
                 : "seance-{$this->session->id}";
             $fileName .= '.pdf';
 
@@ -301,4 +300,3 @@ class SessionEmail extends Mailable
         }
     }
 }
-

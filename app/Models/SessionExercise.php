@@ -100,14 +100,13 @@ class SessionExercise extends Model
      */
     public function blockExercises()
     {
-        if (!$this->block_id) {
+        if (! $this->block_id) {
             return collect([]);
         }
-        
+
         return self::where('block_id', $this->block_id)
             ->where('id', '!=', $this->id)
             ->orderBy('position_in_block')
             ->get();
     }
 }
-

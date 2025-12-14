@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Route;
 
 class SitemapController extends Controller
 {
@@ -51,19 +50,19 @@ class SitemapController extends Controller
             ],
         ];
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"' . "\n";
-        $xml .= '        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"' . "\n";
-        $xml .= '        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9' . "\n";
-        $xml .= '        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">' . "\n";
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'."\n";
+        $xml .= '        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'."\n";
+        $xml .= '        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9'."\n";
+        $xml .= '        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">'."\n";
 
         foreach ($urls as $url) {
-            $xml .= '  <url>' . "\n";
-            $xml .= '    <loc>' . htmlspecialchars($url['loc'], ENT_XML1, 'UTF-8') . '</loc>' . "\n";
-            $xml .= '    <lastmod>' . htmlspecialchars($url['lastmod'], ENT_XML1, 'UTF-8') . '</lastmod>' . "\n";
-            $xml .= '    <changefreq>' . htmlspecialchars($url['changefreq'], ENT_XML1, 'UTF-8') . '</changefreq>' . "\n";
-            $xml .= '    <priority>' . htmlspecialchars($url['priority'], ENT_XML1, 'UTF-8') . '</priority>' . "\n";
-            $xml .= '  </url>' . "\n";
+            $xml .= '  <url>'."\n";
+            $xml .= '    <loc>'.htmlspecialchars($url['loc'], ENT_XML1, 'UTF-8').'</loc>'."\n";
+            $xml .= '    <lastmod>'.htmlspecialchars($url['lastmod'], ENT_XML1, 'UTF-8').'</lastmod>'."\n";
+            $xml .= '    <changefreq>'.htmlspecialchars($url['changefreq'], ENT_XML1, 'UTF-8').'</changefreq>'."\n";
+            $xml .= '    <priority>'.htmlspecialchars($url['priority'], ENT_XML1, 'UTF-8').'</priority>'."\n";
+            $xml .= '  </url>'."\n";
         }
 
         $xml .= '</urlset>';
@@ -72,4 +71,3 @@ class SitemapController extends Controller
             ->header('Content-Type', 'application/xml; charset=utf-8');
     }
 }
-

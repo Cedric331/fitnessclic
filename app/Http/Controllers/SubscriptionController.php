@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Cashier\Cashier;
 
 class SubscriptionController extends Controller
 {
@@ -18,7 +17,7 @@ class SubscriptionController extends Controller
     public function index(): Response
     {
         $user = Auth::user();
-        
+
         $subscription = $user->subscription('default');
         $hasActiveSubscription = $user->hasActiveSubscription();
         $onTrial = $subscription && $subscription->onTrial();
@@ -28,7 +27,7 @@ class SubscriptionController extends Controller
         $isCancelling = false;
         $cancelsAt = null;
         $daysUntilCancellation = 0;
-        
+
         if ($subscription) {
             $endsAt = $subscription->ends_at;
             $isCancelling = $endsAt && $endsAt->isFuture() && $subscription->stripe_status !== 'canceled';
@@ -59,7 +58,7 @@ class SubscriptionController extends Controller
 
         $priceId = config('cashier.price_id');
 
-        if (!$priceId) {
+        if (! $priceId) {
             return redirect()->route('subscription.index')
                 ->with('error', 'Configuration Stripe manquante. Veuillez contacter le support.');
         }
@@ -93,19 +92,20 @@ class SubscriptionController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->hasStripeId()) {
+        if (! $user->hasStripeId()) {
             if ($request->header('X-Requested-With') === 'XMLHttpRequest' || $request->wantsJson()) {
                 return response()->json([
                     'error' => 'Vous devez d\'abord créer un compte Stripe.',
                 ], 400);
             }
+
             return redirect()->route('subscription.index')
                 ->with('error', 'Vous devez d\'abord créer un compte Stripe.');
         }
 
         try {
             $portal = $user->billingPortalUrl(route('subscription.index'));
-            
+
             if ($request->header('X-Inertia')) {
                 return response()->view('subscription.redirect', [
                     'url' => $portal,
@@ -130,4 +130,3 @@ class SubscriptionController extends Controller
             ->with('success', 'Votre abonnement a été activé avec succès !');
     }
 }
-

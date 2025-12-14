@@ -86,4 +86,3 @@ class CategoriesRelationManager extends RelationManager
             ]);
     }
 }
-

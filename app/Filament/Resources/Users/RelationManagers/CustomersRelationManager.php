@@ -100,4 +100,3 @@ class CustomersRelationManager extends RelationManager
             ]);
     }
 }
-

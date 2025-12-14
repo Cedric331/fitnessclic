@@ -20,10 +20,9 @@ enum BlockType: string
      */
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::STANDARD => 'Standard',
             self::SET => 'Super Set',
         };
     }
 }
-

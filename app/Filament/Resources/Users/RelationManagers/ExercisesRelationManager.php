@@ -85,4 +85,3 @@ class ExercisesRelationManager extends RelationManager
             ]);
     }
 }
-

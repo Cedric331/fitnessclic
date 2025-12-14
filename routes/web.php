@@ -5,12 +5,12 @@ use App\Http\Controllers\ExercisesController;
 use App\Http\Controllers\PublicSessionController;
 use App\Http\Controllers\SessionsController;
 use App\Http\Controllers\SitemapController;
+use App\Mail\SessionEmail;
+use App\Models\Customer;
+use App\Models\Session;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
-use App\Models\Session;
-use App\Models\Customer;
-use App\Mail\SessionEmail;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -58,7 +58,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/sessions/{session}/pdf-preview', [SessionsController::class, 'showPdfPreview'])->name('sessions.pdf-preview');
     Route::post('/sessions/pdf-preview', [SessionsController::class, 'pdfPreview'])->name('sessions.pdf-preview-post');
     Route::post('/sessions/{session}/send-email', [SessionsController::class, 'sendEmail'])->name('sessions.send-email');
-    
+
     // Session layouts routes
     Route::post('/sessions/{session}/layout', [SessionsController::class, 'saveLayout'])->name('sessions.layout.save');
     Route::post('/sessions/layout', [SessionsController::class, 'saveLayout'])->name('sessions.layout.save-new');

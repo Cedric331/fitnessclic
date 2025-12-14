@@ -49,4 +49,3 @@ class SessionExerciseSet extends Model
         return $this->belongsTo(SessionExercise::class);
     }
 }
-

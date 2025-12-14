@@ -4,9 +4,7 @@ namespace App\Http\Requests\Sessions;
 
 use App\Models\Customer;
 use App\Models\Session;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
 class UpdateSessionRequest extends BaseSessionRequest
 {
@@ -16,8 +14,8 @@ class UpdateSessionRequest extends BaseSessionRequest
     public function authorize(): bool
     {
         $session = $this->route('session');
-        
-        if (!$session instanceof Session) {
+
+        if (! $session instanceof Session) {
             return false;
         }
 
@@ -49,7 +47,7 @@ class UpdateSessionRequest extends BaseSessionRequest
         $validator->after(function ($validator) {
             $customerIds = $this->input('customer_ids', []);
 
-            if (!empty($customerIds)) {
+            if (! empty($customerIds)) {
                 $customers = Customer::whereIn('id', $customerIds)
                     ->where('user_id', Auth::id())
                     ->get();
@@ -64,4 +62,3 @@ class UpdateSessionRequest extends BaseSessionRequest
         });
     }
 }
-

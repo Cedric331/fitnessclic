@@ -15,8 +15,8 @@ class SendEmailSessionRequest extends FormRequest
     public function authorize(): bool
     {
         $session = $this->route('session');
-        
-        if (!$session instanceof Session) {
+
+        if (! $session instanceof Session) {
             return false;
         }
 
@@ -52,11 +52,11 @@ class SendEmailSessionRequest extends FormRequest
             $customerId = $this->input('customer_id');
             $session = $this->route('session');
 
-            if (!$customerId || !$session instanceof Session) {
+            if (! $customerId || ! $session instanceof Session) {
                 return;
             }
 
-            if (!$session->relationLoaded('customers')) {
+            if (! $session->relationLoaded('customers')) {
                 $session->load('customers');
             }
 
@@ -65,23 +65,25 @@ class SendEmailSessionRequest extends FormRequest
                 ->where('is_active', true)
                 ->first();
 
-            if (!$customer) {
+            if (! $customer) {
                 $validator->errors()->add(
                     'customer_id',
                     'Le client sélectionné n\'existe pas ou n\'est pas actif.'
                 );
+
                 return;
             }
 
-            if (!$session->customers->contains($customerId)) {
+            if (! $session->customers->contains($customerId)) {
                 $validator->errors()->add(
                     'customer_id',
                     'Ce client n\'est pas associé à cette séance.'
                 );
+
                 return;
             }
 
-            if (!$customer->email) {
+            if (! $customer->email) {
                 $validator->errors()->add(
                     'customer_id',
                     'Ce client n\'a pas d\'adresse email.'
@@ -90,4 +92,3 @@ class SendEmailSessionRequest extends FormRequest
         });
     }
 }
-

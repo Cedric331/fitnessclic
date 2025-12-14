@@ -81,7 +81,6 @@ class Exercise extends Model implements HasMedia
             ->orderByPivot('order');
     }
 
-
     /**
      * Get the URL of the image of the exercise
      */
@@ -101,7 +100,7 @@ class Exercise extends Model implements HasMedia
     /**
      * Register media conversions to optimize images
      */
-    public function registerMediaConversions(Media $media = null): void
+    public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('optimized')
             ->performOnCollections(self::MEDIA_IMAGE)

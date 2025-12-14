@@ -28,4 +28,3 @@ class IndexSessionRequest extends FormRequest
         ];
     }
 }
-

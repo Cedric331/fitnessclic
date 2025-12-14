@@ -14,8 +14,8 @@ class UpdateCategoryRequest extends FormRequest
     public function authorize(): bool
     {
         $category = $this->route('category');
-        
-        if (!$category instanceof Category) {
+
+        if (! $category instanceof Category) {
             return false;
         }
 
@@ -34,4 +34,3 @@ class UpdateCategoryRequest extends FormRequest
         ];
     }
 }
-

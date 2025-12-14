@@ -12,7 +12,6 @@ class StripeWebhookController extends CashierController
     /**
      * Handle a Stripe webhook call.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Symfony\Component\HttpFoundation\Response
      */
     public function handleWebhook(Request $request)
@@ -20,6 +19,7 @@ class StripeWebhookController extends CashierController
         $webhookSecret = config('cashier.webhook.secret');
         if (empty($webhookSecret)) {
             Log::error('Stripe Webhook secret not configured');
+
             return response()->json(['error' => 'Webhook secret not configured'], 500);
         }
 
@@ -37,22 +37,21 @@ class StripeWebhookController extends CashierController
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
-            
+
             return response()->json(['error' => $e->getMessage()], 200);
         }
     }
 
     /**
      * Handle invoice payment failed.
-     * 
-     * @param  array  $payload
+     *
      * @return \Symfony\Component\HttpFoundation\Response
      */
     protected function handleInvoicePaymentFailed(array $payload)
     {
         $invoice = $payload['data']['object'];
         $stripeCustomerId = $invoice['customer'];
-        
+
         $user = User::where('stripe_id', $stripeCustomerId)->first();
 
         if ($user) {
@@ -69,15 +68,14 @@ class StripeWebhookController extends CashierController
 
     /**
      * Handle customer subscription deleted.
-     * 
-     * @param  array  $payload
+     *
      * @return \Symfony\Component\HttpFoundation\Response
      */
     protected function handleCustomerSubscriptionDeleted(array $payload)
     {
         $subscription = $payload['data']['object'];
         $stripeCustomerId = $subscription['customer'];
-        
+
         $user = User::where('stripe_id', $stripeCustomerId)->first();
 
         if ($user) {
@@ -91,4 +89,3 @@ class StripeWebhookController extends CashierController
         return parent::handleCustomerSubscriptionDeleted($payload);
     }
 }
-

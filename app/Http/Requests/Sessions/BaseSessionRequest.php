@@ -54,4 +54,3 @@ abstract class BaseSessionRequest extends FormRequest
         ];
     }
 }
-

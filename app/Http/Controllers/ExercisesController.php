@@ -53,8 +53,8 @@ class ExercisesController extends Controller
                     'name' => $exercise->title,
                     'image_url' => $exercise->image_url,
                     'user_id' => $exercise->user_id,
-                    'category_name' => $exercise->categories->isNotEmpty() 
-                        ? $exercise->categories->pluck('name')->join(', ') 
+                    'category_name' => $exercise->categories->isNotEmpty()
+                        ? $exercise->categories->pluck('name')->join(', ')
                         : 'Sans catégorie',
                     'categories' => $exercise->categories->map(fn ($category) => [
                         'id' => $category->id,
@@ -85,7 +85,7 @@ class ExercisesController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->can('create', Exercise::class)) {
+        if (! $user->can('create', Exercise::class)) {
             return redirect()->route('exercises.index')
                 ->with('error', 'La création d\'exercices est réservée aux abonnés Pro. Passez à Pro pour créer des exercices illimités.');
         }
@@ -105,7 +105,7 @@ class ExercisesController extends Controller
         if ($request->hasFile('image')) {
             $file = $request->file('image');
             $optimizedFile = $this->optimizeImage($file);
-            
+
             $exercise->addMedia($optimizedFile)
                 ->usingName(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
                 ->toMediaCollection(Exercise::MEDIA_IMAGE, Exercise::MEDIA_DISK);
@@ -135,7 +135,7 @@ class ExercisesController extends Controller
             $exercise->clearMediaCollection(Exercise::MEDIA_IMAGE);
             $file = $request->file('image');
             $optimizedFile = $this->optimizeImage($file);
-            
+
             $exercise->addMedia($optimizedFile)
                 ->usingName(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
                 ->toMediaCollection(Exercise::MEDIA_IMAGE, Exercise::MEDIA_DISK);
@@ -151,14 +151,14 @@ class ExercisesController extends Controller
     public function show(Request $request, Exercise $exercise)
     {
         $user = Auth::user();
-        
-        if (!$exercise->is_shared) {
+
+        if (! $exercise->is_shared) {
             return redirect()->route('exercises.index')
                 ->with('error', 'Cet exercice n\'est pas disponible.');
         }
 
         $userId = Auth::id();
-        
+
         $exercise->load(['categories', 'user']);
 
         $userSessions = $exercise->sessions()
@@ -185,9 +185,9 @@ class ExercisesController extends Controller
         ];
 
         $isInertiaRequest = $request->header('X-Inertia') !== null;
-        $wantsJson = $request->has('json') || ($request->wantsJson() && !$isInertiaRequest);
-        
-        if ($wantsJson && !$isInertiaRequest) {
+        $wantsJson = $request->has('json') || ($request->wantsJson() && ! $isInertiaRequest);
+
+        if ($wantsJson && ! $isInertiaRequest) {
             return response()->json($data);
         }
 
@@ -212,7 +212,6 @@ class ExercisesController extends Controller
         return Inertia::render('exercises/Show', $data);
     }
 
-
     /**
      * Upload multiple files to create exercises.
      * Each file will create an exercise with the filename (without extension) as the title.
@@ -222,7 +221,7 @@ class ExercisesController extends Controller
         $validated = $request->validated();
         $user = Auth::user();
 
-        if (!$user->can('import', Exercise::class)) {
+        if (! $user->can('import', Exercise::class)) {
             return redirect()->route('exercises.index')
                 ->with('error', 'L\'import d\'exercices est réservé aux abonnés Pro. Passez à Pro pour importer des exercices illimités.');
         }
@@ -236,7 +235,7 @@ class ExercisesController extends Controller
         foreach ($files as $file) {
             try {
                 $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-                
+
                 $exercise = Exercise::create([
                     'user_id' => $userId,
                     'title' => $filename,
@@ -254,24 +253,25 @@ class ExercisesController extends Controller
 
                 $createdCount++;
             } catch (\Exception $e) {
-                $errors[] = 'Erreur lors de la création de l\'exercice pour ' . $file->getClientOriginalName() . ': ' . $e->getMessage();
+                $errors[] = 'Erreur lors de la création de l\'exercice pour '.$file->getClientOriginalName().': '.$e->getMessage();
             }
         }
 
         if ($createdCount > 0) {
-            $message = $createdCount . ' exercice(s) créé(s) avec succès.';
-            if (!empty($errors)) {
-                $message .= ' ' . count($errors) . ' erreur(s) rencontrée(s) : ' . implode(', ', $errors);
+            $message = $createdCount.' exercice(s) créé(s) avec succès.';
+            if (! empty($errors)) {
+                $message .= ' '.count($errors).' erreur(s) rencontrée(s) : '.implode(', ', $errors);
             }
+
             return redirect()->route('exercises.index')
                 ->with('success', $message);
         }
 
         $errorMessage = 'Aucun exercice n\'a pu être créé.';
-        if (!empty($errors)) {
-            $errorMessage .= ' ' . implode(', ', $errors);
+        if (! empty($errors)) {
+            $errorMessage .= ' '.implode(', ', $errors);
         }
-        
+
         return redirect()->route('exercises.index')
             ->with('error', $errorMessage);
     }
@@ -282,8 +282,8 @@ class ExercisesController extends Controller
     public function destroy(Exercise $exercise)
     {
         $user = Auth::user();
-  
-        if ($exercise->user_id !== Auth::id() && (!$user || !$user->isAdmin())) {
+
+        if ($exercise->user_id !== Auth::id() && (! $user || ! $user->isAdmin())) {
             return redirect()->route('exercises.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour supprimer cet exercice.');
         }
@@ -296,9 +296,6 @@ class ExercisesController extends Controller
 
     /**
      * Optimize an uploaded image by resizing and compressing it
-     * 
-     * @param UploadedFile $file
-     * @return UploadedFile
      */
     private function optimizeImage(UploadedFile $file): UploadedFile
     {
@@ -307,7 +304,7 @@ class ExercisesController extends Controller
         $quality = 85;
 
         $imageInfo = getimagesize($file->getRealPath());
-        if (!$imageInfo) {
+        if (! $imageInfo) {
             return $file;
         }
 
@@ -321,6 +318,7 @@ class ExercisesController extends Controller
             if ($imageType === IMAGETYPE_JPEG) {
                 return $this->compressJpeg($file, $quality);
             }
+
             return $file;
         }
 
@@ -332,7 +330,7 @@ class ExercisesController extends Controller
             default => null,
         };
 
-        if (!$sourceImage) {
+        if (! $sourceImage) {
             return $file;
         }
 
@@ -367,8 +365,9 @@ class ExercisesController extends Controller
         imagedestroy($sourceImage);
         imagedestroy($newImage);
 
-        if (!$success) {
+        if (! $success) {
             unlink($tempPath);
+
             return $file;
         }
 
@@ -385,20 +384,16 @@ class ExercisesController extends Controller
 
     /**
      * Compress a JPEG image without resizing
-     * 
-     * @param UploadedFile $file
-     * @param int $quality
-     * @return UploadedFile
      */
     private function compressJpeg(UploadedFile $file, int $quality = 85): UploadedFile
     {
         $imageInfo = getimagesize($file->getRealPath());
-        if (!$imageInfo || $imageInfo[2] !== IMAGETYPE_JPEG) {
+        if (! $imageInfo || $imageInfo[2] !== IMAGETYPE_JPEG) {
             return $file;
         }
 
         $sourceImage = imagecreatefromjpeg($file->getRealPath());
-        if (!$sourceImage) {
+        if (! $sourceImage) {
             return $file;
         }
 
@@ -415,4 +410,3 @@ class ExercisesController extends Controller
         );
     }
 }
-

@@ -42,13 +42,13 @@ class UploadFilesExerciseRequest extends FormRequest
         $validator->after(function ($validator) {
             $categoryIds = $this->input('category_ids', []);
 
-            if (!empty($categoryIds)) {
+            if (! empty($categoryIds)) {
                 $categories = Category::whereIn('id', $categoryIds)
                     ->where(function ($query) {
                         $query->where('type', 'public')
                             ->orWhere(function ($q) {
                                 $q->where('type', 'private')
-                                  ->where('user_id', Auth::id());
+                                    ->where('user_id', Auth::id());
                             });
                     })
                     ->get();
@@ -63,4 +63,3 @@ class UploadFilesExerciseRequest extends FormRequest
         });
     }
 }
-

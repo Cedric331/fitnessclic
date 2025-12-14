@@ -7,10 +7,12 @@ use App\Http\Requests\Sessions\PdfPreviewSessionRequest;
 use App\Http\Requests\Sessions\SendEmailSessionRequest;
 use App\Http\Requests\Sessions\StoreSessionRequest;
 use App\Http\Requests\Sessions\UpdateSessionRequest;
+use App\Mail\SessionEmail;
 use App\Models\Customer;
 use App\Models\Exercise;
 use App\Models\Session;
 use App\Models\SessionLayout;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,8 +22,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Mail\SessionEmail;
 
 class SessionsController extends Controller
 {
@@ -31,12 +31,12 @@ class SessionsController extends Controller
     public function index(IndexSessionRequest $request): Response
     {
         $validated = $request->validated();
-        
+
         $query = Session::where('user_id', Auth::id())
             ->with(['customers', 'exercises.media', 'layout'])
             ->withCount('exercises');
 
-        if (!empty($validated['search'])) {
+        if (! empty($validated['search'])) {
             $search = $validated['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -44,7 +44,7 @@ class SessionsController extends Controller
             });
         }
 
-        if (!empty($validated['customer_id'])) {
+        if (! empty($validated['customer_id'])) {
             $query->whereHas('customers', function ($q) use ($validated) {
                 $q->where('customers.id', $validated['customer_id']);
             });
@@ -73,6 +73,7 @@ class SessionsController extends Controller
             });
             // Ajouter l'information sur la mise en page personnalisée
             $session->has_custom_layout = $session->layout !== null;
+
             return $session;
         });
 
@@ -168,7 +169,7 @@ class SessionsController extends Controller
         $validated = $request->validated();
         $user = Auth::user();
 
-        if (!$user->canSaveSessions()) {
+        if (! $user->canSaveSessions()) {
             return redirect()->route('sessions.create')
                 ->with('error', 'L\'enregistrement des séances est réservé aux abonnés Pro. Passez à Pro pour enregistrer vos séances.');
         }
@@ -182,7 +183,7 @@ class SessionsController extends Controller
             'session_date' => $validated['session_date'] ?? now(),
         ]);
 
-        if (!empty($customerIds)) {
+        if (! empty($customerIds)) {
             $session->customers()->attach($customerIds);
         }
 
@@ -493,7 +494,7 @@ class SessionsController extends Controller
         }
 
         $session->sessionExercises()->delete();
-        
+
         foreach ($validated['exercises'] as $exerciseData) {
             $sessionExercise = \App\Models\SessionExercise::create([
                 'session_id' => $session->id,
@@ -545,7 +546,7 @@ class SessionsController extends Controller
 
         // Charger le layout pour supprimer le PDF associé
         $session->load('layout');
-        
+
         // Supprimer le PDF si il existe
         if ($session->layout && $session->layout->pdf_path) {
             $pdfPath = $session->layout->pdf_path;
@@ -573,12 +574,13 @@ class SessionsController extends Controller
         }
 
         $user = Auth::user();
-        if (!$user->can('exportPdf', $session)) {
+        if (! $user->can('exportPdf', $session)) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
-                    'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.'
+                    'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.',
                 ], 403);
             }
+
             return redirect()->route('sessions.show', $session)
                 ->with('error', 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.');
         }
@@ -606,6 +608,7 @@ class SessionsController extends Controller
                     ],
                 ]);
             }
+
             // Pour les requêtes non-AJAX, rediriger vers la page de la séance
             return redirect()->route('sessions.show', $session)
                 ->with('info', 'Les séances libres doivent être exportées depuis la page de la séance.');
@@ -615,16 +618,16 @@ class SessionsController extends Controller
         $pdf = Pdf::loadView('sessions.pdf', [
             'session' => $session,
         ])->setOption('enable-local-file-access', true);
-        
+
         $fileName = $session->name ?: "seance-{$session->id}";
-        $fileName = Str::slug($fileName) . '.pdf';
-        
+        $fileName = Str::slug($fileName).'.pdf';
+
         if ($request->ajax() || $request->wantsJson()) {
             return response($pdf->output(), 200)
                 ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', 'inline; filename="' . $fileName . '"');
+                ->header('Content-Disposition', 'inline; filename="'.$fileName.'"');
         }
-        
+
         return $pdf->download($fileName);
     }
 
@@ -642,13 +645,13 @@ class SessionsController extends Controller
         $pdf = Pdf::loadView('sessions.pdf', [
             'session' => $session,
         ])->setOption('enable-local-file-access', true);
-        
+
         $fileName = $session->name ?: "seance-{$session->id}";
-        $fileName = Str::slug($fileName) . '.pdf';
-        
+        $fileName = Str::slug($fileName).'.pdf';
+
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'inline; filename="' . $fileName . '"');
+            ->header('Content-Disposition', 'inline; filename="'.$fileName.'"');
     }
 
     /**
@@ -659,87 +662,87 @@ class SessionsController extends Controller
         $user = Auth::user();
         // Vérifier via policy (on utilise une session temporaire pour la vérification)
         $tempSession = new Session(['user_id' => $user->id]);
-        if (!$user->can('exportPdf', $tempSession)) {
+        if (! $user->can('exportPdf', $tempSession)) {
             return response()->json([
-                'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.'
+                'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.',
             ], 403);
         }
 
         try {
             $validated = $request->validated();
 
-        $exerciseIds = array_column($validated['exercises'], 'exercise_id');
-        $exercises = Exercise::whereIn('id', $exerciseIds)
-            ->with(['categories', 'media'])
-            ->get()
-            ->keyBy('id');
+            $exerciseIds = array_column($validated['exercises'], 'exercise_id');
+            $exercises = Exercise::whereIn('id', $exerciseIds)
+                ->with(['categories', 'media'])
+                ->get()
+                ->keyBy('id');
 
-        $sessionData = [
-            'name' => $validated['name'] ?? 'Nouvelle Séance',
-            'session_date' => $validated['session_date'] ?? now(),
-            'notes' => $validated['notes'] ?? null,
-            'user' => Auth::user(),
-            'sessionExercises' => collect($validated['exercises'])->map(function ($exerciseData) use ($exercises) {
-                $exercise = $exercises->get($exerciseData['exercise_id']);
-                if (!$exercise) {
-                    return null;
-                }
+            $sessionData = [
+                'name' => $validated['name'] ?? 'Nouvelle Séance',
+                'session_date' => $validated['session_date'] ?? now(),
+                'notes' => $validated['notes'] ?? null,
+                'user' => Auth::user(),
+                'sessionExercises' => collect($validated['exercises'])->map(function ($exerciseData) use ($exercises) {
+                    $exercise = $exercises->get($exerciseData['exercise_id']);
+                    if (! $exercise) {
+                        return null;
+                    }
 
-                return (object) [
-                    'exercise' => $exercise,
-                    'custom_exercise_name' => $exerciseData['custom_exercise_name'] ?? null,
-                    'use_duration' => $exerciseData['use_duration'] ?? false,
-                    'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
-                    'sets' => isset($exerciseData['sets']) && is_array($exerciseData['sets']) 
-                        ? collect($exerciseData['sets'])->map(function($set) use ($exerciseData) {
-                            return (object) [
-                                'set_number' => $set['set_number'] ?? 1,
-                                'repetitions' => $set['repetitions'] ?? null,
-                                'weight' => $set['weight'] ?? null,
-                                'rest_time' => $set['rest_time'] ?? null,
-                                'duration' => $set['duration'] ?? null,
-                                'use_duration' => $set['use_duration'] ?? ($exerciseData['use_duration'] ?? false),
-                                'use_bodyweight' => $set['use_bodyweight'] ?? ($exerciseData['use_bodyweight'] ?? false),
-                                'order' => $set['order'] ?? 0,
-                            ];
-                        })->sortBy('order')
-                        : collect([(object) [
-                            'set_number' => 1,
-                            'repetitions' => $exerciseData['repetitions'] ?? null,
-                            'weight' => $exerciseData['weight'] ?? null,
-                            'rest_time' => $exerciseData['rest_time'] ?? null,
-                            'duration' => $exerciseData['duration'] ?? null,
-                            'use_duration' => $exerciseData['use_duration'] ?? false,
-                            'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
-                            'order' => 0,
-                        ]]),
-                    'additional_description' => $exerciseData['description'] ?? null,
-                    'description' => $exerciseData['description'] ?? null,
-                    'sets_count' => $exerciseData['sets_count'] ?? null,
-                    'order' => $exerciseData['order'] ?? 0,
-                    'block_id' => $exerciseData['block_id'] ?? null,
-                    'block_type' => $exerciseData['block_type'] ?? null,
-                    'position_in_block' => $exerciseData['position_in_block'] ?? null,
-                ];
-            })->filter()->sortBy('order')->values(),
-        ];
+                    return (object) [
+                        'exercise' => $exercise,
+                        'custom_exercise_name' => $exerciseData['custom_exercise_name'] ?? null,
+                        'use_duration' => $exerciseData['use_duration'] ?? false,
+                        'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
+                        'sets' => isset($exerciseData['sets']) && is_array($exerciseData['sets'])
+                            ? collect($exerciseData['sets'])->map(function ($set) use ($exerciseData) {
+                                return (object) [
+                                    'set_number' => $set['set_number'] ?? 1,
+                                    'repetitions' => $set['repetitions'] ?? null,
+                                    'weight' => $set['weight'] ?? null,
+                                    'rest_time' => $set['rest_time'] ?? null,
+                                    'duration' => $set['duration'] ?? null,
+                                    'use_duration' => $set['use_duration'] ?? ($exerciseData['use_duration'] ?? false),
+                                    'use_bodyweight' => $set['use_bodyweight'] ?? ($exerciseData['use_bodyweight'] ?? false),
+                                    'order' => $set['order'] ?? 0,
+                                ];
+                            })->sortBy('order')
+                            : collect([(object) [
+                                'set_number' => 1,
+                                'repetitions' => $exerciseData['repetitions'] ?? null,
+                                'weight' => $exerciseData['weight'] ?? null,
+                                'rest_time' => $exerciseData['rest_time'] ?? null,
+                                'duration' => $exerciseData['duration'] ?? null,
+                                'use_duration' => $exerciseData['use_duration'] ?? false,
+                                'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
+                                'order' => 0,
+                            ]]),
+                        'additional_description' => $exerciseData['description'] ?? null,
+                        'description' => $exerciseData['description'] ?? null,
+                        'sets_count' => $exerciseData['sets_count'] ?? null,
+                        'order' => $exerciseData['order'] ?? 0,
+                        'block_id' => $exerciseData['block_id'] ?? null,
+                        'block_type' => $exerciseData['block_type'] ?? null,
+                        'position_in_block' => $exerciseData['position_in_block'] ?? null,
+                    ];
+                })->filter()->sortBy('order')->values(),
+            ];
 
             $pdf = Pdf::loadView('sessions.pdf', [
                 'session' => (object) $sessionData,
             ])->setOption('enable-local-file-access', true);
-            
+
             $fileName = $sessionData['name'] ? Str::slug($sessionData['name']) : 'nouvelle-seance';
             $fileName .= '.pdf';
-            
+
             return $pdf->download($fileName);
         } catch (\Exception $e) {
             Log::error('Erreur génération PDF:', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
-                'error' => 'Erreur lors de la génération du PDF: ' . $e->getMessage()
+                'error' => 'Erreur lors de la génération du PDF: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -797,7 +800,7 @@ class SessionsController extends Controller
             }
             $request->merge(['layout_data' => $layoutDataArray]);
         }
-        
+
         $validated = $request->validate([
             'layout_data' => 'required|array',
             'canvas_width' => 'required|integer|min:100|max:2000',
@@ -810,14 +813,14 @@ class SessionsController extends Controller
         ]);
 
         // Si pas de session fournie mais session_id dans la requête, charger la session
-        if (!$session && isset($validated['session_id'])) {
+        if (! $session && isset($validated['session_id'])) {
             $session = Session::where('id', $validated['session_id'])
                 ->where('user_id', Auth::id())
                 ->firstOrFail();
         }
 
         // Si toujours pas de session, créer une nouvelle session temporaire
-        if (!$session) {
+        if (! $session) {
             $session = Session::create([
                 'user_id' => Auth::id(),
                 'name' => $validated['session_name'] ?? 'Séance avec mise en page',
@@ -831,7 +834,7 @@ class SessionsController extends Controller
         }
 
         // Mettre à jour le nom de la séance si fourni et non vide
-        if (isset($validated['session_name']) && !empty(trim($validated['session_name']))) {
+        if (isset($validated['session_name']) && ! empty(trim($validated['session_name']))) {
             $session->name = trim($validated['session_name']);
             $session->save();
         }
@@ -849,7 +852,7 @@ class SessionsController extends Controller
             $pdfFile = $request->file('pdf_file');
             // Utiliser le disque 'local' qui pointe vers storage/app/private
             $pdfPath = $pdfFile->store('session-pdfs', 'local');
-            
+
             // Supprimer l'ancien PDF s'il existe
             $existingLayout = SessionLayout::where('session_id', $session->id)->first();
             if ($existingLayout && $existingLayout->pdf_path) {
@@ -862,7 +865,7 @@ class SessionsController extends Controller
             'canvas_width' => $validated['canvas_width'],
             'canvas_height' => $validated['canvas_height'],
         ];
-        
+
         // Ajouter le pdf_path seulement s'il est fourni
         if ($pdfPath) {
             $layoutData['pdf_path'] = $pdfPath;
@@ -892,7 +895,7 @@ class SessionsController extends Controller
 
         $layout = $session->layout;
 
-        if (!$layout) {
+        if (! $layout) {
             return response()->json([
                 'layout' => null,
             ]);
@@ -917,9 +920,9 @@ class SessionsController extends Controller
     public function pdfFromLayout(Session $session)
     {
         $user = Auth::user();
-        if (!$user->can('exportPdf', $session)) {
+        if (! $user->can('exportPdf', $session)) {
             return response()->json([
-                'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.'
+                'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.',
             ], 403);
         }
 
@@ -930,7 +933,7 @@ class SessionsController extends Controller
 
         $layout = $session->layout;
 
-        if (!$layout) {
+        if (! $layout) {
             return response()->json(['error' => 'Aucune mise en page trouvée pour cette séance'], 404);
         }
 
@@ -942,4 +945,3 @@ class SessionsController extends Controller
         ]);
     }
 }
-

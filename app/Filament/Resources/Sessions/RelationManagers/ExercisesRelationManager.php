@@ -48,7 +48,7 @@ class ExercisesRelationManager extends RelationManager
                 Forms\Components\TextInput::make('repetitions')
                     ->label('Répétitions')
                     ->numeric()
-                    ->visible(fn (callable $get) => !$get('use_duration')),
+                    ->visible(fn (callable $get) => ! $get('use_duration')),
                 Forms\Components\TextInput::make('duration')
                     ->label('Durée')
                     ->maxLength(255)
@@ -61,7 +61,7 @@ class ExercisesRelationManager extends RelationManager
                     ->label('Charge (kg)')
                     ->numeric()
                     ->step(0.01)
-                    ->visible(fn (callable $get) => !$get('use_bodyweight')),
+                    ->visible(fn (callable $get) => ! $get('use_bodyweight')),
                 Forms\Components\Toggle::make('use_bodyweight')
                     ->label('Poids de corps')
                     ->default(false)
@@ -116,7 +116,7 @@ class ExercisesRelationManager extends RelationManager
                                     ->required(),
                             ])
                             ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => 'Série ' . ($state['set_number'] ?? '?')),
+                            ->itemLabel(fn (array $state): ?string => 'Série '.($state['set_number'] ?? '?')),
                     ])
                     ->collapsible()
                     ->collapsed(),
@@ -161,7 +161,7 @@ class ExercisesRelationManager extends RelationManager
                     ->label('Répétitions')
                     ->numeric()
                     ->toggleable()
-                    ->visible(fn ($record) => !$record->use_duration),
+                    ->visible(fn ($record) => ! $record->use_duration),
                 Tables\Columns\TextColumn::make('duration')
                     ->label('Durée')
                     ->toggleable()
@@ -170,7 +170,7 @@ class ExercisesRelationManager extends RelationManager
                     ->label('Charge (kg)')
                     ->numeric(decimalPlaces: 2)
                     ->toggleable()
-                    ->visible(fn ($record) => !$record->use_bodyweight),
+                    ->visible(fn ($record) => ! $record->use_bodyweight),
                 Tables\Columns\IconColumn::make('use_bodyweight')
                     ->label('Poids de corps')
                     ->boolean()
@@ -235,4 +235,3 @@ class ExercisesRelationManager extends RelationManager
             ->defaultSort('order', 'asc');
     }
 }
-

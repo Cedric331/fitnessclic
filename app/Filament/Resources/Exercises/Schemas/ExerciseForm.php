@@ -3,11 +3,11 @@
 namespace App\Filament\Resources\Exercises\Schemas;
 
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
-use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 
 class ExerciseForm
 {
@@ -21,7 +21,7 @@ class ExerciseForm
                     ->directory('exercises')
                     ->image()
                     ->preserveFilenames()
-                    ->columnSpanFull()                    
+                    ->columnSpanFull()
                     ->required(),
 
                 Select::make('user_id')
@@ -38,7 +38,7 @@ class ExerciseForm
                     ->columnSpanFull(),
 
                 TextInput::make('suggested_duration')
-                    ->columnSpanFull()                    
+                    ->columnSpanFull()
                     ->label('Durée suggérée'),
 
                 Toggle::make('is_shared')

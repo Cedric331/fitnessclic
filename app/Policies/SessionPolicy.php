@@ -47,4 +47,3 @@ class SessionPolicy
         return $user->id === $session->user_id && $user->isPro();
     }
 }
-

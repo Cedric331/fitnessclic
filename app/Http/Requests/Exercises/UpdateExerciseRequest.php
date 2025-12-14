@@ -15,8 +15,8 @@ class UpdateExerciseRequest extends FormRequest
     public function authorize(): bool
     {
         $exercise = $this->route('exercise');
-        
-        if (!$exercise instanceof Exercise) {
+
+        if (! $exercise instanceof Exercise) {
             return false;
         }
 
@@ -54,13 +54,13 @@ class UpdateExerciseRequest extends FormRequest
         $validator->after(function ($validator) {
             $categoryIds = $this->input('category_ids', []);
 
-            if (!empty($categoryIds)) {
+            if (! empty($categoryIds)) {
                 $categories = Category::whereIn('id', $categoryIds)
                     ->where(function ($query) {
                         $query->where('type', 'public')
                             ->orWhere(function ($q) {
                                 $q->where('type', 'private')
-                                  ->where('user_id', Auth::id());
+                                    ->where('user_id', Auth::id());
                             });
                     })
                     ->get();
@@ -75,4 +75,3 @@ class UpdateExerciseRequest extends FormRequest
         });
     }
 }
-

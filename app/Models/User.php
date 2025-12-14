@@ -11,13 +11,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Cashier\Billable;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable, Billable;
+    use Billable, HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * Boot the model.
@@ -155,8 +155,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     /**
      * Check if the user has a customer
-     * @param Customer $customer
-     * @return bool
      */
     public function hasCustomer(Customer $customer): bool
     {
@@ -165,7 +163,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     /**
      * Check if the user has an active subscription
-     * @return bool
      */
     public function hasActiveSubscription(): bool
     {
@@ -174,7 +171,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     /**
      * Check if the user is on a Pro subscription
-     * @return bool
      */
     public function isPro(): bool
     {
@@ -183,16 +179,14 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     /**
      * Check if the user is on a free account (not Pro)
-     * @return bool
      */
     public function isFree(): bool
     {
-        return !$this->isPro();
+        return ! $this->isPro();
     }
 
     /**
      * Check if the user can save sessions
-     * @return bool
      */
     public function canSaveSessions(): bool
     {
@@ -201,7 +195,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     /**
      * Check if the user can have unlimited clients
-     * @return bool
      */
     public function canHaveUnlimitedClients(): bool
     {
@@ -210,7 +203,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     /**
      * Check if the user can export PDFs
-     * @return bool
      */
     public function canExportPdf(): bool
     {
@@ -219,7 +211,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     /**
      * Check if the user can import unlimited exercises
-     * @return bool
      */
     public function canImportUnlimitedExercises(): bool
     {
@@ -228,7 +219,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     /**
      * Check if the user can create unlimited categories
-     * @return bool
      */
     public function canCreateUnlimitedCategories(): bool
     {
@@ -237,13 +227,13 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
     /**
      * Get the subscription plan name
-     * @return string
      */
     public function getSubscriptionPlanName(): string
     {
         if ($this->hasActiveSubscription()) {
             return 'FitnessClic Pro';
         }
+
         return 'Gratuit';
     }
 }

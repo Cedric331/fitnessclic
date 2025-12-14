@@ -14,8 +14,8 @@ class UpdateCustomerRequest extends FormRequest
     public function authorize(): bool
     {
         $customer = $this->route('customer');
-        
-        if (!$customer instanceof Customer) {
+
+        if (! $customer instanceof Customer) {
             return false;
         }
 
@@ -42,4 +42,3 @@ class UpdateCustomerRequest extends FormRequest
         ];
     }
 }
-
