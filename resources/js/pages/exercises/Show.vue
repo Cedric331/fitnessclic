@@ -11,6 +11,7 @@ import type { BreadcrumbItemType } from '@/types';
 import ExerciseFormDialog from './ExerciseFormDialog.vue';
 import ExerciseDeleteDialog from './ExerciseDeleteDialog.vue';
 import { useNotifications } from '@/composables/useNotifications';
+import UpgradeModal from '@/components/UpgradeModal.vue';
 
 interface Exercise {
     id: number;
@@ -105,6 +106,7 @@ const breadcrumbs: BreadcrumbItemType[] = [
 
 const isEditDialogOpen = ref(false);
 const isDeleteDialogOpen = ref(false);
+const isUpgradeModalOpen = ref(false);
 const canEdit = computed(() => {
     const user = (page.props as any).auth?.user;
     return user && (user.id === props.exercise.user_id || user.role === 'admin');
@@ -113,6 +115,10 @@ const canDelete = computed(() => {
     const user = (page.props as any).auth?.user;
     // Seul le créateur ou un admin peut supprimer
     return user && (user.id === props.exercise.user_id || user.role === 'admin');
+});
+const isPro = computed(() => {
+    const user = (page.props as any).auth?.user;
+    return user?.isPro ?? false;
 });
 
 const formatDate = (value?: string | null) => {
@@ -139,10 +145,19 @@ const handleViewSession = (session: Session) => {
 };
 
 const handleDownloadPdf = (session: Session) => {
+    if (!isPro.value) {
+        isUpgradeModalOpen.value = true;
+        return;
+    }
     window.open(`/sessions/${session.id}/pdf`, '_blank');
 };
 
 const handlePrint = (session: Session) => {
+    if (!isPro.value) {
+        isUpgradeModalOpen.value = true;
+        return;
+    }
+    
     // Récupérer le token CSRF
     const getCsrfToken = () => {
         const propsToken = (page.props as any).csrfToken;
@@ -239,11 +254,6 @@ const handlePrint = (session: Session) => {
                             {{ exercise.title }}
                         </h1>
                     </div>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">
-                        Créé le {{ formatDate(exercise.created_at) }}
-                        <span v-if="exercise.user_name" class="mx-1">·</span>
-                        <span v-if="exercise.user_name">Par {{ exercise.user_name }}</span>
-                    </p>
                 </div>
                 <div class="flex items-center gap-2">
                     <Button
@@ -393,6 +403,23 @@ const handlePrint = (session: Session) => {
                             <CardTitle>Informations</CardTitle>
                         </CardHeader>
                         <CardContent class="space-y-4">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    Date de création
+                                </p>
+                                <p class="text-sm text-slate-900 dark:text-white">
+                                    {{ formatDate(exercise.created_at) }}
+                                </p>
+                            </div>
+                            <div v-if="exercise.user_name">
+                                <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                    Créé par
+                                </p>
+                                <p class="text-sm text-slate-900 dark:text-white">
+                                    {{ exercise.user_name }}
+                                </p>
+                            </div>
+                            <Separator v-if="exercise.suggested_duration || exercise.user_name" />
                             <div v-if="exercise.suggested_duration">
                                 <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                     Durée suggérée
@@ -401,7 +428,6 @@ const handlePrint = (session: Session) => {
                                     {{ exercise.suggested_duration }}
                                 </p>
                             </div>
-                            <Separator v-if="exercise.suggested_duration" />
                         </CardContent>
                     </Card>
 
@@ -457,6 +483,12 @@ const handlePrint = (session: Session) => {
                 category_name: categories.length > 0 ? categories[0].name : 'Sans catégorie',
                 created_at: exercise.created_at,
             }"
+        />
+
+        <!-- Modal d'abonnement -->
+        <UpgradeModal
+            v-model:open="isUpgradeModalOpen"
+            feature="L'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF."
         />
     </AppLayout>
 </template>

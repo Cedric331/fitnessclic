@@ -84,9 +84,14 @@ class CustomersController extends Controller
         $trainingSessions = $customer->trainingSessions()
             ->where('user_id', $user->id)
             ->withCount('exercises')
+            ->with('layout')
             ->orderByDesc('session_date')
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->map(function ($session) {
+                $session->has_custom_layout = $session->layout !== null;
+                return $session;
+            });
 
         $customer->setAttribute('training_sessions_count', $trainingSessions->count());
 

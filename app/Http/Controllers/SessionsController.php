@@ -562,12 +562,44 @@ class SessionsController extends Controller
 
         $user = Auth::user();
         if (!$user->canExportPdf()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.'
+                ], 403);
+            }
             return redirect()->route('sessions.show', $session)
                 ->with('error', 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.');
         }
 
-        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'user']);
+        // Charger les relations nécessaires
+        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'user', 'layout']);
 
+        // Vérifier si c'est une séance libre (avec layout personnalisé)
+        if ($session->layout) {
+            // Pour les séances libres, retourner les données du layout pour génération côté client
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'layout' => [
+                        'id' => $session->layout->id,
+                        'session_id' => $session->layout->session_id,
+                        'layout_data' => $session->layout->layout_data,
+                        'canvas_width' => $session->layout->canvas_width,
+                        'canvas_height' => $session->layout->canvas_height,
+                    ],
+                    'session' => [
+                        'id' => $session->id,
+                        'name' => $session->name,
+                        'session_date' => $session->session_date,
+                        'notes' => $session->notes,
+                    ],
+                ]);
+            }
+            // Pour les requêtes non-AJAX, rediriger vers la page de la séance
+            return redirect()->route('sessions.show', $session)
+                ->with('info', 'Les séances libres doivent être exportées depuis la page de la séance.');
+        }
+
+        // Pour les séances standard, générer le PDF normalement
         $pdf = Pdf::loadView('sessions.pdf', [
             'session' => $session,
         ])->setOption('enable-local-file-access', true);

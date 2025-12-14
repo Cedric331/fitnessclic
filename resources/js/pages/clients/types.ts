@@ -4,6 +4,7 @@ export interface TrainingSessionHistory {
     notes?: string | null;
     session_date?: string | null;
     exercises_count: number;
+    has_custom_layout?: boolean;
     created_at: string;
 }
 
