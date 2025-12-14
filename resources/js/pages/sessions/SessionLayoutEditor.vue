@@ -167,19 +167,8 @@ const emit = defineEmits<{
 
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
-
-// Canvas dimensions (A4 portrait format - 210mm x 297mm)
-// Format A4 exact: 210mm x 297mm
-// Ratio: 297/210 = 1.4142857...
-// Pour correspondre exactement au PDF, on augmente la hauteur pour qu'elle corresponde
-// Si largeur = 800px, hauteur = 800 * 1.4142857 = 1131.43px
-// Pour éviter les espaces dans le PDF, on utilise une hauteur légèrement plus grande
 const canvasWidth = ref(800);
-// Pour correspondre exactement au format A4 (210mm x 297mm) dans le PDF
-// Ratio exact: 297/210 = 1.4142857...
-// Avec largeur 800px: 800 * 1.4142857 = 1131.43px
-// Pour éviter les espaces dans le PDF, on augmente légèrement
-const canvasHeight = ref(1140); // Augmenté pour correspondre exactement au PDF
+const canvasHeight = ref(1140);
 const scale = ref(1);
 
 // Konva stage and layers
@@ -864,14 +853,12 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     imageGroup.add(editButtonGroup);
                     element.buttonNode = editButtonGroup;
 
-                    // Bouton de suppression en haut à droite
                     const deleteButtonSize = 24;
                     const deleteButtonX = width - deleteButtonSize - 5;
                     const deleteButtonY = 5;
                     const buttonCenterX = deleteButtonX + deleteButtonSize / 2;
                     const buttonCenterY = deleteButtonY + deleteButtonSize / 2;
 
-                    // Cercle de fond du bouton de suppression
                     const deleteButtonBg = new Konva.Circle({
                         x: buttonCenterX,
                         y: buttonCenterY,
@@ -882,7 +869,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
                         opacity: 0.9,
                     });
 
-                    // Symbole "×" sur le bouton de suppression (bien centré)
                     const deleteButtonXIcon = new Konva.Text({
                         x: buttonCenterX,
                         y: buttonCenterY,
@@ -894,7 +880,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
                         verticalAlign: 'middle',
                     });
                     
-                    // Centrer le texte en calculant ses dimensions réelles
                     deleteButtonXIcon.offsetX(deleteButtonXIcon.width() / 2);
                     deleteButtonXIcon.offsetY(deleteButtonXIcon.height() / 2);
 
@@ -935,9 +920,7 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 });
 
                 imageGroup.on('click', (e) => {
-                    // Ne pas sélectionner si on clique sur les boutons
                     if (e.target !== imageGroup && e.target.parent === imageGroup) {
-                        // Vérifier si c'est le bouton d'édition
                         if (element.buttonNode && (
                             e.target === element.buttonNode || 
                             e.target.parent === element.buttonNode || 
@@ -946,7 +929,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
                         )) {
                             return;
                         }
-                        // Vérifier si c'est le bouton de suppression
                         if (element.deleteButtonNode && (
                             e.target === element.deleteButtonNode || 
                             e.target.parent === element.deleteButtonNode || 
@@ -960,48 +942,26 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     selectElement(element.id, imageGroup);
                 });
 
-                // S'assurer que le groupe est bien draggable
                 imageGroup.draggable(true);
-                
-                // Vérifier que la position est correcte avant d'ajouter
-                console.log('Before adding to layer:', {
-                    elementId: element.id,
-                    elementPosition: { x: element.x, y: element.y },
-                    konvaPosition: { x: imageGroup.x(), y: imageGroup.y() },
-                    calculatedPosition: { x, y }
-                });
-                
-                // S'assurer que la position de Konva correspond à celle de l'élément
                 imageGroup.x(x);
                 imageGroup.y(y);
                 
                 layer.add(imageGroup);
                 element.konvaNode = imageGroup;
 
-                // Forcer le layer à se redessiner pour que le groupe calcule correctement son bounding box
                 layer.draw();
 
-                // Si l'élément a déjà des données d'exercice, créer le titre et le cadre (plus de tableau pour les exercices)
-                // Le titre doit être créé après que le groupe soit ajouté au layer
                 if (element.exerciseData) {
-                    // Utiliser nextTick pour s'assurer que le groupe est complètement initialisé
                     nextTick(() => {
                         createExerciseTitle(element);
                         createImageFrame(element);
                     });
                 }
 
-                // S'assurer que le groupe calcule correctement son bounding box en incluant tous les enfants
-                // Le transformer devrait automatiquement utiliser getClientRect() qui inclut tous les enfants
-                // Mais on force un recalcul pour être sûr
                 nextTick(() => {
-                    // Obtenir le bounding box complet du groupe (incluant l'image et le bouton)
                     const box = imageGroup.getClientRect();
-                    console.log('Image group bounding box:', box);
                     
-                    // Forcer le transformer à recalculer le bounding box si l'élément est sélectionné
                     if (selectedElementId.value === element.id && transformer) {
-                        // Détacher et réattacher le transformer pour forcer le recalcul
                         transformer.nodes([]);
                         nextTick(() => {
                             if (transformer) {
@@ -1015,13 +975,11 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     }
                 });
                 
-                // Mettre à jour les dimensions dans l'élément
                 element.width = width;
                 element.height = height;
                 element.x = x;
                 element.y = y;
 
-                // Si c'est un exercice, initialiser les données si nécessaire
                 if (element.exerciseId && !element.exerciseData) {
                     const exercise = props.exercises.find(ex => ex.id === element.exerciseId);
                     if (exercise) {
@@ -1035,7 +993,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     }
                 }
                 
-                // Vérifier après ajout
                 console.log('After adding to layer:', {
                     elementId: element.id,
                     elementPosition: { x: element.x, y: element.y },
@@ -1044,7 +1001,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     inLayer: layer.findOne(`#${element.id}`) !== undefined
                 });
                 
-                // Forcer le layer à se mettre à jour
                 layer.batchDraw();
                 
                 console.log('Image added to layer:', {
@@ -1054,10 +1010,8 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     layerChildren: layer.getChildren().length
                 });
                 
-                // Forcer le redessin du layer plusieurs fois pour s'assurer
                 layer.draw();
                 
-                // Redessiner après un court délai pour s'assurer que tout est bien rendu
                 setTimeout(() => {
                     if (layer) {
                         layer.draw();
@@ -1065,7 +1019,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     }
                 }, 100);
                 
-                // Vérifier que l'image est bien visible
                 const bounds = konvaImage.getClientRect();
                 console.log('Image bounds:', bounds);
                 console.log('Stage size:', stage?.width(), stage?.height());
@@ -1083,21 +1036,15 @@ const addImageToCanvas = async (element: LayoutElement) => {
             reject(new Error('Failed to load image'));
         };
         
-        // Définir la source après avoir attaché les handlers
         if (element.imageUrl) {
-            // Vérifier si l'URL est absolue ou relative
             let imageUrl = element.imageUrl;
             
-            // Si l'URL ne commence pas par http/https, ajouter le protocole et le domaine si nécessaire
             if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
                 if (!imageUrl.startsWith('/')) {
                     imageUrl = '/' + imageUrl;
                 }
-                // Si c'est une URL relative, s'assurer qu'elle commence par /storage/ pour les médias Laravel
                 if (imageUrl.startsWith('/storage/')) {
-                    // C'est déjà correct
                 } else if (!imageUrl.startsWith('http')) {
-                    // Essayer de construire l'URL complète
                     imageUrl = window.location.origin + (imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl);
                 }
             }
@@ -1113,17 +1060,14 @@ const addImageToCanvas = async (element: LayoutElement) => {
     });
 };
 
-// Add text to canvas
 const addTextToCanvas = (element: LayoutElement) => {
     if (!layer) return;
 
     const fontStyle = (element.fontStyle === 'italic' ? 'italic' : '') + (element.fontWeight === 'bold' ? ' bold' : '') || 'normal';
     
-    // Vérifier si c'est un élément du footer (ne pas appliquer la logique d'alignement automatique)
     const isFooterElement = element.id && element.id.includes('footer');
     
     if (isFooterElement) {
-        // Pour le footer, utiliser la logique originale (centrage manuel avec offsetX)
     const konvaText = new Konva.Text({
         x: element.x,
         y: element.y,
@@ -1158,7 +1102,6 @@ const addTextToCanvas = (element: LayoutElement) => {
         return;
     }
     
-    // Calculer la largeur du texte pour l'alignement
     const tempText = new Konva.Text({
         text: element.text || '',
         fontSize: element.fontSize || 16,
@@ -1167,41 +1110,23 @@ const addTextToCanvas = (element: LayoutElement) => {
     const textWidth = tempText.width();
     tempText.destroy();
     
-    // Pour l'alignement, on utilise la largeur du canvas
     const align = element.align || 'left';
-    const margin = 20; // Marge par rapport aux bords
+    const margin = 20; 
     
-    // Largeur du texte pour l'affichage (utiliser toute la largeur disponible)
     const textDisplayWidth = canvasWidth.value - (margin * 2);
-    
-    // Ajuster la position X selon l'alignement par rapport à la page
-    // Dans Konva:
-    // - align: 'left' : X est le point de départ (gauche), texte aligné à gauche
-    // - align: 'center' : X est le centre de la zone, texte centré autour de X
-    // - align: 'right' : X est le point de départ (gauche) de la zone, texte aligné à droite dans la zone
+
     let textX = element.x;
     if (align === 'center') {
-        // Centrer sur la largeur du canvas
-        // Avec align: 'center', le point X est le centre de la zone
-        // Pour centrer la zone sur la page, le centre doit être à canvasWidth / 2
-        // Mais la zone commence à X - width/2, donc on doit ajuster
-        // En fait, avec align: 'center', X est le centre, donc on met X au centre du canvas
         textX = canvasWidth.value / 2;
-        element.x = textX; // Sauvegarder la position centrée
+        element.x = textX;
     } else if (align === 'right') {
-        // Aligner à droite de la page
-        // Le texte doit se terminer à canvasWidth - margin
-        // Donc la zone doit commencer à (canvasWidth - margin) - textDisplayWidth
         textX = (canvasWidth.value - margin) - textDisplayWidth;
-        element.x = textX; // Sauvegarder la position à droite
+        element.x = textX;
     } else {
-        // Aligner à gauche de la page
-        // X est le point de départ (gauche) de la zone
         textX = margin;
-        element.x = textX; // Sauvegarder la position à gauche
+        element.x = textX; 
     }
     
-    // Créer un groupe pour contenir le texte et éventuellement le rectangle de cadre
     const textGroup = new Konva.Group({
         x: 0,
         y: 0,
@@ -1209,7 +1134,6 @@ const addTextToCanvas = (element: LayoutElement) => {
         id: element.id,
     });
     
-    // Créer le texte
     const konvaText = new Konva.Text({
         x: textX,
         y: element.y,
@@ -1221,29 +1145,21 @@ const addTextToCanvas = (element: LayoutElement) => {
         textDecoration: element.textDecoration === 'underline' ? 'underline' : '',
         align: align,
         width: textDisplayWidth,
-        draggable: false, // Le texte n'est pas draggable directement, c'est le groupe qui l'est
+        draggable: false,
     });
     
-    // Pour le centrage, utiliser offsetX pour que le texte soit centré autour du point X
-    // Sans offsetX, la zone commence à X et s'étend jusqu'à X + width, ce qui dépasse
     if (align === 'center') {
         konvaText.offsetX(textDisplayWidth / 2);
     }
     
     textGroup.add(konvaText);
     
-    // Si un cadre est demandé, créer un rectangle autour du texte avec une marge de 2px
-    // On doit d'abord ajouter le texte au groupe pour pouvoir mesurer ses dimensions réelles
     if (element.stroke) {
-        // Attendre que le texte soit rendu pour obtenir ses dimensions réelles
         nextTick(() => {
             if (!layer) return;
             
-            // Calculer les dimensions du rectangle en fonction de la taille réelle du texte
-            const textPadding = 2; // Marge de 2px entre le texte et le rectangle
+            const textPadding = 2; 
             
-            // Obtenir les dimensions réelles du texte rendu
-            // Créer un texte temporaire pour mesurer la largeur réelle
             const tempText = new Konva.Text({
                 text: konvaText.text(),
                 fontSize: konvaText.fontSize(),
@@ -1254,7 +1170,6 @@ const addTextToCanvas = (element: LayoutElement) => {
             tempText.destroy();
             const textActualHeight = konvaText.height();
             
-            // Position réelle du texte (en tenant compte de l'alignement)
             let textActualX = textX;
             if (align === 'center') {
                 textActualX = textX - textActualWidth / 2;
@@ -1262,13 +1177,11 @@ const addTextToCanvas = (element: LayoutElement) => {
                 textActualX = textX + textDisplayWidth - textActualWidth;
             }
             
-            // Calculer la position et les dimensions du rectangle
             let rectX = textActualX;
             let rectY = element.y;
             let rectWidth = textActualWidth;
             let rectHeight = textActualHeight;
             
-            // Ajuster pour la marge de 2px
             rectX -= textPadding;
             rectY -= textPadding;
             rectWidth += textPadding * 2;
@@ -1283,7 +1196,7 @@ const addTextToCanvas = (element: LayoutElement) => {
                 stroke: element.stroke,
                 strokeWidth: element.strokeWidth || 1,
                 draggable: false,
-                listening: false, // Ne pas interférer avec les événements
+                listening: false, 
             });
             
             textGroup.add(frameRect);
@@ -1292,7 +1205,6 @@ const addTextToCanvas = (element: LayoutElement) => {
         });
     }
     
-    // Sauvegarder la largeur dans l'élément
     element.width = textDisplayWidth;
 
     textGroup.on('dragend', () => {
@@ -1315,11 +1227,9 @@ const addTextToCanvas = (element: LayoutElement) => {
     element.konvaNode = textGroup;
 };
 
-// Add table to canvas
 const addTableToCanvas = (element: LayoutElement) => {
     if (!layer || !element.tableData) return;
     
-    // Dimensions du tableau (réduites pour un rendu plus compact)
     const cellPadding = 5;
     const cellHeight = 28;
     const colWidths = {
@@ -1332,7 +1242,6 @@ const addTableToCanvas = (element: LayoutElement) => {
     const headerHeight = 28;
     const tableHeight = headerHeight + (element.tableData.rows.length * cellHeight) + cellPadding * 2;
     
-    // Créer un groupe pour le tableau
     const tableGroup = new Konva.Group({
         x: element.x,
         y: element.y,
@@ -1340,7 +1249,6 @@ const addTableToCanvas = (element: LayoutElement) => {
         id: element.id,
     });
     
-    // Fond du tableau (blanc) avec ombre
     const tableBg = new Konva.Rect({
         x: 0,
         y: 0,
@@ -1357,18 +1265,16 @@ const addTableToCanvas = (element: LayoutElement) => {
     });
     tableGroup.add(tableBg);
     
-    // Fond de l'en-tête (bleu clair)
     const headerBg = new Konva.Rect({
         x: 0,
         y: 0,
         width: tableWidth,
         height: headerHeight,
-        fill: '#E0F2FE', // Bleu clair (tailwind blue-100)
-        cornerRadius: 4, // Coins arrondis (les coins du bas seront cachés par le fond blanc)
+        fill: '#E0F2FE',
+        cornerRadius: 4,
     });
     tableGroup.add(headerBg);
     
-    // En-têtes
     const firstRow = element.tableData.rows[0];
     const repsLabel = firstRow?.useDuration ? 'durée (s)' : 'répets';
     const loadLabel = firstRow?.useBodyweight ? 'poids de corps' : 'charge';
@@ -1380,7 +1286,6 @@ const addTableToCanvas = (element: LayoutElement) => {
         { text: loadLabel, x: cellPadding + colWidths.series + colWidths.reps + colWidths.recovery, width: colWidths.load }
     ];
     
-    // Ligne de séparation des en-têtes
     const headerLine = new Konva.Line({
         points: [0, headerHeight, tableWidth, headerHeight],
         stroke: '#d1d5db',
@@ -1403,11 +1308,9 @@ const addTableToCanvas = (element: LayoutElement) => {
         tableGroup.add(headerText);
     });
     
-    // Lignes de données
     element.tableData.rows.forEach((row, rowIndex) => {
         const rowY = headerHeight + (rowIndex * cellHeight) + cellPadding;
         
-        // Ligne de séparation
         if (rowIndex > 0) {
             const rowLine = new Konva.Line({
                 points: [0, rowY - cellPadding, tableWidth, rowY - cellPadding],
@@ -1417,7 +1320,6 @@ const addTableToCanvas = (element: LayoutElement) => {
             tableGroup.add(rowLine);
         }
         
-        // Cellules avec les bonnes valeurs
         const repsValue = row.useDuration ? (row.duration?.toString() || '') : (row.reps?.toString() || '');
         const loadValue = row.useBodyweight ? 'Pdc' : (row.load?.toString() || '');
         
@@ -1443,7 +1345,6 @@ const addTableToCanvas = (element: LayoutElement) => {
         });
     });
     
-    // Bouton de suppression en haut à droite
     const deleteButtonSize = 24;
     const deleteButtonX = tableWidth - deleteButtonSize - 5;
     const deleteButtonY = 5;
@@ -1484,7 +1385,6 @@ const addTableToCanvas = (element: LayoutElement) => {
         
         saveToHistory();
         
-        // Supprimer le tableau
         if (element.konvaNode) {
             element.konvaNode.destroy();
         }
@@ -1492,10 +1392,8 @@ const addTableToCanvas = (element: LayoutElement) => {
             element.tableGroup.destroy();
         }
         
-        // Retirer de la liste des éléments
         elements.value = elements.value.filter(el => el.id !== element.id);
         
-        // Désélectionner si c'était l'élément sélectionné
         if (selectedElementId.value === element.id) {
             if (transformer) {
                 transformer.nodes([]);
@@ -1532,8 +1430,8 @@ const addTableToCanvas = (element: LayoutElement) => {
     tempText.destroy();
     const instructionsButtonWidth = textWidth + instructionsButtonPadding * 2;
     const instructionsButtonHeight = 28;
-    const spacingBelowTable = 8; // Espacement entre le tableau et le bouton
-    const instructionsButtonX = (tableWidth - instructionsButtonWidth) / 2; // Centré sous le tableau
+    const spacingBelowTable = 8; 
+    const instructionsButtonX = (tableWidth - instructionsButtonWidth) / 2; 
     const instructionsButtonY = tableHeight + spacingBelowTable;
     
     // Rectangle de fond du bouton "+ Consignes"
@@ -1615,7 +1513,6 @@ const addTableToCanvas = (element: LayoutElement) => {
         selectElement(element.id, tableGroup);
     });
     
-    // Sauvegarder les dimensions (incluant l'espace pour le bouton en dessous)
     const buttonSpacing = 8;
     const buttonHeight = 28;
     element.width = tableWidth;
@@ -1626,14 +1523,11 @@ const addTableToCanvas = (element: LayoutElement) => {
     element.tableGroup = tableGroup;
 };
 
-// Save current state to history
 const saveToHistory = () => {
-    // Remove any future history if we're not at the end
     if (historyIndex.value < history.value.length - 1) {
         history.value = history.value.slice(0, historyIndex.value + 1);
     }
     
-    // Create a deep copy of current elements (without konvaNode)
     const snapshot = elements.value.map(el => {
         const { konvaNode, ...elementWithoutNode } = el;
         return JSON.parse(JSON.stringify(elementWithoutNode));
@@ -1642,24 +1536,20 @@ const saveToHistory = () => {
     history.value.push(snapshot);
     historyIndex.value = history.value.length - 1;
     
-    // Limit history size
     if (history.value.length > maxHistorySize) {
         history.value.shift();
         historyIndex.value = history.value.length - 1;
     }
 };
 
-// Undo last action
 const undo = async () => {
     if (historyIndex.value < 0 || !layer) return;
     
-    // Si on est à l'index 0, on ne peut pas faire undo (on est déjà à l'état initial)
     if (historyIndex.value === 0) return;
     
     historyIndex.value--;
     const previousState = history.value[historyIndex.value];
     
-    // Clear current canvas
     elements.value.forEach(el => {
         if (el.konvaNode) {
             el.konvaNode.destroy();
@@ -1673,22 +1563,16 @@ const undo = async () => {
     });
     elements.value = [];
     
-    // Restore previous state
     if (previousState) {
         elements.value = JSON.parse(JSON.stringify(previousState));
-        // Charger tous les éléments (y compris le footer s'il existe dans l'historique)
-        // Ne pas ajouter de nouveau footer car il devrait déjà être dans l'état restauré
         await loadElementsToCanvas(false);
         
-        // Vérifier si le footer existe dans l'état restauré
         const footerElements = elements.value.filter(el => el.id && el.id.includes('footer'));
         
-        // Si le footer n'existe pas dans l'état restauré, l'ajouter (cas où on revient à un état avant l'ajout du footer)
         if (footerElements.length === 0) {
             await addDefaultFooterIfNeeded();
         }
     } else {
-        // Si pas d'état précédent, charger quand même le footer
         await loadElementsToCanvas(true);
     }
     
@@ -1702,22 +1586,18 @@ const undo = async () => {
     }
 };
 
-// Check if undo is available
 const canUndo = computed(() => historyIndex.value > 0);
 
-// Update element position
 const updateElementPosition = (id: string, x: number, y: number) => {
     const element = elements.value.find(el => el.id === id);
     if (element) {
         element.x = x;
         element.y = y;
         
-        // Pour les ellipses dans un groupe, mettre à jour la position du groupe
         if (element.type === 'ellipse' && element.konvaNode && (element.konvaNode as any)._ellipseShape) {
             const ellipseShape = (element.konvaNode as any)._ellipseShape;
             const radiusX = ellipseShape.radiusX();
             const radiusY = ellipseShape.radiusY();
-            // Le groupe doit être positionné au coin supérieur gauche
             element.konvaNode.x(x - radiusX);
             element.konvaNode.y(y - radiusY);
         }
@@ -1725,15 +1605,12 @@ const updateElementPosition = (id: string, x: number, y: number) => {
     }
 };
 
-// Track if we're currently transforming (to avoid saving history on every mousemove)
 let isTransforming = false;
 let transformStartState: LayoutElement[] | null = null;
 
-// Update element transform
 const updateElementTransform = (id: string, node: any) => {
     const element = elements.value.find(el => el.id === id);
     if (element && node) {
-        // Save history only at the start of transformation
         if (!isTransforming) {
             isTransforming = true;
             transformStartState = JSON.parse(JSON.stringify(elements.value.map(el => {
@@ -1751,7 +1628,6 @@ const updateElementTransform = (id: string, node: any) => {
         element.rotation = newRotation;
         
         if (element.type === 'ellipse') {
-            // Pour les ellipses, le node est un Group qui contient l'ellipse
             const ellipseShape = (node as any)._ellipseShape;
             if (ellipseShape) {
                 const currentRadiusX = ellipseShape.radiusX();
@@ -1764,7 +1640,6 @@ const updateElementTransform = (id: string, node: any) => {
                 
                 ellipseShape.radiusX(newRadiusX);
                 ellipseShape.radiusY(newRadiusY);
-                // Mettre à jour la position de l'ellipse dans le groupe
                 ellipseShape.x(newRadiusX);
                 ellipseShape.y(newRadiusY);
                 
@@ -1773,7 +1648,6 @@ const updateElementTransform = (id: string, node: any) => {
                 
                 element.radiusX = newRadiusX;
                 element.radiusY = newRadiusY;
-                // Mettre à jour la position de l'élément (centre du groupe)
                 element.x = node.x() + newRadiusX;
                 element.y = node.y() + newRadiusY;
             }
@@ -1793,7 +1667,6 @@ const updateElementTransform = (id: string, node: any) => {
                 element.points = transformedPoints;
             }
         } else if (element.type === 'image') {
-            // Pour les images dans un groupe, mettre à jour les dimensions de l'image interne
             const imageNode = node.findOne('Image');
             if (imageNode) {
                 const newWidth = imageNode.width() * node.scaleX();
@@ -1805,13 +1678,11 @@ const updateElementTransform = (id: string, node: any) => {
                 element.width = newWidth;
                 element.height = newHeight;
                 
-                // Mettre à jour le cadre de l'image s'il existe
                 if (element.imageFrameNode && element.exerciseData?.imageFrame) {
                     element.imageFrameNode.width(newWidth);
                     element.imageFrameNode.height(newHeight);
                 }
             } else {
-                // Fallback si pas d'image trouvée
                 const newWidth = node.width() * node.scaleX();
                 const newHeight = node.height() * node.scaleY();
                 node.width(newWidth);
@@ -1821,33 +1692,27 @@ const updateElementTransform = (id: string, node: any) => {
                 element.width = newWidth;
                 element.height = newHeight;
                 
-                // Mettre à jour le cadre de l'image s'il existe
                 if (element.imageFrameNode && element.exerciseData?.imageFrame) {
                     element.imageFrameNode.width(newWidth);
                     element.imageFrameNode.height(newHeight);
                 }
             }
         } else if (element.type === 'text') {
-            // Pour les textes, mettre à jour la taille de la police et recalculer le cadre
             const textNode = node.findOne('Text');
             if (textNode) {
                 const scaleX = node.scaleX();
                 const scaleY = node.scaleY();
                 
-                // Mettre à jour la taille de la police en fonction du scale
                 const currentFontSize = element.fontSize || 16;
                 const newFontSize = Math.max(8, Math.min(200, currentFontSize * Math.max(scaleX, scaleY)));
                 textNode.fontSize(newFontSize);
                 element.fontSize = newFontSize;
                 
-                // Réinitialiser le scale
                 node.scaleX(1);
                 node.scaleY(1);
                 
-                // Mettre à jour le cadre s'il existe
                 if (element.stroke && element.textFrameNode) {
                     const textPadding = 2;
-                    // Créer un texte temporaire pour mesurer la largeur réelle
                     const tempText = new Konva.Text({
                         text: textNode.text(),
                         fontSize: textNode.fontSize(),
@@ -1891,10 +1756,8 @@ const updateElementTransform = (id: string, node: any) => {
             layer.draw();
         }
         
-        // Save history after transformation ends
         if (isTransforming && transformStartState) {
             isTransforming = false;
-            // Only save if something actually changed
             const currentState = JSON.stringify(elements.value.map(el => {
                 const { konvaNode, ...elWithoutNode } = el;
                 return elWithoutNode;
@@ -1907,11 +1770,9 @@ const updateElementTransform = (id: string, node: any) => {
     }
 };
 
-// Select element
 const selectElement = (id: string, node: any) => {
     if (!transformer || !node) return;
     
-    // Si l'élément est déjà sélectionné, le désélectionner
     if (selectedElementId.value === id) {
         transformer.nodes([]);
         selectedElementId.value = null;
@@ -1921,23 +1782,18 @@ const selectElement = (id: string, node: any) => {
         return;
     }
     
-    // Sinon, sélectionner l'élément
     selectedElementId.value = id;
     
-    // Mettre l'élément au premier plan (devant les autres)
     if (node) {
         node.moveToTop();
     }
     
-    // Pour les images dans un groupe, s'assurer que le transformer calcule le bounding box correctement
     const element = elements.value.find(el => el.id === id);
     
-    // Si c'est un texte (avec ou sans cadre), configurer boundBoxFunc pour utiliser la largeur réelle du texte
     if (element && element.type === 'text') {
         transformer.boundBoxFunc((oldBox, newBox) => {
             const textNode = node.findOne('Text');
             if (textNode) {
-                // Créer un texte temporaire pour mesurer la largeur réelle
                 const tempText = new Konva.Text({
                     text: textNode.text(),
                     fontSize: textNode.fontSize(),
@@ -1967,7 +1823,6 @@ const selectElement = (id: string, node: any) => {
                     actualX = textX + textDisplayWidth - textActualWidth;
                 }
                 
-                // Si un cadre existe, prendre en compte ses dimensions (padding de 2px de chaque côté)
                 const frameNode = node.findOne('Rect');
                 let finalX = actualX;
                 let finalY = textY;
@@ -1975,8 +1830,7 @@ const selectElement = (id: string, node: any) => {
                 let finalHeight = textActualHeight;
                 
                 if (frameNode && element.stroke) {
-                    const textPadding = 2; // Marge de 2px entre le texte et le rectangle
-                    // Le cadre a un padding de 2px de chaque côté, donc on doit ajuster
+                    const textPadding = 2;
                     finalX = actualX - textPadding;
                     finalY = textY - textPadding;
                     finalWidth = textActualWidth + (textPadding * 2);
@@ -1994,7 +1848,6 @@ const selectElement = (id: string, node: any) => {
             return newBox;
         });
         
-        // Forcer la mise à jour du transformer après un court délai pour s'assurer que le cadre est créé
         nextTick(() => {
             if (transformer && layer) {
                 setTimeout(() => {
@@ -2010,17 +1863,13 @@ const selectElement = (id: string, node: any) => {
         const box = node.getClientRect();
         console.log('Group bounding box on select:', box);
         
-        // Réinitialiser boundBoxFunc pour les images
         transformer.boundBoxFunc((oldBox, newBox) => {
             return newBox;
         });
         
-        // Forcer le transformer à recalculer le bounding box en incluant tous les enfants
         nextTick(() => {
             if (transformer) {
-                // Forcer la mise à jour du transformer
                 transformer.forceUpdate();
-                // Attendre un peu pour que Konva recalcule
                 setTimeout(() => {
                     if (transformer && layer) {
                         transformer.forceUpdate();
@@ -2030,18 +1879,14 @@ const selectElement = (id: string, node: any) => {
             }
         });
     } else if (transformer) {
-        // Réinitialiser boundBoxFunc pour les autres éléments
         transformer.boundBoxFunc((oldBox, newBox) => {
             return newBox;
         });
-        // Pour les autres éléments, forcer la mise à jour normalement
         transformer.forceUpdate();
     }
     
-    // S'assurer que le nœud est bien attaché au transformer
     transformer.nodes([node]);
     
-    // Redessiner le layer
     if (layer) {
         layer.draw();
     }
@@ -2076,7 +1921,6 @@ const handleExerciseDrop = async (exercise: Exercise, x?: number, y?: number) =>
 
     try {
         const imageUrl = exercise.image_url;
-        // S'assurer que les coordonnées sont valides
         const finalX = x !== undefined && x >= 0 ? x : (canvasWidth.value / 2);
         const finalY = y !== undefined && y >= 0 ? y : (canvasHeight.value / 2);
         
@@ -2099,13 +1943,11 @@ const handleExerciseDrop = async (exercise: Exercise, x?: number, y?: number) =>
         
         console.log('Image loaded, drawing layer...');
         
-        // S'assurer que le layer est redessiné
         if (layer) {
             layer.draw();
             console.log('Layer drawn');
         }
         
-        // Vérifier que l'image est bien sur le canvas
         const addedNode = element.konvaNode;
         if (addedNode && layer) {
             const nodes = layer.getChildren();
@@ -2118,7 +1960,6 @@ const handleExerciseDrop = async (exercise: Exercise, x?: number, y?: number) =>
         console.error('Error adding exercise image:', error);
         notifyError(`Erreur lors de l'ajout de l'image: ${error.message || 'Erreur inconnue'}`);
         
-        // Retirer l'élément de la liste si l'ajout a échoué
         const lastElement = elements.value[elements.value.length - 1];
         if (lastElement && lastElement.exerciseId === exercise.id) {
             elements.value.pop();
@@ -2141,8 +1982,6 @@ const handleExerciseDragEnd = () => {
     draggingExerciseId.value = null;
 };
 
-// Filtered exercises
-// Computed properties
 const availableCustomers = computed(() => props.customers || []);
 const selectedCustomers = computed(() => {
     return availableCustomers.value.filter(c => selectedCustomerIds.value.includes(c.id));
@@ -2372,14 +2211,10 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
         elements.value.push(element);
         addShapeToCanvas(element);
         shapeStartPos.value = null;
-        // Ne pas désactiver le mode de dessin pour permettre de continuer à dessiner
-        // Le mode reste actif jusqu'à ce que l'utilisateur clique sur un autre bouton ou désélectionne
-        
-        // Sélectionner automatiquement la forme créée
+
         nextTick(() => {
             const createdElement = elements.value.find(el => el.id === element.id);
             if (createdElement && createdElement.konvaNode) {
-                // Pour les ellipses, attendre plus longtemps et forcer plusieurs mises à jour
                 if (createdElement.type === 'ellipse') {
                     setTimeout(() => {
                         if (createdElement.konvaNode && transformer && layer) {
@@ -2387,7 +2222,6 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
                             transformer.nodes([createdElement.konvaNode]);
                             transformer.forceUpdate();
                             layer.draw();
-                            // Forcer une deuxième mise à jour
                             setTimeout(() => {
                                 if (transformer && layer) {
                                     transformer.forceUpdate();
@@ -2401,9 +2235,6 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
                 }
             }
         });
-        
-        // Ne pas nettoyer les événements pour permettre de continuer à dessiner
-        // Les événements seront nettoyés quand l'utilisateur changera de mode de dessin
     };
     
     // Store handlers for cleanup
@@ -2443,7 +2274,6 @@ const addShapeToCanvas = (element: LayoutElement) => {
             const radiusX = element.radiusX !== undefined ? element.radiusX : 50;
             const radiusY = element.radiusY !== undefined ? element.radiusY : 50;
             
-            // Créer un groupe pour envelopper l'ellipse et faciliter le calcul du transformer
             const ellipseGroup = new Konva.Group({
                 x: element.x - radiusX,
                 y: element.y - radiusY,
@@ -2451,7 +2281,6 @@ const addShapeToCanvas = (element: LayoutElement) => {
                 rotation: element.rotation || 0,
             });
             
-            // Créer l'ellipse à l'intérieur du groupe, positionnée au centre du groupe
             const ellipseShape = new Konva.Ellipse({
                 x: radiusX,
                 y: radiusY,
@@ -2466,7 +2295,6 @@ const addShapeToCanvas = (element: LayoutElement) => {
             ellipseGroup.add(ellipseShape);
             konvaShape = ellipseGroup;
             
-            // Stocker une référence à l'ellipse interne pour les mises à jour
             (konvaShape as any)._ellipseShape = ellipseShape;
             break;
         case 'line':
@@ -2502,7 +2330,6 @@ const addShapeToCanvas = (element: LayoutElement) => {
         konvaShape.id(element.id);
         
         konvaShape.on('dragend', () => {
-            // Pour les ellipses dans un groupe, calculer la position du centre
             if (element.type === 'ellipse' && (konvaShape as any)._ellipseShape) {
                 const ellipseShape = (konvaShape as any)._ellipseShape;
                 const radiusX = ellipseShape.radiusX();
@@ -2545,12 +2372,10 @@ const addText = () => {
     textStrokeWidth.value = 1;
 };
 
-// Confirm text addition
 const confirmText = () => {
     if (!textInput.value.trim() || !layer) return;
 
     if (editingElement) {
-        // Update existing text
         saveToHistory();
         editingElement.text = textInput.value;
         editingElement.fontSize = textFontSize.value;
@@ -2569,7 +2394,6 @@ const confirmText = () => {
         }
         editingElement = null;
     } else {
-        // Add new text
         saveToHistory();
         const element: LayoutElement = {
             id: `text-${Date.now()}`,
@@ -2595,13 +2419,11 @@ const confirmText = () => {
     showTextDialog.value = false;
 };
 
-// Add table to canvas
 const addTable = () => {
     if (!layer) return;
     
     saveToHistory();
     
-    // Créer un tableau par défaut avec une ligne
     const defaultTableData: TableData = {
         rows: [{
             series: 1,
@@ -2613,11 +2435,10 @@ const addTable = () => {
         }]
     };
     
-    // Positionner le tableau au centre du canvas
     const element: LayoutElement = {
         id: `table-${Date.now()}`,
         type: 'table',
-        x: canvasWidth.value / 2 - 120, // Centré approximativement
+        x: canvasWidth.value / 2 - 120,
         y: 200,
         tableData: defaultTableData,
     };
@@ -2627,13 +2448,10 @@ const addTable = () => {
     layer.draw();
 };
 
-// Helper function to update text node properties
 const updateTextNode = (node: any, element: LayoutElement) => {
-    // Vérifier si c'est un élément du footer (ne pas appliquer la logique d'alignement automatique)
     const isFooterElement = element.id && element.id.includes('footer');
     
     if (isFooterElement) {
-        // Pour le footer, mettre à jour seulement les propriétés de base
         node.text(element.text || '');
         node.fontSize(element.fontSize || 16);
         node.fill(element.fill || '#000000');
@@ -2642,13 +2460,11 @@ const updateTextNode = (node: any, element: LayoutElement) => {
         node.textDecoration(element.textDecoration === 'underline' ? 'underline' : '');
         node.x(element.x);
         node.y(element.y);
-        // Le footer utilise offsetX pour le centrage, donc on le recalcule
         node.offsetX(node.width() / 2);
         node.offsetY(node.height() / 2);
         return;
     }
     
-    // Le node est maintenant un groupe, on doit trouver le texte à l'intérieur
     const textNode = node.findOne('Text');
     if (!textNode) return;
     
@@ -2660,58 +2476,39 @@ const updateTextNode = (node: any, element: LayoutElement) => {
     textNode.textDecoration(element.textDecoration === 'underline' ? 'underline' : '');
     
     const align = element.align || 'left';
-    const margin = 20; // Marge par rapport aux bords
+    const margin = 20;
     
-    // Largeur du texte pour l'affichage (utiliser toute la largeur disponible)
     const textDisplayWidth = canvasWidth.value - (margin * 2);
     element.width = textDisplayWidth;
     textNode.width(textDisplayWidth);
     textNode.align(align);
-    
-    // Ajuster la position X selon l'alignement par rapport à la page
-    // Dans Konva:
-    // - align: 'left' : X est le point de départ (gauche), texte aligné à gauche
-    // - align: 'center' : X est le centre de la zone, texte centré autour de X
-    // - align: 'right' : X est le point de départ (gauche) de la zone, texte aligné à droite dans la zone
+  
     let textX = element.x;
     if (align === 'center') {
-        // Centrer sur la largeur du canvas
-        // Le point X est le centre de la zone, donc pour centrer la zone sur la page:
-        // la zone doit commencer à (canvasWidth - textDisplayWidth) / 2
-        // et le centre est à canvasWidth / 2
         textX = canvasWidth.value / 2;
-        element.x = textX; // Sauvegarder la position centrée
-        // Utiliser offsetX pour centrer le texte autour du point X
+        element.x = textX;
         textNode.offsetX(textDisplayWidth / 2);
     } else {
-        // Réinitialiser offsetX pour les autres alignements
         textNode.offsetX(0);
         if (align === 'right') {
             // Aligner à droite de la page
-            // Le texte doit se terminer à canvasWidth - margin
-            // Donc la zone doit commencer à (canvasWidth - margin) - textDisplayWidth
             textX = (canvasWidth.value - margin) - textDisplayWidth;
             element.x = textX; // Sauvegarder la position à droite
         } else {
             // Aligner à gauche de la page
-            // X est le point de départ (gauche) de la zone
             textX = margin;
-            element.x = textX; // Sauvegarder la position à gauche
+            element.x = textX;
         }
     }
     textNode.x(textX);
     textNode.y(element.y);
     
-    // Appliquer le stroke (cadre) autour du texte
-    // Le node est maintenant un groupe, on doit trouver le rectangle
+
     const frameNode = node.findOne('Rect');
     
     if (element.stroke && textNode) {
-        // Si un cadre est demandé, créer ou mettre à jour le rectangle
-        const textPadding = 2; // Marge de 2px
-        
-        // Obtenir les dimensions réelles du texte rendu
-        // Créer un texte temporaire pour mesurer la largeur réelle
+        const textPadding = 2;
+
         const tempText = new Konva.Text({
             text: textNode.text(),
             fontSize: textNode.fontSize(),
@@ -2722,7 +2519,6 @@ const updateTextNode = (node: any, element: LayoutElement) => {
         tempText.destroy();
         const textActualHeight = textNode.height();
         
-        // Position réelle du texte (en tenant compte de l'alignement)
         let textActualX = textX;
         if (align === 'center') {
             textActualX = textX - textActualWidth / 2;
@@ -2730,20 +2526,17 @@ const updateTextNode = (node: any, element: LayoutElement) => {
             textActualX = textX + textDisplayWidth - textActualWidth;
         }
         
-        // Calculer la position et les dimensions du rectangle
         let rectX = textActualX;
         let rectY = element.y;
         let rectWidth = textActualWidth;
         let rectHeight = textActualHeight;
         
-        // Ajuster pour la marge de 2px
         rectX -= textPadding;
         rectY -= textPadding;
         rectWidth += textPadding * 2;
         rectHeight += textPadding * 2;
         
         if (!frameNode) {
-            // Créer le rectangle de cadre
             const frameRect = new Konva.Rect({
                 x: rectX,
                 y: rectY,
@@ -2753,13 +2546,12 @@ const updateTextNode = (node: any, element: LayoutElement) => {
                 stroke: element.stroke,
                 strokeWidth: element.strokeWidth || 1,
                 draggable: false,
-                listening: false, // Ne pas interférer avec les événements
+                listening: false,
             });
             
             node.add(frameRect);
             element.textFrameNode = frameRect;
         } else {
-            // Mettre à jour le rectangle existant
             frameNode.x(rectX);
             frameNode.y(rectY);
             frameNode.width(rectWidth);
@@ -2768,7 +2560,6 @@ const updateTextNode = (node: any, element: LayoutElement) => {
             frameNode.strokeWidth(element.strokeWidth || 1);
         }
     } else {
-        // Supprimer le rectangle de cadre s'il existe
         if (frameNode) {
             frameNode.destroy();
             element.textFrameNode = null;
@@ -2849,7 +2640,6 @@ const deleteSelected = () => {
 };
 
 // Save layout
-// Handle back button
 const handleBack = () => {
     // Si on a un sessionId, rediriger vers la page Show
     if (props.sessionId) {
@@ -2860,80 +2650,11 @@ const handleBack = () => {
     }
 };
 
-const saveLayout = async () => {
-    isSaving.value = true;
+// Fonction pour générer le PDF (réutilisable)
+const generatePDFBlob = async (): Promise<Blob | null> => {
+    if (!stage) return null;
 
     try {
-        const layoutData = elements.value.map(el => ({
-            id: el.id,
-            type: el.type,
-            x: el.x,
-            y: el.y,
-            width: el.width,
-            height: el.height,
-            rotation: el.rotation,
-            imageUrl: el.imageUrl,
-            exerciseId: el.exerciseId,
-            exerciseData: el.exerciseData,
-            tableData: el.tableData,
-            text: el.text,
-            fontSize: el.fontSize,
-            fontFamily: el.fontFamily,
-            fill: el.fill,
-            stroke: el.stroke,
-            strokeWidth: el.strokeWidth,
-            opacity: el.opacity,
-            points: el.points,
-            radiusX: el.radiusX,
-            radiusY: el.radiusY,
-            pointerLength: el.pointerLength,
-            pointerWidth: el.pointerWidth,
-        }));
-
-        const url = props.sessionId 
-            ? `/sessions/${props.sessionId}/layout`
-            : '/sessions/layout';
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': (page.props as any).csrfToken || '',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-                layout_data: layoutData,
-                canvas_width: canvasWidth.value,
-                canvas_height: canvasHeight.value,
-                session_id: props.sessionId,
-                session_name: sessionName.value || undefined,
-                customer_ids: selectedCustomerIds.value.length > 0 ? selectedCustomerIds.value : undefined,
-            }),
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Erreur lors de la sauvegarde');
-        }
-
-        const data = await response.json();
-        notifySuccess('Mise en page sauvegardée avec succès');
-        emit('saved', data.session_id);
-    } catch (error: any) {
-        notifyError(error.message || 'Erreur lors de la sauvegarde');
-    } finally {
-        isSaving.value = false;
-    }
-};
-
-// Export to PDF
-const exportToPDF = async () => {
-    if (!stage) return;
-
-    try {
-        notifySuccess('Génération du PDF en cours...');
-        
         // Masquer les boutons avant l'export
         const buttonNodes: any[] = [];
         const deleteButtonNodes: any[] = [];
@@ -2955,17 +2676,11 @@ const exportToPDF = async () => {
             transformer.visible(false);
         }
         
-        // S'assurer que le footer est bien en bas avant l'export
-        // Utiliser la fonction de recalcul du footer
         recalculateFooterPosition();
         
-        // Utiliser les dimensions réelles du canvas (sans le scale d'affichage)
-        // Les éléments sont positionnés selon ces dimensions, pas selon les dimensions du stage
         const realCanvasWidth = canvasWidth.value;
         const realCanvasHeight = canvasHeight.value;
-        
-        // Temporairement ajuster le stage pour qu'il corresponde aux dimensions réelles
-        // Cela garantit que toDataURL capture l'image avec les bonnes dimensions
+
         const originalStageWidth = stage.width();
         const originalStageHeight = stage.height();
         stage.width(realCanvasWidth);
@@ -3008,18 +2723,27 @@ const exportToPDF = async () => {
             layer.draw();
         }
         
-        // Load jsPDF from CDN
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-        document.head.appendChild(script);
+        // Load jsPDF from CDN (vérifier s'il est déjà chargé)
+        let jsPDF: any;
+        let script: HTMLScriptElement | null = null;
         
-        await new Promise((resolve, reject) => {
-            script.onload = resolve;
-            script.onerror = reject;
-        });
-        
-        // @ts-ignore - jsPDF is loaded from CDN
-        const { jsPDF } = window.jspdf;
+        if ((window as any).jspdf) {
+            // @ts-ignore - jsPDF is already loaded
+            jsPDF = (window as any).jspdf.jsPDF;
+        } else {
+            script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            document.head.appendChild(script);
+            
+            await new Promise((resolve, reject) => {
+                script!.onload = () => {
+                    // @ts-ignore - jsPDF is loaded from CDN
+                    jsPDF = window.jspdf.jsPDF;
+                    resolve(undefined);
+                };
+                script!.onerror = reject;
+            });
+        }
         
         // Convertir les dimensions du canvas en mm (1px = 0.264583mm à 96 DPI)
         const pxToMm = 0.264583;
@@ -3030,29 +2754,138 @@ const exportToPDF = async () => {
         const pdf = new jsPDF({
             orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
             unit: 'mm',
-            format: [pdfWidth, pdfHeight] // Dimensions personnalisées correspondant exactement au canvas
+            format: [pdfWidth, pdfHeight]
         });
         
         // Les dimensions de l'image correspondent exactement au PDF
         const imgWidth = pdfWidth;
         const imgHeight = pdfHeight;
         
-        // Positionner l'image à (0, 0) pour qu'elle remplisse toute la page
-        const x = 0;
-        const y = 0;
+        pdf.addImage(dataURL, 'PNG', 0, 0, imgWidth, imgHeight);
         
-        // L'image correspond exactement au PDF, pas besoin de redimensionner
-        pdf.addImage(dataURL, 'PNG', x, y, imgWidth, imgHeight);
+        // Générer le blob du PDF
+        const pdfBlob = pdf.output('blob');
+        
+        // Remove script tag seulement si on l'a créé
+        if (script) {
+            document.head.removeChild(script);
+        }
+        
+        return pdfBlob;
+    } catch (error: any) {
+        console.error('Error generating PDF:', error);
+        return null;
+    }
+};
+
+const saveLayout = async () => {
+    isSaving.value = true;
+
+    try {
+        const layoutData = elements.value.map(el => ({
+            id: el.id,
+            type: el.type,
+            x: el.x,
+            y: el.y,
+            width: el.width,
+            height: el.height,
+            rotation: el.rotation,
+            imageUrl: el.imageUrl,
+            exerciseId: el.exerciseId,
+            exerciseData: el.exerciseData,
+            tableData: el.tableData,
+            text: el.text,
+            fontSize: el.fontSize,
+            fontFamily: el.fontFamily,
+            fill: el.fill,
+            stroke: el.stroke,
+            strokeWidth: el.strokeWidth,
+            opacity: el.opacity,
+            points: el.points,
+            radiusX: el.radiusX,
+            radiusY: el.radiusY,
+            pointerLength: el.pointerLength,
+            pointerWidth: el.pointerWidth,
+        }));
+
+        // Générer le PDF avant de sauvegarder
+        const pdfBlob = await generatePDFBlob();
+
+        const url = props.sessionId 
+            ? `/sessions/${props.sessionId}/layout`
+            : '/sessions/layout';
+
+        // Utiliser FormData pour envoyer le PDF
+        const formData = new FormData();
+        formData.append('layout_data', JSON.stringify(layoutData));
+        formData.append('canvas_width', canvasWidth.value.toString());
+        formData.append('canvas_height', canvasHeight.value.toString());
+        if (props.sessionId) {
+            formData.append('session_id', props.sessionId.toString());
+        }
+        if (sessionName.value) {
+            formData.append('session_name', sessionName.value);
+        }
+        if (selectedCustomerIds.value.length > 0) {
+            selectedCustomerIds.value.forEach(id => {
+                formData.append('customer_ids[]', id.toString());
+            });
+        }
+        if (pdfBlob) {
+            formData.append('pdf_file', pdfBlob, 'session.pdf');
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': (page.props as any).csrfToken || '',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'include',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Erreur lors de la sauvegarde');
+        }
+
+        const data = await response.json();
+        notifySuccess('Mise en page sauvegardée avec succès');
+        emit('saved', data.session_id);
+    } catch (error: any) {
+        notifyError(error.message || 'Erreur lors de la sauvegarde');
+    } finally {
+        isSaving.value = false;
+    }
+};
+
+// Export to PDF
+const exportToPDF = async () => {
+    if (!stage) return;
+
+    try {
+        notifySuccess('Génération du PDF en cours...');
+        
+        const pdfBlob = await generatePDFBlob();
+        
+        if (!pdfBlob) {
+            throw new Error('Impossible de générer le PDF');
+        }
         
         // Generate filename
         const name = sessionName.value || 'mise-en-page';
         const fileName = `${name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.pdf`;
         
         // Download the PDF
-        pdf.save(fileName);
-        
-        // Remove script tag
-        document.head.removeChild(script);
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
         
         notifySuccess('PDF téléchargé avec succès');
     } catch (error: any) {
@@ -3061,7 +2894,6 @@ const exportToPDF = async () => {
     }
 };
 
-// Open exercise instructions modal
 const openExerciseInstructionsModal = (element: LayoutElement) => {
     editingExerciseElement.value = element;
     if (element.exerciseData) {

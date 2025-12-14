@@ -171,9 +171,89 @@ class SessionEmail extends Mailable
             'sessionExercises.exercise.categories',
             'sessionExercises.exercise.media',
             'sessionExercises.sets',
-            'user'
+            'user',
+            'layout'
         ]);
 
+        // Vérifier si c'est une séance libre (avec layout personnalisé)
+        $hasCustomLayout = $this->session->layout !== null;
+
+        if ($hasCustomLayout) {
+            // Pour les séances libres, utiliser le PDF stocké s'il existe
+            try {
+                $layout = $this->session->layout;
+                
+                // Vérifier que le layout a les données nécessaires
+                if (!$layout || !$layout->canvas_width || !$layout->canvas_height) {
+                    throw new \Exception('Layout incomplet : dimensions manquantes');
+                }
+                
+                // Si un PDF est déjà stocké, l'utiliser
+                if ($layout->pdf_path && Storage::disk('local')->exists($layout->pdf_path)) {
+                    $pdfContent = Storage::disk('local')->get($layout->pdf_path);
+                    
+                    $fileName = $this->session->name 
+                        ? Str::slug($this->session->name) 
+                        : "seance-{$this->session->id}";
+                    $fileName .= '.pdf';
+
+                    return [
+                        Attachment::fromData(fn () => $pdfContent, $fileName)
+                            ->withMime('application/pdf'),
+                    ];
+                }
+                
+                // Sinon, générer le PDF avec DomPDF (fallback)
+                // Décoder layout_data si c'est une chaîne JSON
+                $layoutData = $layout->layout_data;
+                if (is_string($layoutData)) {
+                    $layoutData = json_decode($layoutData, true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        throw new \Exception('Erreur de décodage JSON du layout: ' . json_last_error_msg());
+                    }
+                }
+                
+                $pxToPoints = 0.75;
+                $pdfWidthPoints = $layout->canvas_width * $pxToPoints;
+                $pdfHeightPoints = $layout->canvas_height * $pxToPoints;
+                
+                $pdfWidthPoints = max(28, min(2835, $pdfWidthPoints));
+                $pdfHeightPoints = max(28, min(2835, $pdfHeightPoints));
+                
+                $customPaper = [0, 0, $pdfWidthPoints, $pdfHeightPoints];
+                
+                $pdf = Pdf::loadView('sessions.pdf-free', [
+                    'session' => $this->session,
+                    'layout' => $layout,
+                    'layoutData' => $layoutData ?? [],
+                ])->setPaper($customPaper)
+                  ->setOption('enable-local-file-access', true)
+                  ->setOption('isHtml5ParserEnabled', true)
+                  ->setOption('isRemoteEnabled', true)
+                  ->setOption('dpi', 96);
+
+                $fileName = $this->session->name 
+                    ? Str::slug($this->session->name) 
+                    : "seance-{$this->session->id}";
+                $fileName .= '.pdf';
+
+                $pdfOutput = $pdf->output();
+
+                return [
+                    Attachment::fromData(fn () => $pdfOutput, $fileName)
+                        ->withMime('application/pdf'),
+                ];
+            } catch (\Exception $e) {
+                \Log::error('Error generating PDF for free session', [
+                    'session_id' => $this->session->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                throw $e;
+            }
+        }
+
+        // Pour les séances standard, utiliser le template normal
         $tempImagePaths = [];
         foreach ($this->session->sessionExercises as $sessionExercise) {
             if ($sessionExercise->exercise && $sessionExercise->exercise->media->count() > 0) {

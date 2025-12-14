@@ -20,6 +20,7 @@ class SessionLayout extends Model
         'layout_data',
         'canvas_width',
         'canvas_height',
+        'pdf_path',
     ];
 
     /**

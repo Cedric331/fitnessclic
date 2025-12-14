@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -774,6 +775,16 @@ class SessionsController extends Controller
      */
     public function saveLayout(Request $request, ?Session $session = null)
     {
+        // layout_data peut être une chaîne JSON (depuis FormData) ou un tableau
+        $layoutDataInput = $request->input('layout_data');
+        if (is_string($layoutDataInput)) {
+            $layoutDataArray = json_decode($layoutDataInput, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json(['error' => 'layout_data invalide'], 422);
+            }
+            $request->merge(['layout_data' => $layoutDataArray]);
+        }
+        
         $validated = $request->validate([
             'layout_data' => 'required|array',
             'canvas_width' => 'required|integer|min:100|max:2000',
@@ -782,6 +793,7 @@ class SessionsController extends Controller
             'session_name' => 'nullable|string|max:255',
             'customer_ids' => 'nullable|array',
             'customer_ids.*' => 'exists:customers,id',
+            'pdf_file' => 'nullable|file|mimes:pdf|max:51200', // PDF généré côté client (50 MB max)
         ]);
 
         // Si pas de session fournie mais session_id dans la requête, charger la session
@@ -818,13 +830,34 @@ class SessionsController extends Controller
             $session->customers()->sync($validated['customer_ids'] ?? []);
         }
 
+        // Gérer le stockage du PDF si fourni
+        $pdfPath = null;
+        if ($request->hasFile('pdf_file')) {
+            $pdfFile = $request->file('pdf_file');
+            // Utiliser le disque 'local' qui pointe vers storage/app/private
+            $pdfPath = $pdfFile->store('session-pdfs', 'local');
+            
+            // Supprimer l'ancien PDF s'il existe
+            $existingLayout = SessionLayout::where('session_id', $session->id)->first();
+            if ($existingLayout && $existingLayout->pdf_path) {
+                Storage::disk('local')->delete($existingLayout->pdf_path);
+            }
+        }
+
+        $layoutData = [
+            'layout_data' => $validated['layout_data'],
+            'canvas_width' => $validated['canvas_width'],
+            'canvas_height' => $validated['canvas_height'],
+        ];
+        
+        // Ajouter le pdf_path seulement s'il est fourni
+        if ($pdfPath) {
+            $layoutData['pdf_path'] = $pdfPath;
+        }
+
         $layout = SessionLayout::updateOrCreate(
             ['session_id' => $session->id],
-            [
-                'layout_data' => $validated['layout_data'],
-                'canvas_width' => $validated['canvas_width'],
-                'canvas_height' => $validated['canvas_height'],
-            ]
+            $layoutData
         );
 
         return response()->json([

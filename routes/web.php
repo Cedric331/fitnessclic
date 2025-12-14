@@ -87,6 +87,8 @@ Route::post(
 // Route publique pour consulter une séance via token
 Route::get('/session/{shareToken}', [PublicSessionController::class, 'show'])
     ->name('public.session.show');
+Route::get('/session/{shareToken}/pdf', [PublicSessionController::class, 'pdf'])
+    ->name('public.session.pdf');
 
 // Pages légales
 Route::get('mentions-legales', function () {
