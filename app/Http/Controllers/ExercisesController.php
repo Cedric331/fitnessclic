@@ -85,7 +85,7 @@ class ExercisesController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->isFree()) {
+        if (!$user->can('create', Exercise::class)) {
             return redirect()->route('exercises.index')
                 ->with('error', 'La création d\'exercices est réservée aux abonnés Pro. Passez à Pro pour créer des exercices illimités.');
         }
@@ -222,7 +222,7 @@ class ExercisesController extends Controller
         $validated = $request->validated();
         $user = Auth::user();
 
-        if ($user->isFree()) {
+        if (!$user->can('import', Exercise::class)) {
             return redirect()->route('exercises.index')
                 ->with('error', 'L\'import d\'exercices est réservé aux abonnés Pro. Passez à Pro pour importer des exercices illimités.');
         }

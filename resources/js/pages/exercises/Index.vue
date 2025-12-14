@@ -527,7 +527,9 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
 </script>
 
 <template>
-    <Head title="Bibliothèque d'Exercices" />
+    <Head title="Bibliothèque d'Exercices">
+        <meta name="description" content="Gérez votre bibliothèque d'exercices personnalisés. Créez, importez et organisez vos exercices avec images et descriptions. Accès à une bibliothèque publique d'exercices partagés." />
+    </Head>
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex h-full w-full flex-1 flex-col gap-6 rounded-xl px-6 py-5">

@@ -53,7 +53,7 @@ class CustomersController extends Controller
         $validated = $request->validated();
         $user = Auth::user();
 
-        if ($user->isFree()) {
+        if (!$user->can('create', Customer::class)) {
             return redirect()->route('client.customers.index')
                 ->with('error', 'La création de clients est réservée aux abonnés Pro. Passez à Pro pour créer des clients illimités.');
         }

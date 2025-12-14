@@ -100,6 +100,9 @@ const imageObjectFit = computed(() => {
                     props.viewMode === 'grid-2' ? 'object-top' : 'object-center',
                     !showOverlay ? 'cursor-pointer' : ''
                 ]"
+                loading="lazy"
+                width="400"
+                height="400"
             />
             
             <!-- Overlay au survol avec titre et catégories - uniquement pour grid-2 -->

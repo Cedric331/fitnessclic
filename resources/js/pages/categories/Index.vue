@@ -152,7 +152,9 @@ const startDeleteCategory = (category: Category) => {
 </script>
 
 <template>
-    <Head title="Gérer les catégories" />
+    <Head title="Gérer les catégories">
+        <meta name="description" content="Organisez vos exercices avec des catégories personnalisées. Créez et gérez vos catégories privées et publiques pour mieux structurer votre bibliothèque d'exercices." />
+    </Head>
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="mx-auto flex h-full w-full flex-1 flex-col gap-6 rounded-xl px-6 py-5">

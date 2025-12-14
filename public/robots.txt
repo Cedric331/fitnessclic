@@ -1,2 +1,15 @@
 User-agent: *
-Disallow:
+Allow: /
+
+# Sitemap (sera remplacé dynamiquement par l'URL de votre application)
+Sitemap: /sitemap.xml
+
+# Désactiver l'indexation des pages privées (si nécessaire)
+# Disallow: /dashboard
+# Disallow: /sessions
+# Disallow: /customers
+# Disallow: /exercises
+# Disallow: /subscription
+
+# Crawl-delay (optionnel, pour éviter de surcharger le serveur)
+# Crawl-delay: 1

@@ -1439,7 +1439,9 @@ watch(sessionExercises, () => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Nouvelle Séance" />
+        <Head title="Nouvelle Séance">
+            <meta name="description" content="Créez une nouvelle séance d'entraînement personnalisée. Ajoutez des exercices, définissez les paramètres et partagez avec vos clients." />
+        </Head>
 
         <div class="mx-auto flex h-full w-full flex-1 flex-col gap-4 sm:gap-6 rounded-xl px-3 sm:px-6 py-3 sm:py-5">
             <!-- Header -->
@@ -1514,53 +1516,56 @@ watch(sessionExercises, () => {
                         <div class="space-y-6">
                         <Card class="shadow-md py-4">
                             <CardContent class="space-y-4">
-                                <!-- Nom de la séance -->
-                                <div class="space-y-2">
-                                    <Label for="session-name">Nom de la séance <span class="text-red-500">*</span></Label>
-                                    <Input
-                                        id="session-name"
-                                        v-model="form.name"
-                                        placeholder="Ex: Séance jambes, Entraînement haut du corps..."
-                                        class="w-full"
-                                        :class="{ 'border-red-500 focus-visible:ring-red-500': form.errors.name }"
-                                    />
-                                    <InputError :message="form.errors.name" />
-                                </div>
+                                <!-- Nom de la séance et Clients sur une ligne pour desktop/tablette -->
+                                <div class="flex flex-col md:flex-row md:gap-4 gap-4">
+                                    <!-- Nom de la séance -->
+                                    <div class="space-y-2 flex-1">
+                                        <Label for="session-name">Nom de la séance <span class="text-red-500">*</span></Label>
+                                        <Input
+                                            id="session-name"
+                                            v-model="form.name"
+                                            placeholder="Ex: Séance jambes, Entraînement haut du corps..."
+                                            class="w-full"
+                                            :class="{ 'border-red-500 focus-visible:ring-red-500': form.errors.name }"
+                                        />
+                                        <InputError :message="form.errors.name" />
+                                    </div>
 
-                                <!-- Sélection des clients -->
-                                <div class="space-y-2">
-                                    <Label>Clients (optionnel)</Label>
-                                    <div class="space-y-2">
-                                        <!-- Bouton pour ouvrir la modal -->
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            class="w-full justify-start"
-                                            :disabled="!isPro"
-                                            :class="{ 'opacity-50 cursor-not-allowed': !isPro }"
-                                            @click="openCustomerModal"
-                                        >
-                                            <Users class="h-4 w-4 mr-2" />
-                                            {{ selectedCustomers.length > 0 ? `${selectedCustomers.length} client(s) sélectionné(s)` : 'Sélectionner des clients' }}
-                                        </Button>
-                                        
-                                        <!-- Liste des clients sélectionnés -->
-                                        <div v-if="selectedCustomers.length > 0" class="flex flex-wrap gap-2 mt-2">
-                                            <div
-                                                v-for="customer in selectedCustomers"
-                                                :key="customer.id"
-                                                class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full text-sm"
+                                    <!-- Sélection des clients -->
+                                    <div class="space-y-2 flex-1">
+                                        <Label>Clients (optionnel)</Label>
+                                        <div class="space-y-2">
+                                            <!-- Bouton pour ouvrir la modal -->
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                class="w-full justify-start"
+                                                :disabled="!isPro"
+                                                :class="{ 'opacity-50 cursor-not-allowed': !isPro }"
+                                                @click="openCustomerModal"
                                             >
-                                                <User class="h-3.5 w-3.5" />
-                                                <span>{{ customer.full_name || `${customer.first_name} ${customer.last_name}` }}</span>
-                                                <button
-                                                    v-if="isPro"
-                                                    type="button"
-                                                    @click="removeCustomer(customer.id)"
-                                                    class="ml-1 hover:text-blue-900 dark:hover:text-blue-100"
+                                                <Users class="h-4 w-4 mr-2" />
+                                                {{ selectedCustomers.length > 0 ? `${selectedCustomers.length} client(s) sélectionné(s)` : 'Sélectionner des clients' }}
+                                            </Button>
+                                            
+                                            <!-- Liste des clients sélectionnés -->
+                                            <div v-if="selectedCustomers.length > 0" class="flex flex-wrap gap-2 mt-2">
+                                                <div
+                                                    v-for="customer in selectedCustomers"
+                                                    :key="customer.id"
+                                                    class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full text-sm"
                                                 >
-                                                    <X class="h-3.5 w-3.5" />
-                                                </button>
+                                                    <User class="h-3.5 w-3.5" />
+                                                    <span>{{ customer.full_name || `${customer.first_name} ${customer.last_name}` }}</span>
+                                                    <button
+                                                        v-if="isPro"
+                                                        type="button"
+                                                        @click="removeCustomer(customer.id)"
+                                                        class="ml-1 hover:text-blue-900 dark:hover:text-blue-100"
+                                                    >
+                                                        <X class="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

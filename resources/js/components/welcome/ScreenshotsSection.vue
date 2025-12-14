@@ -79,6 +79,9 @@ const goToScreenshot = (index: number) => {
                                         :src="currentScreenshot.image"
                                         :alt="currentScreenshot.alt"
                                         class="h-full w-full object-cover"
+                                        loading="lazy"
+                                        width="1200"
+                                        height="675"
                                         @error="(e) => { e.target.style.display = 'none'; }"
                                     />
                                     <!-- Placeholder si l'image n'existe pas encore -->

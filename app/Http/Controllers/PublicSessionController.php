@@ -24,7 +24,10 @@ class PublicSessionController extends Controller
             ->first();
 
         if (!$session) {
-            abort(404, 'Séance non trouvée ou lien invalide');
+            return view('sessions.public-error', [
+                'message' => 'Cette séance n\'existe plus ou le lien de partage est invalide.',
+                'title' => 'Séance introuvable',
+            ]);
         }
 
         // Vérifier si c'est une séance libre (avec layout personnalisé)
@@ -51,15 +54,28 @@ class PublicSessionController extends Controller
             ->with('layout')
             ->first();
 
-        if (!$session || !$session->layout) {
-            abort(404, 'Séance non trouvée ou lien invalide');
+        if (!$session) {
+            return response()->view('sessions.public-error', [
+                'message' => 'Cette séance n\'existe plus ou le lien de partage est invalide.',
+                'title' => 'Séance introuvable',
+            ], 404);
+        }
+
+        if (!$session->layout) {
+            return response()->view('sessions.public-error', [
+                'message' => 'Cette séance ne contient pas de mise en page.',
+                'title' => 'Mise en page introuvable',
+            ], 404);
         }
 
         $layout = $session->layout;
 
         // Vérifier que le PDF existe
         if (!$layout->pdf_path || !Storage::disk('local')->exists($layout->pdf_path)) {
-            abort(404, 'PDF non trouvé');
+            return response()->view('sessions.public-error', [
+                'message' => 'Le document PDF de cette séance n\'est plus disponible.',
+                'title' => 'Document introuvable',
+            ], 404);
         }
 
         $pdfContent = Storage::disk('local')->get($layout->pdf_path);

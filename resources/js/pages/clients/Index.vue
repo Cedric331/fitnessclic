@@ -154,7 +154,9 @@ watch(isDeleteDialogOpen, (open) => {
 </script>
 
 <template>
-    <Head title="Mes Clients" />
+    <Head title="Mes Clients">
+        <meta name="description" content="Gérez vos clients et leurs programmes d'entraînement. Créez, modifiez et suivez la progression de vos clients avec FitnessClic Pro." />
+    </Head>
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 mx-auto w-full px-6">

@@ -60,14 +60,21 @@ class CategoriesController extends Controller
         $validated = $request->validated();
         $user = Auth::user();
 
-        if ($user->isFree()) {
+        if (!$user->can('create', Category::class)) {
             return redirect()->route('categories.index')
                 ->with('error', 'La création de catégories est réservée aux abonnés Pro. Passez à Pro pour créer des catégories illimitées.');
         }
 
+        $isAdmin = $user->isAdmin();
+        if ($isAdmin) {
+            $type = 'public';
+        } else {
+            $type = 'private';
+        }
+
         Category::create([
             'name' => $validated['name'],
-            'type' => 'private',
+            'type' => $type,
             'user_id' => Auth::id(),
         ]);
 
@@ -82,7 +89,7 @@ class CategoriesController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->isFree()) {
+        if (!$user->can('update', $category)) {
             return redirect()->route('categories.index')
                 ->with('error', 'La modification de catégories est réservée aux abonnés Pro.');
         }
@@ -102,7 +109,7 @@ class CategoriesController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->isFree()) {
+        if (!$user->can('delete', $category)) {
             return redirect()->route('categories.index')
                 ->with('error', 'La suppression de catégories est réservée aux abonnés Pro.');
         }

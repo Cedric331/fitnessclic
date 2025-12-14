@@ -4,6 +4,7 @@ use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\ExercisesController;
 use App\Http\Controllers\PublicSessionController;
 use App\Http\Controllers\SessionsController;
+use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -106,6 +107,9 @@ Route::get('conditions-utilisation', function () {
 Route::get('politique-cookies', function () {
     return Inertia::render('legal/PolitiqueCookies');
 })->name('legal.cookies');
+
+// Sitemap
+Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 // // test email
 // Route::get('test-email', function () {

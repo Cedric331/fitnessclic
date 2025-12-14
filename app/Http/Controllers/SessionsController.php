@@ -543,6 +543,17 @@ class SessionsController extends Controller
             abort(403);
         }
 
+        // Charger le layout pour supprimer le PDF associé
+        $session->load('layout');
+        
+        // Supprimer le PDF si il existe
+        if ($session->layout && $session->layout->pdf_path) {
+            $pdfPath = $session->layout->pdf_path;
+            if (Storage::disk('local')->exists($pdfPath)) {
+                Storage::disk('local')->delete($pdfPath);
+            }
+        }
+
         $session->delete();
 
         return redirect()->route('sessions.index')
@@ -562,7 +573,7 @@ class SessionsController extends Controller
         }
 
         $user = Auth::user();
-        if (!$user->canExportPdf()) {
+        if (!$user->can('exportPdf', $session)) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.'
@@ -646,7 +657,9 @@ class SessionsController extends Controller
     public function pdfPreview(PdfPreviewSessionRequest $request)
     {
         $user = Auth::user();
-        if (!$user->canExportPdf()) {
+        // Vérifier via policy (on utilise une session temporaire pour la vérification)
+        $tempSession = new Session(['user_id' => $user->id]);
+        if (!$user->can('exportPdf', $tempSession)) {
             return response()->json([
                 'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.'
             ], 403);
@@ -904,7 +917,7 @@ class SessionsController extends Controller
     public function pdfFromLayout(Session $session)
     {
         $user = Auth::user();
-        if (!$user->canExportPdf()) {
+        if (!$user->can('exportPdf', $session)) {
             return response()->json([
                 'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.'
             ], 403);

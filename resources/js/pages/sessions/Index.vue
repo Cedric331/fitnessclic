@@ -306,7 +306,9 @@ watch(isDeleteDialogOpen, (open) => {
 </script>
 
 <template>
-    <Head title="Mes Séances" />
+    <Head title="Mes Séances">
+        <meta name="description" content="Consultez et gérez toutes vos séances d'entraînement enregistrées. Recherchez, filtrez par client et organisez vos programmes d'entraînement." />
+    </Head>
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-1 flex-col gap-4 min-h-0 overflow-y-auto rounded-xl p-4 mx-auto w-full px-6">

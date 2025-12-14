@@ -290,6 +290,9 @@ const handleDragEnd = () => {
                                     'h-full w-full',
                                     viewMode === 'grid-6' ? 'object-cover' : 'object-contain object-top'
                                 ]"
+                                loading="lazy"
+                                width="400"
+                                height="400"
                                 draggable="false"
                                 @error="($event.target as HTMLImageElement).style.display = 'none'"
                             />
@@ -348,6 +351,9 @@ const handleDragEnd = () => {
                                     :src="exercise.image_url"
                                     :alt="exercise.title"
                                     class="h-full w-full object-contain"
+                                    loading="lazy"
+                                    width="96"
+                                    height="96"
                                     draggable="false"
                                     @error="($event.target as HTMLImageElement).style.display = 'none'"
                                 />

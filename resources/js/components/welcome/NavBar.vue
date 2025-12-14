@@ -63,11 +63,14 @@ onMounted(() => {
 <template>
     <header class="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
         <nav class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-            <Link :href="dashboard.url()" class="flex items-center gap-3 transition-opacity hover:opacity-80">
+            <Link :href="dashboard.url()" class="flex items-center gap-3 transition-opacity hover:opacity-80" aria-label="FitnessClic - Accueil">
                 <img 
                     src="/assets/logo_fitnessclic.png" 
-                    alt="FitnessClic Logo" 
+                    alt="FitnessClic - Créez vos séances d'entraînement en quelques clics" 
+                    width="40"
+                    height="40"
                     class="h-10 w-auto"
+                    loading="eager"
                 />
                 <span class="text-xl font-bold text-gray-900 dark:text-white">FitnessClic</span>
             </Link>
