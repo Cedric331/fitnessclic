@@ -13,7 +13,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { X, ArrowLeftRight, AlertTriangle, GripVertical, ChevronUp, ChevronDown, RotateCw, Pencil } from 'lucide-vue-next';
+import { X, ArrowLeftRight, AlertTriangle, GripVertical, RotateCw, Pencil } from 'lucide-vue-next';
 import type { SessionBlock, SessionExercise } from './types';
 
 const props = defineProps<{
@@ -31,8 +31,6 @@ const emit = defineEmits<{
     'update-block-description': [description: string];
     'convert-to-standard': [];
     'remove-block': [];
-    'move-up': [];
-    'move-down': [];
 }>();
 
 // Valeur locale pour la description du bloc - permet la réactivité immédiate
@@ -213,29 +211,11 @@ const exerciseToRemoveName = computed(() => {
         <CardContent class="p-1.5">
             <!-- Consignes pour l'ensemble du bloc avec icônes de drag and drop alignées -->
             <div class="mb-2 flex items-start gap-2">
-                <!-- Poignée de drag et boutons de déplacement (si draggable) -->
+                <!-- Poignée de drag (si draggable) -->
                 <div v-if="draggable" class="flex flex-col items-center gap-0.5 flex-shrink-0 pt-0.5">
-                    <button
-                        type="button"
-                        @click.stop.prevent="emit('move-up')"
-                        class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                        :disabled="displayIndex === 0"
-                        title="Déplacer vers le haut"
-                    >
-                        <ChevronUp class="h-3 w-3" />
-                    </button>
                     <div class="handle flex items-center justify-center cursor-move text-neutral-400 hover:text-blue-600 transition-all duration-200 p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20" title="Glisser pour réorganiser">
                         <GripVertical class="h-5 w-5" />
                     </div>
-                    <button
-                        type="button"
-                        @click.stop.prevent="emit('move-down')"
-                        class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors text-neutral-400 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                        :disabled="displayIndex === undefined || (totalCount !== undefined && displayIndex >= totalCount - 1)"
-                        title="Déplacer vers le bas"
-                    >
-                        <ChevronDown class="h-3 w-3" />
-                    </button>
                 </div>
                 <!-- Consignes avec boutons Standard et Supprimer -->
                 <div class="flex-1 min-w-0">

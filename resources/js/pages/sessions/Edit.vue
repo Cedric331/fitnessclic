@@ -556,15 +556,17 @@ const groupExercisesIntoBlocks = () => {
 
 const orderedItems = computed(() => {
     const blocks = groupExercisesIntoBlocks();
-    const items: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number }> = [];
+    const items: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number, exerciseIndexInSession?: number }> = [];
     
-    const allItems: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, order: number }> = [];
+    const allItems: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, order: number, exerciseIndexInSession?: number }> = [];
     
     blocks.standard.forEach(ex => {
+        const indexInSession = sessionExercises.value.findIndex(e => e === ex);
         allItems.push({
             type: 'standard',
             exercise: ex,
-            order: ex.order
+            order: ex.order,
+            exerciseIndexInSession: indexInSession >= 0 ? indexInSession : undefined
         });
     });
     
@@ -578,40 +580,25 @@ const orderedItems = computed(() => {
     
     allItems.sort((a, b) => a.order - b.order);
     
-    allItems.forEach((item, index) => {
+    allItems.forEach((item, displayIndex) => {
+        let key: string;
+        if (item.type === 'set') {
+            key = `set-${item.block?.id ?? 'unknown'}`;
+        } else {
+            const indexInSession = item.exerciseIndexInSession ?? sessionExercises.value.findIndex(e => e === item.exercise);
+            key = `standard-${item.exercise?.id ?? 'unknown'}-idx${indexInSession}`;
+        }
+        
         items.push({
             ...item,
-            key: item.type === 'set' ? `set-${item.block!.id}` : `standard-${item.exercise!.id}`,
-            displayIndex: index
+            key: key,
+            displayIndex: displayIndex
         });
     });
     
     return items;
 });
 
-const handleMoveUp = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number }) => {
-    const items = orderedItems.value;
-    if (!items || !Array.isArray(items)) {
-        return;
-    }
-    const currentIndex = items.findIndex((i: any) => i.key === item.key);
-    if (currentIndex > 0) {
-        const prevItem = items[currentIndex - 1];
-        reorderItems(item, prevItem);
-    }
-};
-
-const handleMoveDown = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number }) => {
-    const items = orderedItems.value;
-    if (!items || !Array.isArray(items)) {
-        return;
-    }
-    const currentIndex = items.findIndex((i: any) => i.key === item.key);
-    if (currentIndex < items.length - 1) {
-        const nextItem = items[currentIndex + 1];
-        reorderItems(item, nextItem);
-    }
-};
 
 const convertExerciseToSet = (exercise: SessionExercise) => {
     const index = sessionExercises.value.findIndex(e => e.id === exercise.id);
@@ -923,21 +910,67 @@ const reorderExercises = (fromIndex: number, toIndex: number) => {
     form.exercises = [...sessionExercises.value];
 };
 
-const onDragEnd = (event: any) => {
-    if (event.oldIndex !== undefined && event.newIndex !== undefined) {
-        const items = orderedItems.value;
-        const movedItem = items[event.oldIndex];
-        const targetItem = items[event.newIndex];
-        
-        if (movedItem && targetItem) {
-            reorderItems(movedItem, targetItem);
+// Réorganiser les exercices après un drag (appelé automatiquement par VueDraggable)
+const onDragUpdate = (newItems: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number, exerciseIndexInSession?: number }>) => {
+    const keysSeen = new Set<string>();
+    const duplicates: string[] = [];
+    newItems.forEach((item, idx) => {
+        if (keysSeen.has(item.key)) {
+            duplicates.push(`Index ${idx}: ${item.key}`);
+        } else {
+            keysSeen.add(item.key);
         }
-    } else {
-        sessionExercises.value.forEach((ex, idx) => {
-            ex.order = idx;
-        });
-        form.exercises = [...sessionExercises.value];
+    });
+    if (duplicates.length > 0) {
+        return;
     }
+    
+    const processedExerciseIndices = new Set<number>();
+    const processedBlockIds = new Set<number>();
+    
+    newItems.forEach((item, newIndex) => {
+        if (item.type === 'standard' && item.exercise) {
+            let index = item.exerciseIndexInSession;
+            if (index === undefined || index < 0) {
+                const keyMatch = item.key.match(/standard-.*-idx(\d+)/);
+                if (keyMatch) {
+                    index = parseInt(keyMatch[1], 10);
+                } else {
+                    index = sessionExercises.value.findIndex(e => e === item.exercise);
+                }
+            }
+            
+            if (index >= 0 && index < sessionExercises.value.length) {
+                if (processedExerciseIndices.has(index)) {
+                    return;
+                }
+                
+                sessionExercises.value[index].order = newIndex;
+                processedExerciseIndices.add(index);
+            }
+        } else if (item.type === 'set' && item.block && item.block.id !== undefined) {
+            if (processedBlockIds.has(item.block.id)) {
+                return;
+            }
+            
+            const blockExercises = sessionExercises.value.filter(
+                (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
+            );
+            blockExercises.forEach(ex => {
+                const index = sessionExercises.value.findIndex(e => e === ex);
+                if (index >= 0 && index < sessionExercises.value.length) {
+                    if (processedExerciseIndices.has(index)) {
+                        return;
+                    }
+                    sessionExercises.value[index].order = newIndex;
+                    processedExerciseIndices.add(index);
+                }
+            });
+            processedBlockIds.add(item.block.id);
+        }
+    });
+    
+    form.exercises = [...sessionExercises.value];
 };
 
 const reorderItems = (fromItem: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }, toItem: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }) => {
@@ -1649,7 +1682,7 @@ const handleLayoutSaved = async (sessionId: number) => {
                                         <!-- Afficher les exercices standard et les blocs Super Set mélangés avec drag and drop -->
                                         <VueDraggable
                                             :model-value="orderedItems"
-                                            @update:model-value="() => {}"
+                                            @update:model-value="onDragUpdate"
                                             :animation="150"
                                             handle=".handle"
                                             class="flex flex-col gap-4"
@@ -1657,7 +1690,6 @@ const handleLayoutSaved = async (sessionId: number) => {
                                             drag-class="fc-drag"
                                             chosen-class="fc-chosen"
                                             :item-key="(item: any) => item.key"
-                                            @end="onDragEnd"
                                         >
                                             <template v-for="(item, itemIndex) in orderedItems" :key="item.key">
                                             <!-- Bloc Super Set -->
@@ -1675,8 +1707,6 @@ const handleLayoutSaved = async (sessionId: number) => {
                                                 @update-block-description="(description: string) => handleUpdateBlockDescription(item.block!.id, description)"
                                                 @convert-to-standard="convertBlockToStandard(item.block!)"
                                                 @remove-block="handleRemoveBlock(item)"
-                                                @move-up="() => handleMoveUp(item)"
-                                                @move-down="() => handleMoveDown(item)"
                                             />
                                             
                                             <!-- Exercice standard -->
@@ -1689,8 +1719,6 @@ const handleLayoutSaved = async (sessionId: number) => {
                                                 :total-count="orderedItems.length"
                                                 @update="(updates: Partial<SessionExercise>) => handleExerciseUpdate(item.exercise?.id, updates)"
                                                 @remove="handleRemoveExercise(item)"
-                                                @move-up="() => handleMoveUp(item)"
-                                                @move-down="() => handleMoveDown(item)"
                                                 @convert-to-set="convertExerciseToSet(item.exercise!)"
                                             />
                                             </template>
