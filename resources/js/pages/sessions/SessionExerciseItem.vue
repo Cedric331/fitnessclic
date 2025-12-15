@@ -400,8 +400,8 @@ const confirmRemove = () => {
                                 <X class="h-3.5 w-3.5" />
                             </Button>
                             
-                            <!-- Champs organisés en grille responsive : 3 colonnes sur mobile (avec espace/bouton ajouter), 6 sur desktop (avec espace/bouton ajouter + supprimer) -->
-                            <div class="grid grid-cols-[2rem_1fr_1fr] sm:grid-cols-[2rem_1fr_1fr_1fr_1fr_2rem] gap-2 items-end">
+                            <!-- Champs organisés en grille responsive : 2 lignes x 3 colonnes sur mobile, 1 ligne x 6 colonnes sur desktop -->
+                            <div class="grid grid-cols-[2rem_1fr_1fr] grid-rows-2 sm:grid-cols-[2rem_1fr_1fr_1fr_1fr_2rem] sm:grid-rows-1 gap-2 sm:gap-2 sm:items-end mt-2">
                                 <!-- Bouton ajouter une ligne - visible uniquement sur la première ligne -->
                                 <div v-if="setIndex === 0" class="hidden sm:flex items-end">
                                     <Button
@@ -416,8 +416,8 @@ const confirmRemove = () => {
                                 </div>
                                 <!-- Espace vide pour les autres lignes sur desktop -->
                                 <div v-if="setIndex !== 0" class="hidden sm:block"></div>
-                                <!-- Bouton ajouter une ligne - mobile visible uniquement sur la première ligne -->
-                                <div v-if="setIndex === 0" class="sm:hidden flex items-end">
+                                <!-- Bouton ajouter une ligne - mobile visible uniquement sur la première ligne, span 2 lignes -->
+                                <div v-if="setIndex === 0" class="sm:hidden flex items-center row-start-1 row-span-2">
                                     <Button
                                         variant="ghost"
                                         size="sm"
@@ -428,10 +428,10 @@ const confirmRemove = () => {
                                         <Plus class="h-4 w-4" />
                                     </Button>
                                 </div>
-                                <!-- Espace vide pour les autres lignes sur mobile -->
-                                <div v-if="setIndex !== 0" class="sm:hidden block"></div>
-                                <!-- Numéro de série (éditable pour chaque ligne) -->
-                                <div>
+                                <!-- Espace vide pour les autres lignes sur mobile, span 2 lignes -->
+                                <div v-if="setIndex !== 0" class="sm:hidden block row-start-1 row-span-2"></div>
+                                <!-- Numéro de série (éditable pour chaque ligne) - Mobile: ligne 1, colonne 2 -->
+                                <div class="row-start-1 col-start-2 sm:row-start-1 sm:col-start-2">
                                     <Label class="text-xs text-neutral-500 mb-1 block">Série</Label>
                                     <Input
                                         type="number"
@@ -448,8 +448,8 @@ const confirmRemove = () => {
                                     />
                                 </div>
 
-                                <!-- Répétitions ou Durée (selon le switch) -->
-                                <div>
+                                <!-- Répétitions ou Durée (selon le switch) - Mobile: ligne 1, colonne 3 -->
+                                <div class="row-start-1 col-start-3 sm:row-start-1 sm:col-start-3">
                                     <div class="flex items-center justify-between mb-1">
                                         <Label class="text-xs text-neutral-500">
                                             {{ (set.use_duration !== undefined ? set.use_duration : (props.sessionExercise.use_duration ?? false)) ? 'Durée (seconde)' : 'Rep' }}
@@ -492,8 +492,8 @@ const confirmRemove = () => {
                                     />
                                 </div>
 
-                                <!-- Charge (poids) ou Poids de corps (selon le switch) -->
-                                <div>
+                                <!-- Charge (poids) ou Poids de corps (selon le switch) - Mobile: ligne 2, colonne 2 (sous Série) -->
+                                <div class="row-start-2 col-start-2 sm:row-start-1 sm:col-start-4">
                                     <div class="flex items-center justify-between mb-1">
                                         <Label class="text-xs text-neutral-500">
                                             {{ (set.use_bodyweight !== undefined ? set.use_bodyweight : (props.sessionExercise.use_bodyweight ?? false)) ? 'Poids de corps' : 'Charge (kg)' }}
@@ -533,8 +533,8 @@ const confirmRemove = () => {
                                     </div>
                                 </div>
 
-                                <!-- Repos -->
-                                <div>
+                                <!-- Repos - Mobile: ligne 2, colonne 3 (sous Rep) -->
+                                <div class="row-start-2 col-start-3 sm:row-start-1 sm:col-start-5">
                                     <Label class="text-xs text-neutral-500 mb-1 block">Repos</Label>
                                     <Input
                                         type="text"
