@@ -159,7 +159,7 @@ test('user cannot view non-shared exercise', function () {
     $exercise = Exercise::factory()->create([
         'user_id' => $otherUser->id,
     ]);
-    
+
     // Forcer is_shared à false après la création (car booted() le force à true)
     $exercise->is_shared = false;
     $exercise->save();
@@ -175,7 +175,7 @@ test('exercise show returns json when requested', function () {
     $user = User::factory()->create();
     $exercise = Exercise::factory()->shared()->create();
 
-    $response = $this->actingAs($user)->get(route('exercises.show', $exercise) . '?json=1');
+    $response = $this->actingAs($user)->get(route('exercises.show', $exercise).'?json=1');
 
     $response->assertStatus(200);
     $response->assertJsonStructure([
@@ -317,4 +317,3 @@ test('user cannot delete another user exercise', function () {
     $response->assertSessionHas('error', 'Vous n\'avez pas les permissions pour supprimer cet exercice.');
     $this->assertDatabaseHas('exercises', ['id' => $exercise->id]);
 });
-

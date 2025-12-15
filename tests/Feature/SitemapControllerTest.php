@@ -46,4 +46,3 @@ test('sitemap URLs have required fields', function () {
     expect($content)->toContain('<changefreq>');
     expect($content)->toContain('<priority>');
 });
-

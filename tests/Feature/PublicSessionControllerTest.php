@@ -93,4 +93,3 @@ test('public cannot download pdf for session with missing file', function () {
     $response->assertStatus(404);
     $response->assertViewIs('sessions.public-error');
 });
-

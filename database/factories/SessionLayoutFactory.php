@@ -26,4 +26,3 @@ class SessionLayoutFactory extends Factory
         ];
     }
 }
-

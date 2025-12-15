@@ -5,8 +5,6 @@ use App\Http\Controllers\ExercisesController;
 use App\Http\Controllers\PublicSessionController;
 use App\Http\Controllers\SessionsController;
 use App\Http\Controllers\SitemapController;
-use App\Mail\SessionEmail;
-use App\Models\Customer;
 use App\Models\Session;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;

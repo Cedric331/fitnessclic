@@ -230,4 +230,3 @@ test('user cannot delete another user private category', function () {
     $response->assertSessionHas('error');
     $this->assertDatabaseHas('categories', ['id' => $category->id]);
 });
-

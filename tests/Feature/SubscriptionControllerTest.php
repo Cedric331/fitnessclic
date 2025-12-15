@@ -119,4 +119,3 @@ test('user can access success page after checkout', function () {
     $response->assertRedirect(route('subscription.index'));
     $response->assertSessionHas('success', 'Votre abonnement a été activé avec succès !');
 });
-

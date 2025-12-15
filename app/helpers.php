@@ -64,6 +64,7 @@ if (! function_exists('formatRestTime')) {
         }
         if (preg_match('/^(\d+)$/', $restTime, $m)) {
             $seconds = intval($m[1]);
+
             return $seconds.' seconde'.($seconds > 1 ? 's' : '');
         }
 
@@ -143,4 +144,3 @@ if (! function_exists('extractDurationSeconds')) {
         return $totalSeconds > 0 ? $totalSeconds : '-';
     }
 }
-

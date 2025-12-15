@@ -171,4 +171,3 @@ test('user cannot delete another user customer', function () {
     $response->assertSessionHas('error', 'Vous n\'avez pas les permissions pour supprimer ce client.');
     $this->assertDatabaseHas('customers', ['id' => $customer->id]);
 });
-

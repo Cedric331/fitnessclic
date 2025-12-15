@@ -68,4 +68,3 @@ test('user cannot update password with weak password', function () {
 
     $response->assertSessionHasErrors('password');
 });
-

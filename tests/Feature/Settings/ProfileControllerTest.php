@@ -88,4 +88,3 @@ test('user session is invalidated after profile deletion', function () {
     $response->assertRedirect('/');
     $this->assertGuest();
 });
-

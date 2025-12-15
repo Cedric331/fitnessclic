@@ -3,8 +3,6 @@
 use App\Models\Customer;
 use App\Models\Exercise;
 use App\Models\Session;
-use App\Models\SessionExercise;
-use App\Models\SessionExerciseSet;
 use App\Models\SessionLayout;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -497,4 +495,3 @@ test('pro user can export pdf from layout', function () {
         'session',
     ]);
 });
-
