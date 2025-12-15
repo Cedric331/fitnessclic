@@ -609,11 +609,49 @@ const loadPdfPreview = async () => {
         });
         
         if (!response.ok) {
-            throw new Error('Erreur lors du chargement du PDF');
+            // Essayer de lire le message d'erreur du serveur
+            let errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+            try {
+                const errorText = await response.text();
+                if (errorText) {
+                    // Essayer de parser comme JSON si possible
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        errorMessage = errorJson.message || errorJson.error || errorMessage;
+                    } catch {
+                        // Si ce n'est pas du JSON, utiliser le texte brut (limité à 200 caractères)
+                        errorMessage = errorText.length > 200 
+                            ? errorText.substring(0, 200) + '...' 
+                            : errorText;
+                    }
+                }
+            } catch {
+                // Si on ne peut pas lire la réponse, utiliser le message par défaut
+            }
+            throw new Error(errorMessage);
+        }
+        
+        // Vérifier que la réponse est bien un PDF
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/pdf')) {
+            throw new Error('La réponse du serveur n\'est pas un PDF valide');
         }
         
         const arrayBuffer = await response.arrayBuffer();
-        const pdf = await (window as any).pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        if (arrayBuffer.byteLength === 0) {
+            throw new Error('Le PDF reçu est vide');
+        }
+        
+        // Charger le document PDF avec PDF.js
+        let pdf;
+        try {
+            pdf = await (window as any).pdfjsLib.getDocument({ 
+                data: arrayBuffer 
+            }).promise;
+        } catch (pdfError: any) {
+            throw new Error(`Erreur lors du chargement du PDF: ${pdfError.message || 'Format PDF invalide'}`);
+        }
         
         // Nettoyer le conteneur
         if (pdfContainer.value) {
@@ -622,33 +660,40 @@ const loadPdfPreview = async () => {
             // Afficher toutes les pages avec une taille fixe standard (comme le format libre)
             const standardWidth = 800; // Largeur standard comme pour le format libre
             
-            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                const page = await pdf.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 1.0 });
-                
-                // Calculer l'échelle pour avoir une largeur fixe de 800px
-                const scale = standardWidth / viewport.width;
-                const scaledViewport = page.getViewport({ scale: scale });
-                
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = scaledViewport.height;
-                canvas.width = scaledViewport.width;
-                
-                if (context) {
+            try {
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 1.0 });
+                    
+                    // Calculer l'échelle pour avoir une largeur fixe de 800px
+                    const scale = standardWidth / viewport.width;
+                    const scaledViewport = page.getViewport({ scale: scale });
+                    
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    
+                    if (!context) {
+                        throw new Error('Impossible d\'obtenir le contexte canvas pour le rendu PDF');
+                    }
+                    
+                    canvas.height = scaledViewport.height;
+                    canvas.width = scaledViewport.width;
+                    
                     await page.render({
                         canvasContext: context,
                         viewport: scaledViewport,
                     }).promise;
+                    
+                    // Taille fixe, centré
+                    canvas.className = 'mb-4 shadow-sm';
+                    canvas.style.width = `${standardWidth}px`;
+                    canvas.style.height = 'auto';
+                    canvas.style.display = 'block';
+                    canvas.style.margin = '0 auto';
+                    pdfContainer.value.appendChild(canvas);
                 }
-                
-                // Taille fixe, centré
-                canvas.className = 'mb-4 shadow-sm';
-                canvas.style.width = `${standardWidth}px`;
-                canvas.style.height = 'auto';
-                canvas.style.display = 'block';
-                canvas.style.margin = '0 auto';
-                pdfContainer.value.appendChild(canvas);
+            } catch (renderError: any) {
+                throw new Error(`Erreur lors du rendu du PDF: ${renderError.message || 'Impossible de rendre les pages du PDF'}`);
             }
         }
         

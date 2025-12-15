@@ -12,6 +12,11 @@ class PublicSessionController extends Controller
      */
     public function show(string $shareToken)
     {
+        // S'assurer que les fonctions helper sont chargées
+        if (!function_exists('formatRestTime')) {
+            require_once app_path('helpers.php');
+        }
+
         $session = Session::where('share_token', $shareToken)
             ->with([
                 'user',

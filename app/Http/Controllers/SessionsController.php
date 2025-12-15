@@ -585,6 +585,11 @@ class SessionsController extends Controller
                 ->with('error', 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.');
         }
 
+        // S'assurer que les fonctions helper sont chargées
+        if (!function_exists('formatRestTime')) {
+            require_once app_path('helpers.php');
+        }
+
         // Charger les relations nécessaires
         $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'user', 'layout']);
 
@@ -640,18 +645,42 @@ class SessionsController extends Controller
             abort(403);
         }
 
-        $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'user']);
+        try {
+            // S'assurer que les fonctions helper sont chargées
+            if (!function_exists('formatRestTime')) {
+                require_once app_path('helpers.php');
+            }
 
-        $pdf = Pdf::loadView('sessions.pdf', [
-            'session' => $session,
-        ])->setOption('enable-local-file-access', true);
+            $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'user']);
 
-        $fileName = $session->name ?: "seance-{$session->id}";
-        $fileName = Str::slug($fileName).'.pdf';
+            $pdf = Pdf::loadView('sessions.pdf', [
+                'session' => $session,
+            ])->setOption('enable-local-file-access', true);
 
-        return response($pdf->output(), 200)
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'inline; filename="'.$fileName.'"');
+            $fileName = $session->name ?: "seance-{$session->id}";
+            $fileName = Str::slug($fileName).'.pdf';
+
+            return response($pdf->output(), 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'inline; filename="'.$fileName.'"');
+        } catch (\Exception $e) {
+            Log::error('Error generating PDF preview', [
+                'session_id' => $session->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Pour les requêtes AJAX, retourner une réponse JSON avec l'erreur
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'error' => 'Erreur lors de la génération du PDF',
+                    'message' => $e->getMessage(),
+                ], 500);
+            }
+
+            // Pour les requêtes normales, retourner une erreur 500
+            abort(500, 'Erreur lors de la génération du PDF: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -669,6 +698,11 @@ class SessionsController extends Controller
         }
 
         try {
+            // S'assurer que les fonctions helper sont chargées
+            if (!function_exists('formatRestTime')) {
+                require_once app_path('helpers.php');
+            }
+
             $validated = $request->validated();
 
             $exerciseIds = array_column($validated['exercises'], 'exercise_id');

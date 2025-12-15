@@ -29,11 +29,8 @@ export default defineConfig({
         include: [
             'vue',
             '@inertiajs/vue3',
-            'vue-router',
             '@vueuse/core',
             'lucide-vue-next',
-            'es-errors',
-            'es-errors/type',
         ],
         exclude: ['@tailwindcss/vite'],
     },
@@ -67,16 +64,9 @@ export default defineConfig({
             include: [/node_modules/],
             transformMixedEsModules: true,
         },
-        // S'assurer que les exports conditionnels sont correctement résolus
-        modulePreload: {
-            polyfill: true,
-        },
     },
     resolve: {
         dedupe: ['vue', '@inertiajs/vue3'],
-        alias: {
-            'es-errors/type': 'es-errors/type.js',
-        },
     },
     // Désactiver certaines vérifications en développement
     esbuild: {

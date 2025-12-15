@@ -165,6 +165,11 @@ class SessionEmail extends Mailable
 
     public function attachments(): array
     {
+        // S'assurer que les fonctions helper sont chargées
+        if (!function_exists('formatRestTime')) {
+            require_once app_path('helpers.php');
+        }
+
         $this->session->load([
             'customers',
             'sessionExercises.exercise.categories',
