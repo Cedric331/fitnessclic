@@ -171,24 +171,20 @@ const canvasWidth = ref(800);
 const canvasHeight = ref(1140);
 const scale = ref(1);
 
-// Konva stage and layers
 const containerRef = ref<HTMLDivElement | null>(null);
 let stage: Konva.Stage | null = null;
 let layer: Konva.Layer | null = null;
 let transformer: Konva.Transformer | null = null;
 
-// Elements
 const elements = ref<LayoutElement[]>([]);
 const selectedElementId = ref<string | null>(null);
 const isDraggingExercise = ref(false);
 const draggedExercise = ref<Exercise | null>(null);
 
-// Undo/Redo history
 const history = ref<LayoutElement[][]>([]);
 const historyIndex = ref(-1);
 const maxHistorySize = 50;
 
-// UI state
 const showTextDialog = ref(false);
 const textInput = ref('');
 const textFontSize = ref(16);
@@ -215,14 +211,12 @@ const exerciseData = ref<ExerciseData>({
     rows: [{ series: 1, reps: 20, recovery: 30, load: 10, useDuration: false, useBodyweight: false }]
 });
 
-// Table editing state
 const showTableModal = ref(false);
 const editingTableElement = ref<LayoutElement | null>(null);
 const tableData = ref<TableData>({
     rows: [{ series: 1, reps: 20, recovery: 30, load: 10, useDuration: false, useBodyweight: false }]
 });
 
-// Exercise image editing state
 const showExerciseImageModal = ref(false);
 const editingExerciseImageElement = ref<LayoutElement | null>(null);
 const exerciseImageData = ref<{
@@ -253,13 +247,11 @@ const exerciseImageData = ref<{
     imageFrameWidth: 2
 });
 
-// Session info
 const sessionName = ref(props.sessionName || '');
 const selectedCustomerIds = ref<number[]>(props.sessionCustomers?.map(c => c.id) || []);
 const showCustomerModal = ref(false);
 const customerSearchTerm = ref('');
 
-// Shape drawing state
 const isDrawingShape = ref(false);
 const drawingShapeType = ref<'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight' | null>(null);
 const shapeStartPos = ref<{ x: number; y: number } | null>(null);
@@ -269,78 +261,53 @@ const shapeOpacity = ref(1);
 const tempShapeRef = ref<any>(null);
 const isMouseDown = ref(false);
 
-// Store current drawing event handlers to clean them up
 let currentDrawingHandlers: {
     mousedown?: (e: any) => void;
     mousemove?: (e: any) => void;
     mouseup?: (e: any) => void;
 } = {};
 
-// Library view mode
 const libraryViewMode = ref<'grid-2' | 'grid-4' | 'grid-6'>('grid-6');
 
-// Initialize canvas
 onMounted(() => {
     if (!containerRef.value) return;
 
-    // Load initial layout if provided
     if (props.initialLayout && props.initialLayout.layout_data) {
         canvasWidth.value = props.initialLayout.canvas_width || 800;
         canvasHeight.value = props.initialLayout.canvas_height || 1140; // Format A4 par défaut
         
-        // S'assurer que layout_data est un tableau
         if (Array.isArray(props.initialLayout.layout_data)) {
             elements.value = JSON.parse(JSON.stringify(props.initialLayout.layout_data));
         } else {
             elements.value = [];
         }
         
-        console.log('Initial layout loaded:', {
-            canvasSize: { width: canvasWidth.value, height: canvasHeight.value },
-            elementsCount: elements.value.length
-        });
     }
 
-    // S'assurer que le container est visible et a des dimensions
     if (!containerRef.value) {
-        console.error('Container ref is null');
         return;
     }
     
     const containerRect = containerRef.value.getBoundingClientRect();
-    console.log('Container dimensions:', containerRect);
     
-    // Create Konva stage
     stage = new Konva.Stage({
         container: containerRef.value,
         width: canvasWidth.value * scale.value,
         height: canvasHeight.value * scale.value,
     });
 
-    console.log('Stage created:', {
-        width: canvasWidth.value * scale.value,
-        height: canvasHeight.value * scale.value,
-        container: containerRef.value,
-        stageWidth: stage.width(),
-        stageHeight: stage.height()
-    });
 
     layer = new Konva.Layer();
     stage.add(layer);
     
-    // Forcer la mise à jour du canvas HTML pour s'assurer que les dimensions sont correctes
     const stageContent = stage.getContent();
     if (stageContent) {
         stageContent.style.width = `${canvasWidth.value * scale.value}px`;
         stageContent.style.height = `${canvasHeight.value * scale.value}px`;
     }
     
-    // Forcer un premier dessin pour s'assurer que le canvas est visible
     layer.draw();
     
-    console.log('Layer created and added to stage, initial draw completed');
-
-    // Create transformer for selection
     transformer = new Konva.Transformer({
         nodes: [],
         rotateEnabled: true,
@@ -350,26 +317,19 @@ onMounted(() => {
         anchorFill: '#0096ff',
         anchorStroke: '#ffffff',
         anchorSize: 8,
-        // S'assurer que le redimensionnement est activé
         resizeEnabled: true,
-        // Permettre le redimensionnement proportionnel avec Shift
         keepRatio: false,
-        // Activer tous les ancres de redimensionnement
         enabledAnchors: ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'],
-        // Fonction personnalisée pour calculer le bounding box
         boundBoxFunc: (oldBox, newBox) => {
             return newBox;
         },
     });
     layer.add(transformer);
 
-    // Load existing elements
     loadElementsToCanvas().then(() => {
-        // S'assurer que le layer est redessiné après le chargement
         if (layer) {
             layer.draw();
         }
-        // Forcer la mise à jour du canvas HTML après le chargement
         nextTick(() => {
             if (stage) {
                 const stageContent = stage.getContent();
@@ -379,13 +339,10 @@ onMounted(() => {
                 }
             }
         });
-        // Initialize history with initial state
         saveToHistory();
     });
 
-    // Handle clicks on stage (deselect only if clicking on empty stage)
     stage.on('click', (e) => {
-        // Ne pas désélectionner si on clique sur un élément (les éléments gèrent leur propre sélection)
         if (e.target === stage || e.target === layer) {
             transformer.nodes([]);
             selectedElementId.value = null;
@@ -393,19 +350,15 @@ onMounted(() => {
         }
     });
 
-    // Handle drag and drop from exercise library
     nextTick(() => {
         setupDragAndDrop();
     });
     
-    // Handle keyboard events for delete
     const handleKeyDown = (e: KeyboardEvent) => {
-        // Prevent deletion if user is typing in an input field
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
             return;
         }
         
-        // Delete key (both Delete and Backspace)
         if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId.value) {
             e.preventDefault();
             deleteSelected();
@@ -420,18 +373,13 @@ onMounted(() => {
     });
 });
 
-// Watch canvas dimensions to recalculate footer position and update stage
 watch([canvasWidth, canvasHeight], () => {
     if (stage && layer) {
-        // Mettre à jour les dimensions du stage
         stage.width(canvasWidth.value * scale.value);
         stage.height(canvasHeight.value * scale.value);
-        // Forcer la mise à jour du canvas HTML
         stage.getContent().style.width = `${canvasWidth.value * scale.value}px`;
         stage.getContent().style.height = `${canvasHeight.value * scale.value}px`;
-        // Recalculer la position du footer
         recalculateFooterPosition();
-        // Redessiner
         layer.draw();
     }
 }, { immediate: false });
@@ -445,7 +393,6 @@ onUnmounted(() => {
 // Load elements to canvas
 const loadElementsToCanvas = async (addFooter: boolean = true) => {
     if (!layer) {
-        console.warn('Layer not initialized');
         return;
     }
 
@@ -468,7 +415,6 @@ const loadElementsToCanvas = async (addFooter: boolean = true) => {
                 addShapeToCanvas(element);
             }
         } catch (error) {
-            console.error('Error loading element:', error, element);
         }
     }
     
@@ -692,13 +638,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
         
         imageObj.onload = () => {
             try {
-                console.log('Image loaded successfully:', {
-                    naturalWidth: imageObj.width,
-                    naturalHeight: imageObj.height,
-                    src: imageObj.src
-                });
-                
-                // Obtenir les dimensions naturelles de l'image
                 const naturalWidth = imageObj.width || 200;
                 const naturalHeight = imageObj.height || 200;
                 const aspectRatio = naturalWidth / naturalHeight;
@@ -767,13 +706,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 element.x = x;
                 element.y = y;
                 
-                console.log('Creating Konva image with:', {
-                    x, y, width, height,
-                    canvasWidth: canvasWidth.value,
-                    canvasHeight: canvasHeight.value
-                });
-                
-                // Créer un groupe pour l'image et le bouton (si c'est un exercice)
                 const imageGroup = new Konva.Group({
                     x: x,
                     y: y,
@@ -993,45 +925,23 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     }
                 }
                 
-                console.log('After adding to layer:', {
-                    elementId: element.id,
-                    elementPosition: { x: element.x, y: element.y },
-                    konvaPosition: { x: konvaImage.x(), y: konvaImage.y() },
-                    draggable: konvaImage.draggable(),
-                    inLayer: layer.findOne(`#${element.id}`) !== undefined
-                });
-                
                 layer.batchDraw();
-                
-                console.log('Image added to layer:', {
-                    nodeId: konvaImage.id(),
-                    position: { x: konvaImage.x(), y: konvaImage.y() },
-                    size: { width: konvaImage.width(), height: konvaImage.height() },
-                    layerChildren: layer.getChildren().length
-                });
                 
                 layer.draw();
                 
                 setTimeout(() => {
                     if (layer) {
                         layer.draw();
-                        console.log('Layer redrawn after timeout');
                     }
                 }, 100);
                 
-                const bounds = konvaImage.getClientRect();
-                console.log('Image bounds:', bounds);
-                console.log('Stage size:', stage?.width(), stage?.height());
-                
                 resolve();
             } catch (error) {
-                console.error('Error creating Konva image:', error);
                 reject(error);
             }
         };
         
         imageObj.onerror = (error) => {
-            console.error('Error loading image:', error, element.imageUrl);
             notifyError(`Erreur lors du chargement de l'image: ${element.imageUrl}`);
             reject(new Error('Failed to load image'));
         };
@@ -1049,12 +959,8 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 }
             }
             
-            console.log('Loading image from URL:', imageUrl);
-            console.log('Original URL:', element.imageUrl);
-            
             imageObj.src = imageUrl;
         } else {
-            console.error('No image URL provided for element:', element);
             reject(new Error('No image URL provided'));
         }
     });
@@ -1861,7 +1767,6 @@ const selectElement = (id: string, node: any) => {
     } else if (element && element.type === 'image' && element.exerciseId && transformer) {
 
         const box = node.getClientRect();
-        console.log('Group bounding box on select:', box);
         
         transformer.boundBoxFunc((oldBox, newBox) => {
             return newBox;
@@ -1891,20 +1796,12 @@ const selectElement = (id: string, node: any) => {
         layer.draw();
     }
     
-    console.log('Element selected:', {
-        id,
-        elementType: element?.type,
-        nodeSize: { width: node.width(), height: node.height() },
-        nodePosition: { x: node.x(), y: node.y() },
-        selectedElement: selectedElement.value
-    });
 };
 
 // Handle exercise drop
 const handleExerciseDrop = async (exercise: Exercise, x?: number, y?: number) => {
     if (!layer || !stage) {
         notifyError('Canvas non initialisé');
-        console.error('Layer or stage not initialized', { layer: !!layer, stage: !!stage });
         return;
     }
     
@@ -1912,12 +1809,6 @@ const handleExerciseDrop = async (exercise: Exercise, x?: number, y?: number) =>
         notifyError('Cet exercice n\'a pas d\'image');
         return;
     }
-
-    console.log('Adding exercise image:', {
-        exercise: exercise.title,
-        imageUrl: exercise.image_url,
-        position: { x: x ?? 100, y: y ?? 100 }
-    });
 
     try {
         const imageUrl = exercise.image_url;
@@ -1933,31 +1824,17 @@ const handleExerciseDrop = async (exercise: Exercise, x?: number, y?: number) =>
             exerciseId: exercise.id,
         };
 
-        console.log('Adding element with position:', { x: finalX, y: finalY, canvasWidth: canvasWidth.value, canvasHeight: canvasHeight.value });
-        
         saveToHistory();
         elements.value.push(element);
         
-        console.log('Element added to array, loading image...');
         await addImageToCanvas(element);
-        
-        console.log('Image loaded, drawing layer...');
         
         if (layer) {
             layer.draw();
-            console.log('Layer drawn');
-        }
-        
-        const addedNode = element.konvaNode;
-        if (addedNode && layer) {
-            const nodes = layer.getChildren();
-            console.log('Nodes on layer:', nodes.length);
-            console.log('Added node:', addedNode);
         }
         
         notifySuccess(`Image de "${exercise.title}" ajoutée`);
     } catch (error: any) {
-        console.error('Error adding exercise image:', error);
         notifyError(`Erreur lors de l'ajout de l'image: ${error.message || 'Erreur inconnue'}`);
         
         const lastElement = elements.value[elements.value.length - 1];
@@ -2773,7 +2650,6 @@ const generatePDFBlob = async (): Promise<Blob | null> => {
         
         return pdfBlob;
     } catch (error: any) {
-        console.error('Error generating PDF:', error);
         return null;
     }
 };
@@ -2889,7 +2765,6 @@ const exportToPDF = async () => {
         
         notifySuccess('PDF téléchargé avec succès');
     } catch (error: any) {
-        console.error('Error exporting PDF:', error);
         notifyError('Erreur lors de l\'export PDF: ' + (error.message || 'Erreur inconnue'));
     }
 };
@@ -3386,8 +3261,6 @@ const createExerciseTitle = (element: LayoutElement) => {
         try {
             imageNode.add(titleGroup);
         } catch (error) {
-            // Si l'ajout échoue, essayer d'ajouter au layer (fallback)
-            console.warn('Could not add title to image group, adding to layer instead', error);
             if (layer) {
                 layer.add(titleGroup);
             }
@@ -3454,7 +3327,6 @@ const createImageFrame = (element: LayoutElement) => {
                 imageFrame.moveToBottom();
             }
         } catch (error) {
-            console.warn('Could not add image frame to image group', error);
             if (layer) {
                 layer.add(imageFrame);
             }
@@ -3690,7 +3562,6 @@ const setupDragAndDrop = () => {
                 }
             }
         } catch (error) {
-            console.error('Error handling drop:', error);
         }
     };
 

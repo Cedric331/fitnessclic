@@ -149,7 +149,6 @@ const loadLayout = async () => {
             }
         }
     } catch (error) {
-        console.error('Error loading layout:', error);
         sessionLayout.value = null;
     }
 };
@@ -160,7 +159,6 @@ const openLayoutEditor = async () => {
         await loadLayout();
         showLayoutEditor.value = true;
     } catch (error) {
-        console.error('Error opening layout editor:', error);
         notifyError('Erreur lors de l\'ouverture de l\'éditeur');
     }
 };
@@ -296,7 +294,6 @@ const exportFreeSessionPdf = async () => {
         
         notifySuccess('PDF téléchargé avec succès');
     } catch (error: any) {
-        console.error('Error exporting PDF:', error);
         notifyError('Erreur lors de l\'export PDF: ' + (error.message || 'Erreur inconnue'));
     }
 };
@@ -367,7 +364,6 @@ const loadElementsToTempStage = async (layer: Konva.Layer, layout: any) => {
                 addShapeToTempStage(layer, element);
             }
         } catch (error) {
-            console.error('Error loading element:', error, element);
         }
     }
     
@@ -699,7 +695,6 @@ const loadPdfPreview = async () => {
         
         pdfUrl.value = URL.createObjectURL(new Blob([arrayBuffer], { type: 'application/pdf' }));
     } catch (error: any) {
-        console.error('Error loading PDF:', error);
         pdfError.value = error.message || 'Erreur lors du chargement du PDF';
     } finally {
         pdfLoading.value = false;

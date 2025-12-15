@@ -357,7 +357,6 @@ const loadElementsToTempStage = async (layer: any, layout: any) => {
                 addShapeToTempStage(layer, element, Konva);
             }
         } catch (error) {
-            console.error('Error loading element:', error, element);
         }
     }
 
@@ -516,7 +515,6 @@ const exportFreeSessionPdf = async (session: TrainingSessionHistory, shouldPrint
 
         notifySuccess('PDF généré avec succès');
     } catch (error: any) {
-        console.error('Error exporting PDF:', error);
         notifyError('Erreur lors de l\'export PDF: ' + (error.message || 'Erreur inconnue'));
     }
 };

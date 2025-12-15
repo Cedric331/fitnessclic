@@ -96,7 +96,6 @@ const loadElementsToCanvas = async () => {
                 addShapeToCanvas(element);
             }
         } catch (error) {
-            console.error('Error loading element:', error, element);
         }
     }
     
@@ -140,13 +139,11 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 layer.draw();
                 resolve();
             } catch (error) {
-                console.error('Error creating Konva image:', error);
                 reject(error);
             }
         };
         
         imageObj.onerror = (error) => {
-            console.error('Error loading image:', error, element.imageUrl);
             reject(new Error('Failed to load image'));
         };
         

@@ -1474,16 +1474,13 @@ const loadLayout = async () => {
                     canvas_width: data.layout.canvas_width || 800,
                     canvas_height: data.layout.canvas_height || 1000,
                 };
-                console.log('Layout loaded successfully:', sessionLayout.value);
             } else {
                 sessionLayout.value = null;
-                console.log('No layout found for this session');
             }
         } else {
             sessionLayout.value = null;
         }
     } catch (error) {
-        console.error('Error loading layout:', error);
         sessionLayout.value = null;
     } finally {
         isLayoutLoading.value = false;

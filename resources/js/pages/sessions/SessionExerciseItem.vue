@@ -75,9 +75,6 @@ const updateField = (field: keyof SessionExercise, value: any) => {
 };
 
 const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
-    console.log('updateSet called - setIndex:', setIndex, 'field:', field, 'value:', value);
-    console.log('Current sets:', props.sessionExercise.sets);
-    
     let currentSets: ExerciseSet[];
     
     const hasSets = props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0;
@@ -123,10 +120,7 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
         }
     }
     
-    console.log('Before update - currentSets[setIndex]:', currentSets[setIndex]);
     currentSets[setIndex] = { ...currentSets[setIndex], [field]: value };
-    console.log('After update - currentSets[setIndex]:', currentSets[setIndex]);
-    console.log('All sets after update:', currentSets);
     
     emit('update', { sets: currentSets });
 };
@@ -470,7 +464,6 @@ const confirmRemove = () => {
                                             type="button"
                                             @click.stop="() => {
                                                 const currentValue = set.use_duration !== undefined ? set.use_duration : (props.sessionExercise.use_duration ?? false);
-                                                console.log('Switch use_duration - setIndex:', setIndex, 'set:', set, 'currentValue:', currentValue, 'newValue:', !currentValue);
                                                 updateSet(setIndex, 'use_duration', !currentValue);
                                             }"
                                             class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
@@ -515,7 +508,6 @@ const confirmRemove = () => {
                                             type="button"
                                             @click.stop="() => {
                                                 const currentValue = set.use_bodyweight !== undefined ? set.use_bodyweight : (props.sessionExercise.use_bodyweight ?? false);
-                                                console.log('Switch use_bodyweight - setIndex:', setIndex, 'set:', set, 'currentValue:', currentValue, 'newValue:', !currentValue);
                                                 updateSet(setIndex, 'use_bodyweight', !currentValue);
                                             }"
                                             class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
