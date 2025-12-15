@@ -18,6 +18,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['category_id', 'exercise_id']);
+            $table->index('exercise_id');
+            $table->index('category_id');
         });
     }
 

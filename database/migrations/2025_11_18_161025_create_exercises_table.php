@@ -21,6 +21,9 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['user_id', 'is_shared']);
+            $table->index(['is_shared', 'created_at']);
+            $table->index(['is_shared', 'title']);
+            $table->index('title');
         });
     }
 

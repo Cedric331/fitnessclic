@@ -20,7 +20,6 @@ class SessionFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'customer_id' => Customer::factory(),
             'name' => fake()->optional()->words(3, true),
             'notes' => fake()->optional()->paragraph(),
             'session_date' => fake()->optional()->dateTimeBetween('-1 year', '+1 month'),

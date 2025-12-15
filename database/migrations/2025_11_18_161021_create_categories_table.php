@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['type', 'user_id']);
+            $table->index(['type', 'user_id', 'name']);
         });
     }
 

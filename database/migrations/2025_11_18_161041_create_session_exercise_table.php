@@ -29,6 +29,7 @@ return new class extends Migration
 
             $table->index(['session_id', 'order']);
             $table->index(['block_id', 'position_in_block']);
+            $table->index('exercise_id');
         });
     }
 

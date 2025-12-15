@@ -952,38 +952,8 @@
 <body>
   <div class="scrollable-container">
 @php
-    function formatDuration($duration) {
-        if (empty($duration) || $duration === '-') return '-';
-        if (strpos($duration, 'minute') !== false || strpos($duration, 'seconde') !== false) return $duration;
-
-        $totalSeconds = 0;
-        if (preg_match('/(\d+)\s*min/i', $duration, $m)) $totalSeconds += intval($m[1]) * 60;
-        if (preg_match('/(\d+)\s*s/i', $duration, $m))   $totalSeconds += intval($m[1]);
-        if ($totalSeconds === 0 && preg_match('/^(\d+)$/', $duration, $m)) {
-            $totalSeconds = intval($m[1]);
-        }
-        if ($totalSeconds === 0) return $duration;
-
-        $minutes = floor($totalSeconds / 60);
-        $seconds = $totalSeconds % 60;
-        $result = '';
-        if ($minutes > 0) $result .= $minutes.' minute'.($minutes > 1 ? 's' : '');
-        if ($seconds > 0) {
-            if ($minutes > 0) $result .= ' ';
-            $result .= $seconds.' seconde'.($seconds > 1 ? 's' : '');
-        }
-        return $result ?: $duration;
-    }
-
-    function formatRestTime($restTime) {
-        if (empty($restTime) || $restTime === '-') return '-';
-        if (strpos($restTime, 'seconde') !== false || strpos($restTime, 'minute') !== false) return $restTime;
-        if (preg_match('/^(\d+)$/', $restTime, $m)) {
-            $seconds = intval($m[1]);
-            return $seconds.' seconde'.($seconds > 1 ? 's' : '');
-        }
-        return $restTime;
-    }
+    // Les fonctions formatDuration et formatRestTime sont maintenant dans app/helpers.php
+    // et chargées automatiquement
 
     $sessionExercises = $session->sessionExercises ?? collect();
     if (is_array($sessionExercises)) $sessionExercises = collect($sessionExercises);

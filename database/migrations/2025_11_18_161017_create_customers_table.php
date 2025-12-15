@@ -23,6 +23,8 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['user_id', 'is_active']);
+            $table->index(['user_id', 'is_active', 'first_name', 'last_name']);
+            $table->index('email');
         });
     }
 

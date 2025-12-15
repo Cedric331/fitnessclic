@@ -72,8 +72,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/subscription/success', [\App\Http\Controllers\SubscriptionController::class, 'success'])->name('subscription.success');
 });
 
-// Stripe Webhook - doit être accessible sans authentification ni CSRF
-// Placé avant les autres routes pour éviter tout conflit de middleware
+// Stripe
 Route::post(
     '/stripe/webhook',
     [\App\Http\Controllers\StripeWebhookController::class, 'handleWebhook']
@@ -110,13 +109,5 @@ Route::get('politique-cookies', function () {
 
 // Sitemap
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
-
-// // test email
-// Route::get('test-email', function () {
-//     $session = Session::first();
-//     $customer = Customer::first();
-
-//     return (new SessionEmail($session, $customer))->render();
-// });
 
 require __DIR__.'/settings.php';

@@ -19,7 +19,8 @@ return new class extends Migration
             $table->date('session_date')->nullable();
             $table->timestamps();
 
-            $table->index('user_id');
+            $table->index(['user_id', 'session_date', 'created_at']);
+            $table->index('name');
         });
     }
 

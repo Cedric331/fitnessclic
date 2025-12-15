@@ -17,7 +17,6 @@ return new class extends Migration
             $table->uuid('share_token')->nullable()->unique()->after('session_date');
         });
 
-        // Générer des tokens pour les sessions existantes qui n'en ont pas
         $sessions = DB::table('training_sessions')->whereNull('share_token')->get();
         foreach ($sessions as $session) {
             DB::table('training_sessions')
