@@ -216,7 +216,6 @@ const removeCustomer = (customerId: number) => {
     form.customer_ids = form.customer_ids.filter(id => id !== customerId);
 };
 
-// État de l'interface
 const searchTerm = ref(props.filters.search || '');
 const localSearchTerm = ref(props.filters.search || '');
 const selectedCategoryId = ref<number | null>(props.filters.category_id || null);
@@ -388,12 +387,10 @@ const loadSessionExercises = () => {
 onMounted(async () => {
     loadSessionExercises();
     
-    // Vérifier à nouveau le mode au cas où l'URL aurait changé
     const urlParams = new URLSearchParams(window.location.search);
     const shouldOpenEditor = urlParams.get('editor') === 'true';
     if (shouldOpenEditor || props.session.has_custom_layout) {
         editMode.value = 'libre';
-        // Charger la mise en page avant d'afficher l'éditeur
         await loadLayout();
         await nextTick();
     }
@@ -480,7 +477,6 @@ const createNewSetBlock = (exercise: Exercise) => {
     form.exercises = [...sessionExercises.value];
 };
 
-// Ajouter un exercice à un bloc Super Set existant
 const addExerciseToSetBlock = (exercise: Exercise, blockId: number) => {
     if (!exercise || !exercise.id) {
         return;
@@ -805,7 +801,6 @@ const handleRemoveBlock = (item: { type: 'standard' | 'set', exercise?: SessionE
     });
 };
 
-// Supprimer un exercice de la séance
 const removeExerciseFromSession = (index: number) => {
     if (index < 0 || index >= sessionExercises.value.length) {
         return;
@@ -892,11 +887,8 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
     }
     
     
-    // Ne pas mettre à jour form.exercises ici, il sera formaté lors de la sauvegarde
-    // form.exercises sera mis à jour lors de la sauvegarde avec le bon format
 };
 
-// Réorganiser les exercices (utilisé par les boutons haut/bas et après drag)
 const reorderExercises = (fromIndex: number, toIndex: number) => {
     if (fromIndex === toIndex) return;
     if (fromIndex < 0 || fromIndex >= sessionExercises.value.length) return;
@@ -910,7 +902,6 @@ const reorderExercises = (fromIndex: number, toIndex: number) => {
     form.exercises = [...sessionExercises.value];
 };
 
-// Réorganiser les exercices après un drag (appelé automatiquement par VueDraggable)
 const onDragUpdate = (newItems: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number, exerciseIndexInSession?: number }>) => {
     const keysSeen = new Set<string>();
     const duplicates: string[] = [];
@@ -1017,13 +1008,11 @@ const reorderItems = (fromItem: { type: 'standard' | 'set', exercise?: SessionEx
             : sessionExercises.value.find(e => e.block_id === toItem.block!.id && e.block_type === 'set')?.order || 0;
         
         if (fromItem.type === 'standard') {
-            // Déplacer un exercice standard
             const fromIndex = sessionExercises.value.findIndex(e => e.id === fromItem.exercise!.id);
             if (fromIndex !== -1) {
                 sessionExercises.value[fromIndex].order = toOrder;
             }
         } else {
-            // Déplacer un bloc Super Set
             const fromBlockExercises = sessionExercises.value.filter(
                 (ex: SessionExercise) => ex.block_id === fromItem.block!.id && ex.block_type === 'set'
             );
@@ -1097,7 +1086,6 @@ watch(() => sessionExercises.value.length, () => {
     isDraggingOver.value = false;
 });
 
-// Filtrer les exercices disponibles
 const filteredExercises = computed(() => {
     let exercises = props.exercises;
 
@@ -1179,7 +1167,6 @@ const saveSession = () => {
         const formattedExercise = {
             exercise_id: ex.exercise_id,
             sets: sets,
-            // Envoyer les valeurs directes seulement si pas de sets
             repetitions: hasSets ? null : (ex.repetitions ?? null),
             weight: hasSets ? null : (ex.weight ?? null),
             rest_time: hasSets ? null : (ex.rest_time ?? null),
@@ -1422,7 +1409,6 @@ const printPDF = () => {
             throw new Error('Le PDF généré est vide');
         }
         
-        // Créer une URL blob et ouvrir dans un nouvel onglet
         const url = window.URL.createObjectURL(blob);
         const printWindow = window.open(url, '_blank');
         
@@ -1456,7 +1442,6 @@ const duplicateExercises = computed(() => {
 
 const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0);
 
-// Load layout
 const loadLayout = async () => {
     isLayoutLoading.value = true;
     try {
@@ -1487,7 +1472,6 @@ const loadLayout = async () => {
     }
 };
 
-// Switch edit mode
 const switchMode = async (mode: 'standard' | 'libre') => {
     editMode.value = mode;
     if (mode === 'libre') {
@@ -1496,12 +1480,8 @@ const switchMode = async (mode: 'standard' | 'libre') => {
     }
 };
 
-// Handle layout saved
 const handleLayoutSaved = async (sessionId: number) => {
-    // La notification est déjà affichée par l'éditeur, pas besoin de la dupliquer
-    // Recharger la mise en page pour pouvoir l'éditer à nouveau
     await loadLayout();
-    // Recharger la session pour mettre à jour has_custom_layout
     router.reload({
         only: ['session'],
     });

@@ -59,12 +59,10 @@ const formatSessionDate = (session: TrainingSessionHistory) => {
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
 
-// État pour l'envoi d'email
 const isSendEmailDialogOpen = ref(false);
 const sessionToSend = ref<TrainingSessionHistory | null>(null);
 const isSendingEmail = ref(false);
 
-// État pour l'édition et la suppression du client
 const isEditDialogOpen = ref(false);
 const isDeleteDialogOpen = ref(false);
 const isDeleteProcessing = ref(false);
@@ -74,7 +72,6 @@ const isPro = computed(() => {
     return user?.isPro ?? false;
 });
 
-// Écouter les messages flash et les convertir en notifications
 const shownFlashMessages = ref(new Set<string>());
 
 watch(() => (page.props as any).flash, (flash) => {
@@ -108,12 +105,10 @@ watch(() => (page.props as any).flash, (flash) => {
     }
 }, { immediate: true });
 
-// Actions pour les séances
 const handleViewSession = (session: TrainingSessionHistory) => {
     router.visit(`/sessions/${session.id}`);
 };
 
-// Recalculate footer position in temporary stage
 const recalculateFooterPositionInTempStage = (
     layer: any,
     layout: any,
@@ -124,7 +119,6 @@ const recalculateFooterPositionInTempStage = (
     const footerY = layout.canvas_height - footerHeight;
     const canvasWidth = layout.canvas_width;
 
-    // Recalculer la position du texte du footer
     if (footerTextNode) {
         footerTextNode.x(canvasWidth / 2);
         footerTextNode.y(footerY + footerHeight / 2);
@@ -132,7 +126,6 @@ const recalculateFooterPositionInTempStage = (
         footerTextNode.offsetY(footerTextNode.height() / 2);
     }
 
-    // Recalculer la position du logo du footer
     if (footerTextNode && footerLogoNode) {
         const textWidth = footerTextNode.width();
         const textX = canvasWidth / 2;
@@ -143,7 +136,6 @@ const recalculateFooterPositionInTempStage = (
         footerLogoNode.y(footerY + (footerHeight - logoHeight) / 2);
     }
 
-    // Recalculer la position du rectangle de fond du footer
     const allNodes = layer.getChildren();
     const footerRect = allNodes.find((node: any) => {
         const nodeId = typeof node.id === 'function' ? node.id() : node.id;
@@ -157,7 +149,6 @@ const recalculateFooterPositionInTempStage = (
     layer.draw();
 };
 
-// Add image to temporary stage
 const addImageToTempStage = async (layer: any, element: any, Konva: any): Promise<any> => {
     return new Promise((resolve, reject) => {
         const imageObj = new Image();
@@ -210,7 +201,6 @@ const addImageToTempStage = async (layer: any, element: any, Konva: any): Promis
     });
 };
 
-// Add text to temporary stage
 const addTextToTempStage = (layer: any, element: any, Konva: any): any => {
     const isFooterText = element.id && element.id.includes('footer-text');
 
@@ -243,7 +233,6 @@ const addTextToTempStage = (layer: any, element: any, Konva: any): any => {
     }
 };
 
-// Add shape to temporary stage
 const addShapeToTempStage = (layer: any, element: any, Konva: any) => {
     let konvaShape: any = null;
 
@@ -319,13 +308,11 @@ const addShapeToTempStage = (layer: any, element: any, Konva: any) => {
     }
 };
 
-// Fonction pour charger les éléments dans un stage Konva temporaire
 const loadElementsToTempStage = async (layer: any, layout: any) => {
     if (!layout.layout_data || !Array.isArray(layout.layout_data)) {
         return;
     }
 
-    // Charger Konva depuis CDN si nécessaire
     if (!(window as any).Konva) {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/konva@9/konva.min.js';
@@ -340,7 +327,6 @@ const loadElementsToTempStage = async (layer: any, layout: any) => {
     let footerTextNode: any = null;
     let footerLogoNode: any = null;
 
-    // Charger tous les éléments
     for (const element of layout.layout_data) {
         try {
             if (element.type === 'image' && element.imageUrl) {
@@ -360,17 +346,13 @@ const loadElementsToTempStage = async (layer: any, layout: any) => {
         }
     }
 
-    // Attendre un peu pour que tous les éléments soient rendus
     await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Recalculer la position du footer
+    
     recalculateFooterPositionInTempStage(layer, layout, footerTextNode, footerLogoNode);
 };
 
-// Export PDF for free sessions (using layout)
 const exportFreeSessionPdf = async (session: TrainingSessionHistory, shouldPrint: boolean = false) => {
     try {
-        // Charger le layout depuis le serveur
         const layoutResponse = await fetch(`/sessions/${session.id}/layout`, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -393,7 +375,6 @@ const exportFreeSessionPdf = async (session: TrainingSessionHistory, shouldPrint
 
         notifySuccess('Génération du PDF en cours...');
 
-        // Charger Konva depuis CDN si nécessaire
         if (!(window as any).Konva) {
             const konvaScript = document.createElement('script');
             konvaScript.src = 'https://cdn.jsdelivr.net/npm/konva@9/konva.min.js';
@@ -406,7 +387,6 @@ const exportFreeSessionPdf = async (session: TrainingSessionHistory, shouldPrint
 
         const Konva = (window as any).Konva;
 
-        // Créer un stage Konva temporaire pour l'export
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
@@ -423,24 +403,19 @@ const exportFreeSessionPdf = async (session: TrainingSessionHistory, shouldPrint
         const tempLayer = new Konva.Layer();
         tempStage.add(tempLayer);
 
-        // Charger tous les éléments dans le stage temporaire
         await loadElementsToTempStage(tempLayer, layout);
-
-        // Redessiner le layer
+        
         tempLayer.draw();
-
-        // Convert canvas to image with high quality
+        
         const dataURL = tempStage.toDataURL({
             pixelRatio: 2,
             mimeType: 'image/png',
             quality: 1,
         });
 
-        // Nettoyer le stage temporaire
         tempStage.destroy();
         document.body.removeChild(tempContainer);
 
-        // Load jsPDF from CDN
         let jsPDF: any;
         let script: HTMLScriptElement | null = null;
 
@@ -460,31 +435,25 @@ const exportFreeSessionPdf = async (session: TrainingSessionHistory, shouldPrint
             });
         }
 
-        // Convertir les dimensions du canvas en mm (1px = 0.264583mm à 96 DPI)
         const pxToMm = 0.264583;
         const pdfWidth = layout.canvas_width * pxToMm;
         const pdfHeight = layout.canvas_height * pxToMm;
 
-        // Create PDF with exact canvas dimensions (in mm)
         const pdf = new jsPDF({
             orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
             unit: 'mm',
             format: [pdfWidth, pdfHeight],
         });
 
-        // Les dimensions de l'image correspondent exactement au PDF
         const imgWidth = pdfWidth;
         const imgHeight = pdfHeight;
-
-        // Positionner l'image à (0, 0) pour qu'elle remplisse toute la page
+        
         pdf.addImage(dataURL, 'PNG', 0, 0, imgWidth, imgHeight);
-
-        // Generate filename
+        
         const name = session.name || 'mise-en-page';
         const fileName = `${name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.pdf`;
-
+        
         if (shouldPrint) {
-            // Pour l'impression, ouvrir dans un nouvel onglet et déclencher l'impression
             const pdfBlob = pdf.output('blob');
             const url = window.URL.createObjectURL(pdfBlob);
             const printWindow = window.open(url, '_blank');
@@ -504,11 +473,9 @@ const exportFreeSessionPdf = async (session: TrainingSessionHistory, shouldPrint
                 window.URL.revokeObjectURL(url);
             }, 1000);
         } else {
-            // Download the PDF
             pdf.save(fileName);
         }
-
-        // Remove script tag seulement si on l'a créé
+        
         if (script) {
             document.head.removeChild(script);
         }
@@ -525,7 +492,6 @@ const handleDownloadPdf = async (session: TrainingSessionHistory) => {
         return;
     }
     
-    // Pour les séances libres, générer le PDF depuis le layout
     if (session.has_custom_layout) {
         await exportFreeSessionPdf(session);
         return;
@@ -540,13 +506,11 @@ const handlePrint = async (session: TrainingSessionHistory) => {
         return;
     }
     
-    // Pour les séances libres, générer le PDF et l'imprimer
     if (session.has_custom_layout) {
         await exportFreeSessionPdf(session, true);
         return;
     }
     
-    // Récupérer le token CSRF
     const getCsrfToken = () => {
         const propsToken = (page.props as any).csrfToken;
         if (propsToken) return propsToken;
@@ -569,7 +533,6 @@ const handlePrint = async (session: TrainingSessionHistory) => {
         return;
     }
 
-    // Récupérer le PDF via fetch
     fetch(`/sessions/${session.id}/pdf`, {
         method: 'GET',
         headers: {
@@ -597,24 +560,20 @@ const handlePrint = async (session: TrainingSessionHistory) => {
             throw new Error('Le PDF généré est vide');
         }
         
-        // Créer une URL blob et ouvrir dans un nouvel onglet
         const url = window.URL.createObjectURL(blob);
         const printWindow = window.open(url, '_blank');
         
         if (printWindow) {
-            // Attendre que le PDF soit chargé puis déclencher l'impression
             printWindow.onload = () => {
                 setTimeout(() => {
                     printWindow.print();
                 }, 250);
             };
         } else {
-            // Si la popup est bloquée, ouvrir dans le même onglet
             window.open(url, '_blank');
             notifyError('Veuillez autoriser les popups pour cette fonctionnalité.', 'Information');
         }
         
-        // Nettoyer l'URL après un délai
         setTimeout(() => {
             window.URL.revokeObjectURL(url);
         }, 1000);
@@ -634,7 +593,6 @@ const confirmSendEmail = () => {
         return;
     }
 
-    // Vérifier que le client a un email
     if (!props.customer.email) {
         notifyError('Ce client n\'a pas d\'adresse email.');
         isSendEmailDialogOpen.value = false;
@@ -665,7 +623,6 @@ watch(isSendEmailDialogOpen, (open) => {
     }
 });
 
-// Fonctions pour l'édition et la suppression du client
 const handleEditCustomer = () => {
     isEditDialogOpen.value = true;
 };

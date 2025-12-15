@@ -43,7 +43,6 @@ const props = defineProps<Props>();
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
 
-// Écouter les messages flash et les convertir en notifications
 const shownFlashMessages = ref(new Set<string>());
 
 watch(() => (page.props as any).flash, (flash) => {
@@ -122,7 +121,6 @@ const handleEdit = () => {
     router.visit(`/sessions/${props.session.id}/edit`);
 };
 
-// Load layout
 const loadLayout = async () => {
     if (!props.session.has_custom_layout) {
         sessionLayout.value = null;
@@ -153,7 +151,6 @@ const loadLayout = async () => {
     }
 };
 
-// Open layout editor
 const openLayoutEditor = async () => {
     try {
         await loadLayout();
@@ -163,11 +160,8 @@ const openLayoutEditor = async () => {
     }
 };
 
-// Handle layout saved
 const handleLayoutSaved = async (sessionId: number) => {
-    // La notification est déjà affichée par l'éditeur, pas besoin de la dupliquer
     await loadLayout();
-    // Recharger la page pour mettre à jour has_custom_layout
     router.reload({
         only: ['session'],
     });
@@ -205,7 +199,6 @@ const exportFreeSessionPdf = async () => {
     try {
         notifySuccess('Génération du PDF en cours...');
         
-        // Créer un stage Konva temporaire pour l'export
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
@@ -222,29 +215,23 @@ const exportFreeSessionPdf = async () => {
         const tempLayer = new Konva.Layer();
         tempStage.add(tempLayer);
         
-        // Charger tous les éléments dans le stage temporaire
         await loadElementsToTempStage(tempLayer, props.session.layout);
         
-        // Redessiner le layer
         tempLayer.draw();
         
-        // Convert canvas to image with high quality
         const dataURL = tempStage.toDataURL({ 
             pixelRatio: 2,
             mimeType: 'image/png',
             quality: 1
         });
         
-        // Nettoyer le stage temporaire
         tempStage.destroy();
         document.body.removeChild(tempContainer);
         
-        // Load jsPDF from CDN (vérifier s'il est déjà chargé)
         let jsPDF: any;
         let script: HTMLScriptElement | null = null;
         
         if ((window as any).jspdf) {
-            // @ts-ignore - jsPDF is already loaded
             jsPDF = (window as any).jspdf.jsPDF;
         } else {
             script = document.createElement('script');
@@ -253,7 +240,6 @@ const exportFreeSessionPdf = async () => {
             
             await new Promise((resolve, reject) => {
                 script!.onload = () => {
-                    // @ts-ignore - jsPDF is loaded from CDN
                     jsPDF = window.jspdf.jsPDF;
                     resolve(undefined);
                 };
@@ -261,33 +247,26 @@ const exportFreeSessionPdf = async () => {
             });
         }
         
-        // Convertir les dimensions du canvas en mm (1px = 0.264583mm à 96 DPI)
         const pxToMm = 0.264583;
         const pdfWidth = props.session.layout.canvas_width * pxToMm;
         const pdfHeight = props.session.layout.canvas_height * pxToMm;
         
-        // Create PDF with exact canvas dimensions (in mm)
         const pdf = new jsPDF({
             orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
             unit: 'mm',
             format: [pdfWidth, pdfHeight]
         });
         
-        // Les dimensions de l'image correspondent exactement au PDF
         const imgWidth = pdfWidth;
         const imgHeight = pdfHeight;
         
-        // Positionner l'image à (0, 0) pour qu'elle remplisse toute la page
         pdf.addImage(dataURL, 'PNG', 0, 0, imgWidth, imgHeight);
         
-        // Generate filename
         const name = props.session.name || 'mise-en-page';
         const fileName = `${name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.pdf`;
         
-        // Download the PDF
         pdf.save(fileName);
         
-        // Remove script tag seulement si on l'a créé
         if (script) {
             document.head.removeChild(script);
         }
@@ -309,7 +288,6 @@ const recalculateFooterPositionInTempStage = (
     const footerY = layout.canvas_height - footerHeight;
     const canvasWidth = layout.canvas_width;
     
-    // Recalculer la position du texte du footer
     if (footerTextNode) {
         footerTextNode.x(canvasWidth / 2);
         footerTextNode.y(footerY + footerHeight / 2);
@@ -317,7 +295,6 @@ const recalculateFooterPositionInTempStage = (
         footerTextNode.offsetY(footerTextNode.height() / 2);
     }
     
-    // Recalculer la position du logo du footer
     if (footerTextNode && footerLogoNode) {
         const textWidth = footerTextNode.width();
         const textX = canvasWidth / 2;
@@ -328,7 +305,6 @@ const recalculateFooterPositionInTempStage = (
         footerLogoNode.y(footerY + (footerHeight - logoHeight) / 2);
     }
     
-    // Recalculer la position du rectangle de fond du footer
     const allNodes = layer.getChildren();
     const footerRect = allNodes.find((node: any) => {
         const nodeId = typeof node.id === 'function' ? node.id() : node.id;
@@ -342,12 +318,10 @@ const recalculateFooterPositionInTempStage = (
     layer.draw();
 };
 
-// Load elements to temporary stage for PDF export
 const loadElementsToTempStage = async (layer: Konva.Layer, layout: any) => {
     let footerTextNode: Konva.Text | null = null;
     let footerLogoNode: Konva.Image | null = null;
     
-    // Charger tous les éléments
     for (const element of layout.layout_data) {
         try {
             if (element.type === 'image' && element.imageUrl) {
@@ -367,14 +341,11 @@ const loadElementsToTempStage = async (layer: Konva.Layer, layout: any) => {
         }
     }
     
-    // Attendre un peu pour que tous les éléments soient rendus
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Recalculer la position du footer
     recalculateFooterPositionInTempStage(layer, layout, footerTextNode, footerLogoNode);
 };
 
-// Add image to temporary stage
 const addImageToTempStage = async (layer: Konva.Layer, element: any): Promise<Konva.Image | null> => {
     return new Promise((resolve, reject) => {
         const imageObj = new Image();
@@ -390,14 +361,12 @@ const addImageToTempStage = async (layer: Konva.Layer, element: any): Promise<Ko
                     rotation: element.rotation || 0,
                 });
                 
-                // Définir l'ID pour pouvoir le retrouver
                 if (element.id) {
                     konvaImage.id(element.id);
                 }
                 
                 layer.add(konvaImage);
                 
-                // Retourner la référence si c'est le logo du footer
                 if (element.id && element.id.includes('footer-logo')) {
                     resolve(konvaImage);
                 } else {
@@ -427,7 +396,6 @@ const addImageToTempStage = async (layer: Konva.Layer, element: any): Promise<Ko
     });
 };
 
-// Add text to temporary stage
 const addTextToTempStage = (layer: Konva.Layer, element: any): Konva.Text | null => {
     const isFooterText = element.id && element.id.includes('footer-text');
     
@@ -440,7 +408,6 @@ const addTextToTempStage = (layer: Konva.Layer, element: any): Konva.Text | null
         fill: element.fill || '#000000',
     });
     
-    // Définir l'ID pour pouvoir le retrouver
     if (element.id) {
         konvaText.id(element.id);
     }
@@ -459,7 +426,6 @@ const addTextToTempStage = (layer: Konva.Layer, element: any): Konva.Text | null
     }
 };
 
-// Add shape to temporary stage
 const addShapeToTempStage = (layer: Konva.Layer, element: any) => {
     let konvaShape: Konva.Shape | Konva.Group | null = null;
     
@@ -527,8 +493,7 @@ const addShapeToTempStage = (layer: Konva.Layer, element: any) => {
     }
     
     if (konvaShape) {
-        // Définir l'ID pour pouvoir le retrouver
-        if (element.id) {
+                if (element.id) {
             konvaShape.id(element.id);
         }
         layer.add(konvaShape);
@@ -558,7 +523,6 @@ const pdfLoading = ref(false);
 const pdfError = ref<string | null>(null);
 const pdfContainer = ref<HTMLDivElement | null>(null);
 
-// Charger le PDF pour la prévisualisation avec PDF.js
 const loadPdfPreview = async () => {
     if (props.session.has_custom_layout) {
         return;
@@ -567,7 +531,6 @@ const loadPdfPreview = async () => {
     pdfLoading.value = true;
     pdfError.value = null;
     
-    // Attendre que le conteneur soit disponible
     await nextTick();
     let retries = 0;
     while (!pdfContainer.value && retries < 10) {
@@ -582,7 +545,6 @@ const loadPdfPreview = async () => {
     }
     
     try {
-        // Charger PDF.js depuis CDN
         if (!(window as any).pdfjsLib) {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
@@ -605,29 +567,24 @@ const loadPdfPreview = async () => {
         });
         
         if (!response.ok) {
-            // Essayer de lire le message d'erreur du serveur
             let errorMessage = `Erreur ${response.status}: ${response.statusText}`;
             try {
                 const errorText = await response.text();
                 if (errorText) {
-                    // Essayer de parser comme JSON si possible
                     try {
                         const errorJson = JSON.parse(errorText);
                         errorMessage = errorJson.message || errorJson.error || errorMessage;
                     } catch {
-                        // Si ce n'est pas du JSON, utiliser le texte brut (limité à 200 caractères)
                         errorMessage = errorText.length > 200 
                             ? errorText.substring(0, 200) + '...' 
                             : errorText;
                     }
                 }
             } catch {
-                // Si on ne peut pas lire la réponse, utiliser le message par défaut
             }
             throw new Error(errorMessage);
         }
         
-        // Vérifier que la réponse est bien un PDF
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/pdf')) {
             throw new Error('La réponse du serveur n\'est pas un PDF valide');
@@ -639,7 +596,6 @@ const loadPdfPreview = async () => {
             throw new Error('Le PDF reçu est vide');
         }
         
-        // Charger le document PDF avec PDF.js
         let pdf;
         try {
             pdf = await (window as any).pdfjsLib.getDocument({ 
@@ -649,19 +605,16 @@ const loadPdfPreview = async () => {
             throw new Error(`Erreur lors du chargement du PDF: ${pdfError.message || 'Format PDF invalide'}`);
         }
         
-        // Nettoyer le conteneur
         if (pdfContainer.value) {
             pdfContainer.value.innerHTML = '';
             
-            // Afficher toutes les pages avec une taille fixe standard (comme le format libre)
-            const standardWidth = 800; // Largeur standard comme pour le format libre
+            const standardWidth = 800;
             
             try {
                 for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
                     const page = await pdf.getPage(pageNum);
                     const viewport = page.getViewport({ scale: 1.0 });
                     
-                    // Calculer l'échelle pour avoir une largeur fixe de 800px
                     const scale = standardWidth / viewport.width;
                     const scaledViewport = page.getViewport({ scale: scale });
                     
@@ -680,7 +633,6 @@ const loadPdfPreview = async () => {
                         viewport: scaledViewport,
                     }).promise;
                     
-                    // Taille fixe, centré
                     canvas.className = 'mb-4 shadow-sm';
                     canvas.style.width = `${standardWidth}px`;
                     canvas.style.height = 'auto';
@@ -701,7 +653,6 @@ const loadPdfPreview = async () => {
     }
 };
 
-// Charger la mise en page au montage si elle existe
 onMounted(() => {
     if (props.session.has_custom_layout) {
         loadLayout();
@@ -712,14 +663,12 @@ onMounted(() => {
     }
 });
 
-// Nettoyer l'URL blob au démontage
 onUnmounted(() => {
     if (pdfUrl.value) {
         URL.revokeObjectURL(pdfUrl.value);
     }
 });
 
-// Grouper les exercices par blocs (standard et Super Set)
 const groupExercisesIntoBlocks = () => {
     if (!props.session.sessionExercises) {
         return { standard: [], set: [] };
@@ -735,12 +684,10 @@ const groupExercisesIntoBlocks = () => {
             }
             blocksMap.get(ex.block_id)!.push(ex);
         } else {
-            // Exercice standard (pas de block_id ou block_type !== 'set')
             standardExercises.push(ex);
         }
     });
     
-    // Convertir les blocs Super Set en objets
     const setBlocks = Array.from(blocksMap.entries())
         .map(([blockId, exercises]) => ({
             id: blockId,
@@ -758,7 +705,6 @@ const groupExercisesIntoBlocks = () => {
     };
 };
 
-// Items ordonnés (standard et Super Set mélangés) - computed pour réactivité
 const orderedItems = computed(() => {
     const blocks = groupExercisesIntoBlocks();
     const items: Array<{ 
@@ -770,7 +716,6 @@ const orderedItems = computed(() => {
         displayIndex: number 
     }> = [];
     
-    // Combiner et trier tous les items
     const allItems: Array<{ 
         type: 'standard' | 'set', 
         exercise?: typeof props.session.sessionExercises[0], 
@@ -778,7 +723,6 @@ const orderedItems = computed(() => {
         order: number 
     }> = [];
     
-    // Ajouter les exercices standard
     blocks.standard.forEach(ex => {
         allItems.push({
             type: 'standard',
@@ -787,7 +731,6 @@ const orderedItems = computed(() => {
         });
     });
     
-    // Ajouter les blocs Super Set
     blocks.set.forEach(block => {
         allItems.push({
             type: 'set',
@@ -796,10 +739,8 @@ const orderedItems = computed(() => {
         });
     });
     
-    // Trier par ordre
     allItems.sort((a, b) => a.order - b.order);
     
-    // Ajouter l'index d'affichage (compteur)
     allItems.forEach((item, index) => {
         items.push({
             ...item,
@@ -811,7 +752,6 @@ const orderedItems = computed(() => {
     return items;
 });
 
-// Pour compatibilité avec l'ancien code
 const sortedExercises = computed(() => {
     if (!props.session.sessionExercises) {
         return [];
@@ -823,20 +763,16 @@ const sortedExercises = computed(() => {
     });
 });
 
-// Fonctions helper pour formater les données comme dans le PDF
 const extractRestSeconds = (restTime: string | null | undefined): string | number => {
     if (!restTime || restTime === '-') return '-';
-    // Extraire le nombre de secondes depuis le format "X seconde(s)" ou "X secondes"
     const secondsMatch = restTime.match(/(\d+)\s*seconde/i);
     if (secondsMatch) {
         return parseInt(secondsMatch[1]);
     }
-    // Si c'est juste un nombre, le retourner
     const numberMatch = restTime.match(/^(\d+)$/);
     if (numberMatch) {
         return parseInt(numberMatch[1]);
     }
-    // Si c'est au format "X minute(s) Y seconde(s)", convertir en secondes
     let totalSeconds = 0;
     const minutesMatch = restTime.match(/(\d+)\s*minute/i);
     if (minutesMatch) totalSeconds += parseInt(minutesMatch[1]) * 60;
@@ -847,17 +783,14 @@ const extractRestSeconds = (restTime: string | null | undefined): string | numbe
 
 const extractDurationSeconds = (duration: string | null | undefined): string | number => {
     if (!duration || duration === '-') return '-';
-    // Extraire le nombre de secondes depuis le format "X seconde(s)" ou "X secondes"
     const secondsMatch = duration.match(/(\d+)\s*seconde/i);
     if (secondsMatch) {
         return parseInt(secondsMatch[1]);
     }
-    // Si c'est juste un nombre, le retourner
     const numberMatch = duration.match(/^(\d+)$/);
     if (numberMatch) {
         return parseInt(numberMatch[1]);
     }
-    // Si c'est au format "X minute(s) Y seconde(s)", convertir en secondes
     let totalSeconds = 0;
     const minutesMatch = duration.match(/(\d+)\s*minute/i);
     if (minutesMatch) totalSeconds += parseInt(minutesMatch[1]) * 60;
@@ -866,11 +799,9 @@ const extractDurationSeconds = (duration: string | null | undefined): string | n
     return totalSeconds > 0 ? totalSeconds : '-';
 };
 
-// Formater une série pour l'affichage en tableau
 const formatSeriesData = (set: any, sessionExercise: any) => {
     const setNumber = set.set_number || 1;
     
-    // Déterminer le label et la valeur pour répétitions/durée
     let repsLabel = 'répétition';
     let repsValue: string | number = '-';
     const useDuration = sessionExercise.use_duration === true || sessionExercise.use_duration === 1 || sessionExercise.use_duration === '1' || sessionExercise.use_duration === 'true';
@@ -883,7 +814,6 @@ const formatSeriesData = (set: any, sessionExercise: any) => {
         repsValue = set.repetitions ?? sessionExercise.repetitions ?? '-';
     }
     
-    // Déterminer le texte pour la charge
     let chargeValue = '';
     const useBodyweight = sessionExercise.use_bodyweight === true || sessionExercise.use_bodyweight === 1 || sessionExercise.use_bodyweight === '1' || sessionExercise.use_bodyweight === 'true';
     
@@ -899,7 +829,6 @@ const formatSeriesData = (set: any, sessionExercise: any) => {
         }
     }
     
-    // Repos
     const rawRest = set.rest_time ?? sessionExercise.rest_time ?? '-';
     const restSeconds = extractRestSeconds(rawRest);
     const restText = restSeconds !== '-' ? `${restSeconds} seconde${restSeconds > 1 ? 's' : ''}` : '-';
@@ -912,7 +841,6 @@ const formatSeriesData = (set: any, sessionExercise: any) => {
     };
 };
 
-// Formater une série sans sets (fallback)
 const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
     const useDuration = sessionExercise.use_duration === true || sessionExercise.use_duration === 1 || sessionExercise.use_duration === '1' || sessionExercise.use_duration === 'true';
     const useBodyweight = sessionExercise.use_bodyweight === true || sessionExercise.use_bodyweight === 1 || sessionExercise.use_bodyweight === '1' || sessionExercise.use_bodyweight === 'true';

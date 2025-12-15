@@ -44,7 +44,6 @@ const showRemoveDialog = ref(false);
 const isEditingName = ref(false);
 const exercise = computed(() => props.sessionExercise.exercise);
 
-// Initialiser les séries si elles n'existent pas
 const sets = computed(() => {
     if (props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0) {
         return props.sessionExercise.sets;
@@ -53,7 +52,6 @@ const sets = computed(() => {
     return [];
 });
 
-// S'assurer que les sets sont initialisés lors du montage si nécessaire
 onMounted(() => {
     if (!props.sessionExercise.sets || !Array.isArray(props.sessionExercise.sets) || props.sessionExercise.sets.length === 0) {
         const defaultSet = [{
@@ -80,14 +78,12 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
     const hasSets = props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0;
     
     if (hasSets) {
-        // Préserver toutes les propriétés existantes du set, y compris use_duration et use_bodyweight
         currentSets = props.sessionExercise.sets!.map((set: any) => ({ 
             set_number: set.set_number ?? 1,
             repetitions: set.repetitions ?? null,
             weight: set.weight ?? null,
             rest_time: set.rest_time ?? null,
             duration: set.duration ?? null,
-            // Préserver use_duration et use_bodyweight s'ils existent, sinon utiliser la valeur par défaut
             use_duration: set.use_duration !== undefined ? set.use_duration : (props.sessionExercise.use_duration ?? false),
             use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (props.sessionExercise.use_bodyweight ?? false),
             order: set.order ?? 0
@@ -129,7 +125,6 @@ const addSet = () => {
     let currentSets: ExerciseSet[];
     if (props.sessionExercise.sets && props.sessionExercise.sets.length > 0) {
         currentSets = [...props.sessionExercise.sets];
-        // Ajouter un nouveau set avec le bon numéro de série
         const newSetNumber = 1;
         const newSet = {
             set_number: newSetNumber,
@@ -144,7 +139,6 @@ const addSet = () => {
         const updatedSets = [...currentSets, newSet];
         emit('update', { sets: updatedSets });
     } else {
-        // Si aucun set, créer le premier set
         const firstSet = {
             set_number: 1,
             repetitions: props.sessionExercise.repetitions ?? null,
