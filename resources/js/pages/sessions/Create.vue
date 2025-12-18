@@ -202,9 +202,23 @@ const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
 
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>(getDefaultViewMode());
 
+const DESKTOP_MIN_WIDTH = 1024;
+const isDesktopWidth = () => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`).matches;
+};
+
 // Fonction pour obtenir le mode depuis localStorage
 const getEditMode = (): 'standard' | 'libre' => {
     if (typeof window !== 'undefined') {
+        // Mode libre réservé au desktop
+        if (!isDesktopWidth()) {
+            try {
+                localStorage.setItem('editMode', 'standard');
+            } catch (e) {
+            }
+            return 'standard';
+        }
         const stored = localStorage.getItem('editMode');
         if (stored === 'libre' || stored === 'standard') {
             return stored;
@@ -219,6 +233,15 @@ onMounted(() => {
             viewMode.value = 'grid-6';
         } else if (window.innerWidth >= 640 && viewMode.value === 'grid-6' && window.innerWidth < 1024) {
             viewMode.value = 'grid-6';
+        }
+
+        // Si on passe sur tablette/mobile, forcer le mode standard et fermer l'éditeur libre
+        if (window.innerWidth < DESKTOP_MIN_WIDTH) {
+            showLayoutEditor.value = false;
+            try {
+                localStorage.setItem('editMode', 'standard');
+            } catch (e) {
+            }
         }
     };
     

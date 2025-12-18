@@ -230,12 +230,23 @@ const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
 
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>(getDefaultViewMode());
 
+const DESKTOP_MIN_WIDTH = 1024;
+const isDesktopWidth = () => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`).matches;
+};
+
 onMounted(() => {
     const handleResize = () => {
         if (window.innerWidth < 640 && viewMode.value !== 'grid-6') {
             viewMode.value = 'grid-6';
         } else if (window.innerWidth >= 640 && viewMode.value === 'grid-6' && window.innerWidth < 1024) {
             viewMode.value = 'grid-6';
+        }
+
+        // Mode libre réservé au desktop: si on passe en tablette/mobile, revenir en standard
+        if (window.innerWidth < DESKTOP_MIN_WIDTH && editMode.value === 'libre') {
+            editMode.value = 'standard';
         }
     };
     
@@ -249,6 +260,8 @@ const isLibraryOpen = ref(false);
 // Initialiser le mode en fonction de l'URL et des props
 const getInitialEditMode = (): 'standard' | 'libre' => {
     if (typeof window === 'undefined') return 'standard';
+    // Mode libre réservé au desktop
+    if (!isDesktopWidth()) return 'standard';
     const urlParams = new URLSearchParams(window.location.search);
     const shouldOpenEditor = urlParams.get('editor') === 'true';
     return (shouldOpenEditor || props.session.has_custom_layout) ? 'libre' : 'standard';
@@ -1473,6 +1486,11 @@ const loadLayout = async () => {
 };
 
 const switchMode = async (mode: 'standard' | 'libre') => {
+    // Mode libre réservé au desktop
+    if (mode === 'libre' && !isDesktopWidth()) {
+        editMode.value = 'standard';
+        return;
+    }
     editMode.value = mode;
     if (mode === 'libre') {
         await loadLayout();

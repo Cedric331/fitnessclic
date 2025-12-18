@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { urlIsActive } from '@/lib/utils';
 import { type NavItem, type User } from '@/types';
 import { Link, usePage, router, type InertiaLinkProps } from '@inertiajs/vue3';
-import { computed, toRef, ref } from 'vue';
+import { computed, toRef, ref, onMounted, onBeforeUnmount } from 'vue';
 import {
     Plus,
     Dumbbell,
@@ -76,17 +76,14 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-// Computed pour obtenir le titre de l'abonnement de manière réactive
 const subscriptionTitle = computed(() => {
     return hasActiveSubscription.value ? 'Abonnement' : 'Passer à FitnessClicPro';
 });
 
-// Computed pour vérifier si c'est le bouton "Passer à FitnessClicPro"
 const isUpgradeButton = computed(() => {
     return !hasActiveSubscription.value;
 });
 
-// Filtrer les items du menu selon le statut de l'utilisateur
 const filteredNavItems = computed(() => {
     return mainNavItems;
 });
@@ -95,15 +92,25 @@ const isCurrentRoute = computed(
     () => (url: NonNullable<InertiaLinkProps['href']>) => urlIsActive(url, page.url),
 );
 
-// Mode d'édition (Standard ou Libre) - État global persistant
+const DESKTOP_MIN_WIDTH = 1024;
+const DESKTOP_MEDIA_QUERY = `(min-width: ${DESKTOP_MIN_WIDTH}px)`;
+const isDesktopWidth = () => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
+};
+
 const getStoredMode = (): 'standard' | 'libre' => {
     if (typeof window !== 'undefined') {
+        // Sur tablette/mobile, forcer le mode standard (mode libre réservé au desktop)
+        if (!isDesktopWidth()) {
+            return 'standard';
+        }
         const stored = localStorage.getItem('editMode');
         if (stored === 'libre' || stored === 'standard') {
             return stored;
         }
     }
-    return 'standard'; // Par défaut: Standard
+    return 'standard';
 };
 
 const setStoredMode = (mode: 'standard' | 'libre') => {
@@ -112,27 +119,67 @@ const setStoredMode = (mode: 'standard' | 'libre') => {
     }
 };
 
-// Mode actuel - toujours depuis localStorage (comme le dark mode)
 const currentEditMode = ref<'standard' | 'libre'>(getStoredMode());
 
-// Initialiser le mode au montage
-if (typeof window !== 'undefined') {
+let desktopMq: MediaQueryList | null = null;
+let desktopMqHandler: ((e: MediaQueryListEvent) => void) | null = null;
+
+const enforceStandardOnNonDesktop = () => {
+    if (typeof window === 'undefined') return;
+
+    if (!isDesktopWidth()) {
+        // S'assure que tout le reste de l'app (ex: /sessions/create) retombe en standard sur tablette
+        setStoredMode('standard');
+        currentEditMode.value = 'standard';
+        return;
+    }
+
+    // Desktop: resynchroniser depuis le stockage
     currentEditMode.value = getStoredMode();
-}
+};
+
+onMounted(() => {
+    enforceStandardOnNonDesktop();
+
+    desktopMq = window.matchMedia(DESKTOP_MEDIA_QUERY);
+    desktopMqHandler = () => enforceStandardOnNonDesktop();
+
+    // Support Safari ancien
+    if (desktopMq.addEventListener) {
+        desktopMq.addEventListener('change', desktopMqHandler);
+    } else {
+        (desktopMq as unknown as { addListener: (cb: (e: any) => void) => void }).addListener(desktopMqHandler);
+    }
+});
+
+onBeforeUnmount(() => {
+    if (!desktopMq || !desktopMqHandler) return;
+    if (desktopMq.removeEventListener) {
+        desktopMq.removeEventListener('change', desktopMqHandler);
+    } else {
+        (desktopMq as unknown as { removeListener: (cb: (e: any) => void) => void }).removeListener(desktopMqHandler);
+    }
+    desktopMq = null;
+    desktopMqHandler = null;
+});
 
 const switchMode = (mode: 'standard' | 'libre') => {
-    // Stocker le mode dans localStorage
+    // Mode libre réservé au desktop
+    if (mode === 'libre' && !isDesktopWidth()) {
+        setStoredMode('standard');
+        currentEditMode.value = 'standard';
+        return;
+    }
+
     setStoredMode(mode);
     currentEditMode.value = mode;
     
-    // Si on est sur la page de création de session, recharger pour appliquer le mode
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/sessions/create')) {
-        // Recharger complètement la page pour que le composant détecte le nouveau mode
-        window.location.reload();
+    if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('/sessions/create')) {
+            window.location.reload();
+        }
     }
-    // Pour la page Edit, le mode est déterminé par has_custom_layout de la séance, pas par le mode global
-    // Sur les autres pages, pas besoin de recharger, le mode sera utilisé lors de la prochaine navigation
 };
 
 const handleLogout = () => {
@@ -180,19 +227,6 @@ const handleLogout = () => {
                     NAVIGATION
                 </SidebarGroupLabel>
                 <SidebarMenu class="space-y-1.5">
-                    <!-- Bouton Créer une Séance -->
-                    <!-- <SidebarMenuItem class="mb-2">
-                        <Button
-                            as-child
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white justify-start gap-2 h-10"
-                        >
-                            <Link href="/sessions/create">
-                                <Plus class="size-4" />
-                                <span>Créer une Séance</span>
-                            </Link>
-                        </Button>
-                    </SidebarMenuItem> -->
-
                     <!-- Items de navigation -->
                     <SidebarMenuItem
                         v-for="item in filteredNavItems"
@@ -244,7 +278,7 @@ const handleLogout = () => {
             </SidebarGroup>
 
             <!-- Toggle Mode d'édition -->
-            <div class="px-2 py-4 border-t border-slate-700">
+            <div class="hidden lg:block px-2 py-4 border-t border-slate-700">
                 <div class="flex gap-2">
                     <Button
                         :variant="currentEditMode === 'standard' ? 'default' : 'outline'"
