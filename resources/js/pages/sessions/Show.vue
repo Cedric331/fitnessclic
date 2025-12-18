@@ -198,18 +198,21 @@ const exportFreeSessionPdf = async () => {
 
     try {
         notifySuccess('Génération du PDF en cours...');
+
+        const canvasWidth = props.session.layout.canvas_width ?? 800;
+        const canvasHeight = props.session.layout.canvas_height ?? 1000;
         
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
-        tempContainer.style.width = `${props.session.layout.canvas_width}px`;
-        tempContainer.style.height = `${props.session.layout.canvas_height}px`;
+        tempContainer.style.width = `${canvasWidth}px`;
+        tempContainer.style.height = `${canvasHeight}px`;
         document.body.appendChild(tempContainer);
         
         const tempStage = new Konva.Stage({
             container: tempContainer,
-            width: props.session.layout.canvas_width,
-            height: props.session.layout.canvas_height,
+            width: canvasWidth,
+            height: canvasHeight,
         });
         
         const tempLayer = new Konva.Layer();
@@ -240,7 +243,7 @@ const exportFreeSessionPdf = async () => {
             
             await new Promise((resolve, reject) => {
                 script!.onload = () => {
-                    jsPDF = window.jspdf.jsPDF;
+                    jsPDF = (window as any).jspdf.jsPDF;
                     resolve(undefined);
                 };
                 script!.onerror = reject;
@@ -248,8 +251,8 @@ const exportFreeSessionPdf = async () => {
         }
         
         const pxToMm = 0.264583;
-        const pdfWidth = props.session.layout.canvas_width * pxToMm;
-        const pdfHeight = props.session.layout.canvas_height * pxToMm;
+        const pdfWidth = canvasWidth * pxToMm;
+        const pdfHeight = canvasHeight * pxToMm;
         
         const pdf = new jsPDF({
             orientation: pdfHeight > pdfWidth ? 'portrait' : 'landscape',
@@ -522,14 +525,43 @@ const pdfUrl = ref<string | null>(null);
 const pdfLoading = ref(false);
 const pdfError = ref<string | null>(null);
 const pdfContainer = ref<HTMLDivElement | null>(null);
+const pdfData = ref<Uint8Array | null>(null);
 
-const loadPdfPreview = async () => {
+let resizeTimeout: number | null = null;
+let isPdfRendering = false;
+
+const getPdfContainerWidth = () => {
+    const el = pdfContainer.value;
+    const width = el?.clientWidth || el?.parentElement?.clientWidth || 0;
+    return width > 0 ? width : 800;
+};
+
+const handleResize = () => {
+    if (props.session.has_custom_layout) return;
+    if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+    }
+    resizeTimeout = window.setTimeout(() => {
+        loadPdfPreview({ silent: true });
+    }, 150);
+};
+
+const loadPdfPreview = async (options: { silent?: boolean } = {}) => {
     if (props.session.has_custom_layout) {
         return;
     }
-    
-    pdfLoading.value = true;
+
+    if (isPdfRendering) {
+        return;
+    }
+
+    const silent = options.silent === true;
+
+    if (!silent) {
+        pdfLoading.value = true;
+    }
     pdfError.value = null;
+    isPdfRendering = true;
     
     await nextTick();
     let retries = 0;
@@ -540,7 +572,10 @@ const loadPdfPreview = async () => {
     
     if (!pdfContainer.value) {
         pdfError.value = 'Impossible de charger le conteneur PDF';
-        pdfLoading.value = false;
+        if (!silent) {
+            pdfLoading.value = false;
+        }
+        isPdfRendering = false;
         return;
     }
     
@@ -558,48 +593,56 @@ const loadPdfPreview = async () => {
                 script.onerror = reject;
             });
         }
-        
-        const response = await fetch(`/sessions/${props.session.id}/pdf-preview`, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            credentials: 'include',
-        });
-        
-        if (!response.ok) {
-            let errorMessage = `Erreur ${response.status}: ${response.statusText}`;
-            try {
-                const errorText = await response.text();
-                if (errorText) {
-                    try {
-                        const errorJson = JSON.parse(errorText);
-                        errorMessage = errorJson.message || errorJson.error || errorMessage;
-                    } catch {
-                        errorMessage = errorText.length > 200 
-                            ? errorText.substring(0, 200) + '...' 
-                            : errorText;
+
+        let pdfBytes = pdfData.value;
+
+        if (!pdfBytes) {
+            const response = await fetch(`/sessions/${props.session.id}/pdf-preview`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'include',
+            });
+            
+            if (!response.ok) {
+                let errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+                try {
+                    const errorText = await response.text();
+                    if (errorText) {
+                        try {
+                            const errorJson = JSON.parse(errorText);
+                            errorMessage = errorJson.message || errorJson.error || errorMessage;
+                        } catch {
+                            errorMessage = errorText.length > 200 
+                                ? errorText.substring(0, 200) + '...' 
+                                : errorText;
+                        }
                     }
+                } catch {
                 }
-            } catch {
+                throw new Error(errorMessage);
             }
-            throw new Error(errorMessage);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/pdf')) {
-            throw new Error('La réponse du serveur n\'est pas un PDF valide');
-        }
-        
-        const arrayBuffer = await response.arrayBuffer();
-        
-        if (arrayBuffer.byteLength === 0) {
-            throw new Error('Le PDF reçu est vide');
+            
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/pdf')) {
+                throw new Error('La réponse du serveur n\'est pas un PDF valide');
+            }
+            
+            const fetchedBuffer = await response.arrayBuffer();
+            
+            if (fetchedBuffer.byteLength === 0) {
+                throw new Error('Le PDF reçu est vide');
+            }
+
+            pdfBytes = new Uint8Array(fetchedBuffer);
+            pdfData.value = pdfBytes;
         }
         
         let pdf;
         try {
             pdf = await (window as any).pdfjsLib.getDocument({ 
-                data: arrayBuffer 
+                // pdf.js peut détacher un ArrayBuffer (transfer au worker) : on passe une copie à chaque rendu
+                data: pdfBytes.slice()
             }).promise;
         } catch (pdfError: any) {
             throw new Error(`Erreur lors du chargement du PDF: ${pdfError.message || 'Format PDF invalide'}`);
@@ -607,15 +650,14 @@ const loadPdfPreview = async () => {
         
         if (pdfContainer.value) {
             pdfContainer.value.innerHTML = '';
-            
-            const standardWidth = 800;
+            const containerWidth = getPdfContainerWidth();
             
             try {
                 for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
                     const page = await pdf.getPage(pageNum);
                     const viewport = page.getViewport({ scale: 1.0 });
                     
-                    const scale = standardWidth / viewport.width;
+                    const scale = containerWidth / viewport.width;
                     const scaledViewport = page.getViewport({ scale: scale });
                     
                     const canvas = document.createElement('canvas');
@@ -625,8 +667,8 @@ const loadPdfPreview = async () => {
                         throw new Error('Impossible d\'obtenir le contexte canvas pour le rendu PDF');
                     }
                     
-                    canvas.height = scaledViewport.height;
                     canvas.width = scaledViewport.width;
+                    canvas.height = scaledViewport.height;
                     
                     await page.render({
                         canvasContext: context,
@@ -634,7 +676,7 @@ const loadPdfPreview = async () => {
                     }).promise;
                     
                     canvas.className = 'mb-4 shadow-sm';
-                    canvas.style.width = `${standardWidth}px`;
+                    canvas.style.width = '100%';
                     canvas.style.height = 'auto';
                     canvas.style.display = 'block';
                     canvas.style.margin = '0 auto';
@@ -644,12 +686,19 @@ const loadPdfPreview = async () => {
                 throw new Error(`Erreur lors du rendu du PDF: ${renderError.message || 'Impossible de rendre les pages du PDF'}`);
             }
         }
-        
-        pdfUrl.value = URL.createObjectURL(new Blob([arrayBuffer], { type: 'application/pdf' }));
+
+        if (pdfUrl.value) {
+            URL.revokeObjectURL(pdfUrl.value);
+        }
+        const blobBuffer = pdfBytes.slice().buffer as ArrayBuffer;
+        pdfUrl.value = URL.createObjectURL(new Blob([blobBuffer], { type: 'application/pdf' }));
     } catch (error: any) {
         pdfError.value = error.message || 'Erreur lors du chargement du PDF';
     } finally {
-        pdfLoading.value = false;
+        isPdfRendering = false;
+        if (!silent) {
+            pdfLoading.value = false;
+        }
     }
 };
 
@@ -657,6 +706,7 @@ onMounted(() => {
     if (props.session.has_custom_layout) {
         loadLayout();
     } else {
+        window.addEventListener('resize', handleResize);
         nextTick(() => {
             loadPdfPreview();
         });
@@ -664,18 +714,25 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+    if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = null;
+    }
     if (pdfUrl.value) {
         URL.revokeObjectURL(pdfUrl.value);
     }
 });
+
+type SessionExerciseItem = NonNullable<Session['sessionExercises']>[number];
 
 const groupExercisesIntoBlocks = () => {
     if (!props.session.sessionExercises) {
         return { standard: [], set: [] };
     }
     
-    const blocksMap = new Map<number, typeof props.session.sessionExercises>();
-    const standardExercises: typeof props.session.sessionExercises = [];
+    const blocksMap = new Map<number, SessionExerciseItem[]>();
+    const standardExercises: SessionExerciseItem[] = [];
     
     props.session.sessionExercises.forEach(ex => {
         if (ex.block_id && ex.block_type === 'set') {
@@ -709,8 +766,8 @@ const orderedItems = computed(() => {
     const blocks = groupExercisesIntoBlocks();
     const items: Array<{ 
         type: 'standard' | 'set', 
-        exercise?: typeof props.session.sessionExercises[0], 
-        block?: { id: number; type: 'set'; exercises: typeof props.session.sessionExercises; order: number },
+        exercise?: SessionExerciseItem, 
+        block?: { id: number; type: 'set'; exercises: SessionExerciseItem[]; order: number },
         key: string, 
         order: number, 
         displayIndex: number 
@@ -718,8 +775,8 @@ const orderedItems = computed(() => {
     
     const allItems: Array<{ 
         type: 'standard' | 'set', 
-        exercise?: typeof props.session.sessionExercises[0], 
-        block?: { id: number; type: 'set'; exercises: typeof props.session.sessionExercises; order: number },
+        exercise?: SessionExerciseItem, 
+        block?: { id: number; type: 'set'; exercises: SessionExerciseItem[]; order: number },
         order: number 
     }> = [];
     
@@ -763,7 +820,7 @@ const sortedExercises = computed(() => {
     });
 });
 
-const extractRestSeconds = (restTime: string | null | undefined): string | number => {
+const extractRestSeconds = (restTime: string | null | undefined): '-' | number => {
     if (!restTime || restTime === '-') return '-';
     const secondsMatch = restTime.match(/(\d+)\s*seconde/i);
     if (secondsMatch) {
@@ -781,7 +838,7 @@ const extractRestSeconds = (restTime: string | null | undefined): string | numbe
     return totalSeconds > 0 ? totalSeconds : '-';
 };
 
-const extractDurationSeconds = (duration: string | null | undefined): string | number => {
+const extractDurationSeconds = (duration: string | null | undefined): '-' | number => {
     if (!duration || duration === '-') return '-';
     const secondsMatch = duration.match(/(\d+)\s*seconde/i);
     if (secondsMatch) {
@@ -991,8 +1048,8 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                                 </div>
                                 <div
                                     ref="pdfContainer"
-                                    class="w-full flex flex-col items-center"
-                                    :class="{ 'hidden': pdfLoading || pdfError }"
+                                    class="w-full max-w-5xl mx-auto flex flex-col items-center"
+                                    v-show="!pdfError"
                                 ></div>
                             </div>
                         </CardContent>
