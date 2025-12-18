@@ -6,7 +6,8 @@
   <title>Séance - {{ $session->name ?? 'Nouvelle Séance' }}</title>
   <style>
     @page {
-      margin: 20px 20px 0 0;
+      /* Réduire l'espace entre le haut de page et le header */
+      margin: 12px 16px 0 0;
     }
     
     body {
@@ -14,7 +15,8 @@
       font-size: 12px;
       color: #212121;
       margin: 0;
-      padding: 20px 20px 70px 20px;
+      /* Top plus compact + réserve pour le footer fixe */
+      padding: 12px 16px 28px 16px;
     }
 
     table {
@@ -40,6 +42,14 @@
         height: 40px;              
         width: auto;
         display: block;
+    }
+
+    /* Footer: logo légèrement plus compact */
+    .footer .header-logo {
+      height: 28px;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 8px;
     }
 
     .header-title {
@@ -102,12 +112,13 @@
 
     .header-line {
       border-bottom: 2px solid #212121;
-      margin: 10px 0 12px 0;
+      margin: 8px 0 10px 0;
     }
 
     .header-info-table {
       width: 100%;
-      margin-bottom: 50px;
+      /* Réduire l'espace entre le header et le 1er exercice */
+      margin-bottom: 16px;
     }
 
     .header-info-table td {
@@ -124,10 +135,16 @@
     /* Exercise Section */
     .exercise-table {
       width: 100%;
-      margin-top: 18px;
+      /* Réduire l'espace entre chaque exercice */
+      margin-top: 10px;
       background-color: #f7f7f7;  
-      padding: 6px;               
+      padding: 5px;               
       border-radius: 4px;         
+    }
+
+    .exercise-table-first {
+      /* Un poil plus serré sous le header */
+      margin-top: 8px;
     }
 
     .exercise-number-cell {
@@ -139,7 +156,7 @@
     }
 
     .exercise-number {
-      font-size: 28px;
+      font-size: 26px;
       font-weight: bold;
       color: #212121;
     }
@@ -162,20 +179,20 @@
 
     .exercise-image {
       width: 100px;
-      height: 70px;
+      height: 62px;
       background-color: #f3f4f6;
       text-align: center;
-      line-height: 70px;
+      line-height: 62px;
       font-size: 10px;
       color: #9ca3af;
     }
 
     .exercise-image-small {
       width: 80px;
-      height: 55px;
+      height: 48px;
       background-color: #f3f4f6;
       text-align: center;
-      line-height: 55px;
+      line-height: 48px;
       font-size: 10px;
       color: #9ca3af;
     }
@@ -186,9 +203,9 @@
     }
 
     .exercise-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: bold;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     .exercise-title-small {
@@ -199,7 +216,7 @@
 
     .exercise-description {
       font-size: 12px;
-      line-height: 1.4;
+      line-height: 1.3;
     }
 
     /* Data Tables */
@@ -271,7 +288,7 @@
       background-color: #e0f4fc;
       color: #212121;
       font-size: 12px;
-      padding: 6px 8px;
+      padding: 4px 6px;
       text-align: center;
       border-right: 1px solid #d1d5db;
     }
@@ -283,7 +300,7 @@
     /* Super Set */
     .superset-label {
       text-align: right;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       margin-right: 25px;
       font-size: 12px;
     }
@@ -294,7 +311,7 @@
 
     .sub-exercise-table {
       width: 100%;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
     }
 
     .sub-exercise-image-cell {
@@ -316,7 +333,8 @@
       right: 0;
       width: 100%;
       background-color: #d5f5f5;
-      padding: 10px 12px;
+      /* Footer légèrement moins haut */
+      padding: 4px 12px;
       z-index: 1000;
       margin: 0;
     }
@@ -333,6 +351,7 @@
         justify-content: center;      
         text-align: center;
         font-size: 10px; 
+        line-height: 1.15;
     }
 
     .footer-text {
@@ -474,7 +493,7 @@
     <!-- Exercises -->
     @if($exerciseCount > 0)
       @foreach($orderedItems as $item)
-        <table class="exercise-table" style="margin-top: 30px;">
+        <table class="exercise-table {{ $loop->first ? 'exercise-table-first' : '' }}">
           <tr style="margin: 15px;">
             <td class="exercise-number-cell">
               <span class="exercise-number">{{ $sectionNumber }}</span>
@@ -557,7 +576,7 @@
                     <tr>
                       <td class="exercise-image-cell">
                         @if($exerciseImage)
-                          <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="max-width: 100px; max-height: 70px; width: auto; height: auto;">
+                          <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="max-width: 100px; max-height: 62px; width: auto; height: auto;">
                         @else
                           <div class="exercise-image">🏋️</div>
                         @endif
@@ -570,7 +589,7 @@
                       </td>
                     </tr>
                   </table>
-                  <div style="margin-top: 4px;">
+                  <div style="margin-top: 3px;">
                     @if($sets->count() > 0)
                       @foreach($sets as $set)
                         @php
@@ -783,12 +802,12 @@
                       <tr>
                         <td class="sub-exercise-image-cell">
                           @if($exerciseImage)
-                            <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="max-width: 80px; max-height: 55px; width: auto; height: auto;">
+                            <img src="{{ $exerciseImage }}" alt="{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}" style="max-width: 80px; max-height: 48px; width: auto; height: auto;">
                           @endif
                         </td>
                         <td class="sub-exercise-content-cell">
                           <div class="exercise-title-small">{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}</div>
-                          <div style="margin-top: 4px;">
+                          <div style="margin-top: 3px;">
                             @if($sets->count() > 0)
                               @foreach($sets as $set)
                                 @php
