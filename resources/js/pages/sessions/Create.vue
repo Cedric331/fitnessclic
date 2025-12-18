@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,33 @@ const { success: notifySuccess, error: notifyError } = useNotifications();
 const isUpgradeModalOpen = ref(false);
 const showLayoutEditor = ref(false);
 const savedSessionId = ref<number | null>(null);
+
+// Empêche le "scroll fantôme" de la page quand l'éditeur libre (overlay) est ouvert
+const previousOverflow = ref<{ html: string; body: string } | null>(null);
+const lockPageScroll = () => {
+    if (previousOverflow.value) return;
+    previousOverflow.value = {
+        html: document.documentElement.style.overflow,
+        body: document.body.style.overflow,
+    };
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+};
+const unlockPageScroll = () => {
+    if (!previousOverflow.value) return;
+    document.documentElement.style.overflow = previousOverflow.value.html;
+    document.body.style.overflow = previousOverflow.value.body;
+    previousOverflow.value = null;
+};
+
+watch(showLayoutEditor, (open) => {
+    if (open) lockPageScroll();
+    else unlockPageScroll();
+});
+
+onUnmounted(() => {
+    unlockPageScroll();
+});
 
 const shownFlashMessages = ref(new Set<string>());
 
@@ -1894,7 +1921,7 @@ watch(sessionExercises, () => {
         />
 
         <!-- Layout Editor -->
-        <div v-if="showLayoutEditor" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900">
+        <div v-if="showLayoutEditor" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900 overflow-hidden">
             <SessionLayoutEditor
                 :session-id="savedSessionId || undefined"
                 :exercises="exercises"
