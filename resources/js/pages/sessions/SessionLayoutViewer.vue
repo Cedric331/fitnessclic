@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import Konva from 'konva';
 
 interface LayoutElement {
@@ -36,9 +36,90 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const wrapperRef = ref<HTMLDivElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
 let stage: Konva.Stage | null = null;
 let layer: Konva.Layer | null = null;
+
+const scale = ref(1);
+
+let resizeTimeout: number | null = null;
+let resizeObserver: ResizeObserver | null = null;
+
+const getWrapperContentWidth = () => {
+    const el = wrapperRef.value ?? containerRef.value?.parentElement ?? null;
+    if (!el) return 0;
+
+    const styles = window.getComputedStyle(el);
+    const paddingLeft = parseFloat(styles.paddingLeft || '0') || 0;
+    const paddingRight = parseFloat(styles.paddingRight || '0') || 0;
+
+    // Important: sur mobile, certains layouts peuvent avoir un wrapper "large" (ex: min-width desktop),
+    // mais on veut fitter sur la largeur *visible* de l'écran.
+    const viewportWidth =
+        (window as any).visualViewport?.width ??
+        document.documentElement.clientWidth ??
+        window.innerWidth ??
+        0;
+
+    const rect = el.getBoundingClientRect();
+    // Largeur réellement visible = intersection [rect.left, rect.right] ∩ [0, viewportWidth]
+    const visibleLeft = Math.max(rect.left, 0);
+    const visibleRight = Math.min(rect.right, viewportWidth);
+    const visibleWidth = Math.max(visibleRight - visibleLeft, 0);
+
+    const contentWidth = visibleWidth - paddingLeft - paddingRight;
+    return contentWidth > 0 ? contentWidth : 0;
+};
+
+const ensureInitialScale = async () => {
+    // Sur mobile (et parfois lors d'un premier paint), la largeur peut être 0 au moment du mounted.
+    // On retente quelques fois pour garantir un scale correct.
+    await nextTick();
+    for (let i = 0; i < 10; i++) {
+        if (getWrapperContentWidth() > 0) {
+            updateStageScale();
+            return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    updateStageScale();
+};
+
+const updateStageScale = () => {
+    if (!stage || !containerRef.value) return;
+
+    const wrapperWidth = getWrapperContentWidth();
+    if (!wrapperWidth) return;
+
+    // On évite l'upscale (souvent flou) : le canvas ne dépassera pas sa taille native.
+    const nextScale = Math.min(wrapperWidth / props.layout.canvas_width, 1);
+    scale.value = nextScale;
+
+    const scaledW = Math.round(props.layout.canvas_width * nextScale);
+    const scaledH = Math.round(props.layout.canvas_height * nextScale);
+
+    // 1) On scale le stage (coordonnées)
+    stage.scale({ x: nextScale, y: nextScale });
+
+    // 2) On aligne la taille DOM du stage sur la taille scalée (sinon décalage/clipping)
+    stage.size({ width: scaledW, height: scaledH });
+
+    // 3) On ajuste la taille du conteneur DOM pour matcher exactement
+    containerRef.value.style.width = `${scaledW}px`;
+    containerRef.value.style.height = `${scaledH}px`;
+
+    stage.batchDraw();
+};
+
+const handleResize = () => {
+    if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+    }
+    resizeTimeout = window.setTimeout(() => {
+        updateStageScale();
+    }, 150);
+};
 
 onMounted(() => {
     if (!containerRef.value) return;
@@ -52,10 +133,33 @@ onMounted(() => {
     layer = new Konva.Layer();
     stage.add(layer);
 
-    loadElementsToCanvas();
+    window.addEventListener('resize', handleResize);
+
+    // Plus robuste que window.resize (sidebar, layout, etc.)
+    if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => {
+            handleResize();
+        });
+        const observeEl = wrapperRef.value ?? containerRef.value?.parentElement ?? null;
+        if (observeEl) resizeObserver.observe(observeEl);
+    }
+
+    // Charge d'abord le contenu, puis fit (évite des comportements "fantômes")
+    loadElementsToCanvas().finally(() => {
+        ensureInitialScale();
+    });
 });
 
 onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+    if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = null;
+    }
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+    }
     if (stage) {
         stage.destroy();
     }
@@ -100,16 +204,26 @@ const loadElementsToCanvas = async () => {
     if (layer) {
         layer.draw();
     }
+
+    // Fit après chargement (images/texte)
+    updateStageScale();
 };
 
 const addImageToCanvas = async (element: LayoutElement) => {
     if (!layer) return;
+    const localLayer = layer;
 
     return new Promise<void>((resolve, reject) => {
         const imageObj = new Image();
         
         imageObj.onload = () => {
             try {
+                // Le composant peut être démonté avant la fin du chargement de l'image
+                if (!localLayer) {
+                    resolve();
+                    return;
+                }
+
                 const konvaImage = new Konva.Image({
                     x: element.x,
                     y: element.y,
@@ -120,14 +234,14 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     draggable: false, // Lecture seule
                 });
 
-                layer.add(konvaImage);
+                localLayer.add(konvaImage);
                 
                 const isFooterLogo = element.id && element.id.includes('footer-logo');
                 if (isFooterLogo) {
                     footerLogoNode.value = konvaImage;
                 }
                 
-                layer.draw();
+                localLayer.draw();
                 resolve();
             } catch (error) {
                 reject(error);
@@ -267,17 +381,11 @@ const addShapeToCanvas = (element: LayoutElement) => {
 </script>
 
 <template>
-    <div class="flex justify-center overflow-auto bg-neutral-100 dark:bg-neutral-800 p-4 rounded-lg">
-        <div 
-            ref="containerRef"
-            class="bg-white shadow-lg"
-            :style="{ 
-                width: `${layout.canvas_width}px`, 
-                height: `${layout.canvas_height}px`,
-                minWidth: `${layout.canvas_width}px`,
-                minHeight: `${layout.canvas_height}px`
-            }"
-        ></div>
+    <div
+        ref="wrapperRef"
+        class="w-full min-w-0 max-w-5xl mx-auto flex justify-center overflow-hidden bg-neutral-100 dark:bg-neutral-800 p-4 rounded-lg"
+    >
+        <div ref="containerRef" class="bg-white shadow-lg w-full"></div>
     </div>
 </template>
 

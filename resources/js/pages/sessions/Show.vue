@@ -986,13 +986,14 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                         v-if="session.has_custom_layout"
                         variant="outline"
                         size="sm"
-                        class="inline-flex items-center gap-2 w-full sm:w-auto"
+                        class="hidden xl:inline-flex items-center gap-2 w-full sm:w-auto"
                         @click="openLayoutEditor"
                     >
                         <Layout class="size-4" />
                         <span>Éditer mise en page</span>
                     </Button>
                     <Button
+                        v-if="!session.has_custom_layout"
                         variant="outline"
                         size="sm"
                         class="inline-flex items-center gap-2 w-full sm:w-auto"
@@ -1024,7 +1025,7 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                                 Mise en page personnalisée
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent class="min-w-0 px-2 sm:px-6">
                             <SessionLayoutViewer
                                 :layout="session.layout"
                             />
