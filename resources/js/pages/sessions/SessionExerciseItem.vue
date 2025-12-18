@@ -391,6 +391,7 @@ const confirmRemove = () => {
                         >
                             <!-- Bouton supprimer la série - fixe en haut à droite sur mobile -->
                             <Button
+                                v-if="setIndex > 0"
                                 variant="ghost"
                                 size="sm"
                                 @click="removeSet(setIndex)"
@@ -548,7 +549,7 @@ const confirmRemove = () => {
                                 </div>
                                 
                                 <!-- Bouton supprimer la série - tout à droite sur desktop (toutes les lignes) -->
-                                <div class="hidden sm:flex items-end">
+                                <div v-if="setIndex > 0" class="hidden sm:flex items-end">
                                     <Button
                                         variant="ghost"
                                         size="sm"

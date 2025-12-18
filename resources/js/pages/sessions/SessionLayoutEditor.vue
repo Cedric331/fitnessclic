@@ -980,42 +980,44 @@ const addTextToCanvas = (element: LayoutElement) => {
     element.konvaNode = konvaText;
         return;
     }
-    
-    const tempText = new Konva.Text({
+
+    const align = element.align || 'left';
+    const margin = 20;
+    const maxWidth = canvasWidth.value - (margin * 2);
+
+    // Mesure "naturelle" (sans wrap) pour que le transformer encadre bien un petit texte
+    const measureText = new Konva.Text({
         text: element.text || '',
         fontSize: element.fontSize || 16,
         fontFamily: element.fontFamily || 'Arial',
+        fontStyle: fontStyle,
+        textDecoration: element.textDecoration === 'underline' ? 'underline' : '',
     });
-    const textWidth = tempText.width();
-    tempText.destroy();
-    
-    const align = element.align || 'left';
-    const margin = 20; 
-    
-    const textDisplayWidth = canvasWidth.value - (margin * 2);
+    const naturalWidth = measureText.width();
+    measureText.destroy();
 
-    let textX = element.x;
+    const boxWidth = Math.max(1, Math.min(naturalWidth, maxWidth));
+
+    // Position du bloc texte sur la page selon l'alignement
+    let groupX = margin;
     if (align === 'center') {
-        textX = canvasWidth.value / 2;
-        element.x = textX;
+        groupX = (canvasWidth.value - boxWidth) / 2;
     } else if (align === 'right') {
-        textX = (canvasWidth.value - margin) - textDisplayWidth;
-        element.x = textX;
-    } else {
-        textX = margin;
-        element.x = textX; 
+        groupX = canvasWidth.value - margin - boxWidth;
     }
-    
+
+    element.x = groupX;
+
     const textGroup = new Konva.Group({
-        x: 0,
-        y: 0,
+        x: groupX,
+        y: element.y,
         draggable: true,
         id: element.id,
     });
-    
+
     const konvaText = new Konva.Text({
-        x: textX,
-        y: element.y,
+        x: 0,
+        y: 0,
         text: element.text || '',
         fontSize: element.fontSize || 16,
         fontFamily: element.fontFamily || 'Arial',
@@ -1023,68 +1025,31 @@ const addTextToCanvas = (element: LayoutElement) => {
         fontStyle: fontStyle,
         textDecoration: element.textDecoration === 'underline' ? 'underline' : '',
         align: align,
-        width: textDisplayWidth,
+        width: boxWidth,
         draggable: false,
     });
-    
-    if (align === 'center') {
-        konvaText.offsetX(textDisplayWidth / 2);
-    }
-    
+
     textGroup.add(konvaText);
-    
+
+    element.width = boxWidth;
+
     if (element.stroke) {
-        nextTick(() => {
-            if (!layer) return;
-            
-            const textPadding = 2; 
-            
-            const tempText = new Konva.Text({
-                text: konvaText.text(),
-                fontSize: konvaText.fontSize(),
-                fontFamily: konvaText.fontFamily(),
-                fontStyle: konvaText.fontStyle(),
-            });
-            const textActualWidth = tempText.width();
-            tempText.destroy();
-            const textActualHeight = konvaText.height();
-            
-            let textActualX = textX;
-            if (align === 'center') {
-                textActualX = textX - textActualWidth / 2;
-            } else if (align === 'right') {
-                textActualX = textX + textDisplayWidth - textActualWidth;
-            }
-            
-            let rectX = textActualX;
-            let rectY = element.y;
-            let rectWidth = textActualWidth;
-            let rectHeight = textActualHeight;
-            
-            rectX -= textPadding;
-            rectY -= textPadding;
-            rectWidth += textPadding * 2;
-            rectHeight += textPadding * 2;
-            
-            const frameRect = new Konva.Rect({
-                x: rectX,
-                y: rectY,
-                width: rectWidth,
-                height: rectHeight,
-                fill: undefined,
-                stroke: element.stroke,
-                strokeWidth: element.strokeWidth || 1,
-                draggable: false,
-                listening: false, 
-            });
-            
-            textGroup.add(frameRect);
-            element.textFrameNode = frameRect;
-            layer.draw();
+        const textPadding = 2;
+        const frameRect = new Konva.Rect({
+            x: -textPadding,
+            y: -textPadding,
+            width: boxWidth + (textPadding * 2),
+            height: konvaText.height() + (textPadding * 2),
+            fill: undefined,
+            stroke: element.stroke,
+            strokeWidth: element.strokeWidth || 1,
+            draggable: false,
+            listening: false,
         });
+        textGroup.add(frameRect);
+        frameRect.moveToBottom();
+        element.textFrameNode = frameRect;
     }
-    
-    element.width = textDisplayWidth;
 
     textGroup.on('dragend', () => {
         updateElementPosition(element.id, textGroup.x(), textGroup.y());
@@ -1640,36 +1605,9 @@ const updateElementTransform = (id: string, node: any) => {
                 
                 node.scaleX(1);
                 node.scaleY(1);
-                
-                if (element.stroke && element.textFrameNode) {
-                    const textPadding = 2;
-                    const tempText = new Konva.Text({
-                        text: textNode.text(),
-                        fontSize: textNode.fontSize(),
-                        fontFamily: textNode.fontFamily(),
-                        fontStyle: textNode.fontStyle(),
-                    });
-                    const textActualWidth = tempText.width();
-                    tempText.destroy();
-                    const textActualHeight = textNode.height();
-                    const textX = textNode.x();
-                    const textY = textNode.y();
-                    const align = element.align || 'left';
-                    
-                    let textActualX = textX;
-                    if (align === 'center') {
-                        textActualX = textX - textActualWidth / 2;
-                    } else if (align === 'right') {
-                        const textDisplayWidth = element.width || textNode.width();
-                        textActualX = textX + textDisplayWidth - textActualWidth;
-                    }
-                    
-                    const frameRect = element.textFrameNode;
-                    frameRect.x(textActualX - textPadding);
-                    frameRect.y(textY - textPadding);
-                    frameRect.width(textActualWidth + (textPadding * 2));
-                    frameRect.height(textActualHeight + (textPadding * 2));
-                }
+
+                // Recalcule largeur/position du texte + cadre selon l'alignement
+                updateTextNode(node, element);
             }
         } else {
             const newWidth = node.width() * node.scaleX();
@@ -1727,72 +1665,12 @@ const selectElement = (id: string, node: any) => {
     const element = elements.value.find(el => el.id === id);
     
     if (element && element.type === 'text') {
-        transformer.boundBoxFunc((oldBox, newBox) => {
-            const textNode = node.findOne('Text');
-            if (textNode) {
-                const tempText = new Konva.Text({
-                    text: textNode.text(),
-                    fontSize: textNode.fontSize(),
-                    fontFamily: textNode.fontFamily(),
-                    fontStyle: textNode.fontStyle(),
-                });
-                const textActualWidth = tempText.width();
-                tempText.destroy();
-                const textActualHeight = textNode.height();
-                
-                const align = element.align || 'left';
-                const textX = textNode.x();
-                const textY = textNode.y();
-                let actualX = textX;
-                
-                if (align === 'center') {
-             
-                    const offsetX = textNode.offsetX() || 0;
-         
-                    if (offsetX > 0) {
-                        actualX = textX - textActualWidth / 2;
-                    } else {
-                        actualX = textX - textActualWidth / 2;
-                    }
-                } else if (align === 'right') {
-                    const textDisplayWidth = element.width || textNode.width();
-                    actualX = textX + textDisplayWidth - textActualWidth;
-                }
-                
-                const frameNode = node.findOne('Rect');
-                let finalX = actualX;
-                let finalY = textY;
-                let finalWidth = textActualWidth;
-                let finalHeight = textActualHeight;
-                
-                if (frameNode && element.stroke) {
-                    const textPadding = 2;
-                    finalX = actualX - textPadding;
-                    finalY = textY - textPadding;
-                    finalWidth = textActualWidth + (textPadding * 2);
-                    finalHeight = textActualHeight + (textPadding * 2);
-                }
-                
-                return {
-                    x: finalX,
-                    y: finalY,
-                    width: finalWidth,
-                    height: finalHeight,
-                    rotation: newBox.rotation || 0,
-                };
-            }
-            return newBox;
-        });
-        
+        // Le texte est désormais dimensionné à sa largeur réelle (ou maxWidth si wrap),
+        // donc le transformer encadre correctement sans hack de boundBoxFunc.
+        transformer.boundBoxFunc((oldBox, newBox) => newBox);
         nextTick(() => {
-            if (transformer && layer) {
-                setTimeout(() => {
-                    if (transformer && layer) {
-                        transformer.forceUpdate();
-                        layer.draw();
-                    }
-                }, 50);
-            }
+            transformer?.forceUpdate();
+            layer?.draw();
         });
     } else if (element && element.type === 'image' && element.exerciseId && transformer) {
 
@@ -2376,61 +2254,47 @@ const updateTextNode = (node: any, element: LayoutElement) => {
     const align = element.align || 'left';
     const margin = 20;
     
-    const textDisplayWidth = canvasWidth.value - (margin * 2);
-    element.width = textDisplayWidth;
-    textNode.width(textDisplayWidth);
+    const fontStyle = (element.fontStyle === 'italic' ? 'italic' : '') + (element.fontWeight === 'bold' ? ' bold' : '') || 'normal';
+    const maxWidth = canvasWidth.value - (margin * 2);
+
+    // Mesure naturelle pour que le transformer encadre le texte (et pas toute la page)
+    const measureText = new Konva.Text({
+        text: element.text || '',
+        fontSize: element.fontSize || 16,
+        fontFamily: element.fontFamily || 'Arial',
+        fontStyle: fontStyle,
+        textDecoration: element.textDecoration === 'underline' ? 'underline' : '',
+    });
+    const naturalWidth = measureText.width();
+    measureText.destroy();
+
+    const boxWidth = Math.max(1, Math.min(naturalWidth, maxWidth));
+    element.width = boxWidth;
+    textNode.width(boxWidth);
     textNode.align(align);
-  
-    let textX = element.x;
+    textNode.x(0);
+    textNode.y(0);
+
+    // Position du groupe selon l'alignement (gauche/centre/droite)
+    let groupX = margin;
     if (align === 'center') {
-        textX = canvasWidth.value / 2;
-        element.x = textX;
-        textNode.offsetX(textDisplayWidth / 2);
-    } else {
-        textNode.offsetX(0);
-        if (align === 'right') {
-            textX = (canvasWidth.value - margin) - textDisplayWidth;
-            element.x = textX;
-        } else {
-            textX = margin;
-            element.x = textX;
-        }
+        groupX = (canvasWidth.value - boxWidth) / 2;
+    } else if (align === 'right') {
+        groupX = canvasWidth.value - margin - boxWidth;
     }
-    textNode.x(textX);
-    textNode.y(element.y);
+    element.x = groupX;
+    node.x(groupX);
+    node.y(element.y);
     
 
     const frameNode = node.findOne('Rect');
     
     if (element.stroke && textNode) {
         const textPadding = 2;
-
-        const tempText = new Konva.Text({
-            text: textNode.text(),
-            fontSize: textNode.fontSize(),
-            fontFamily: textNode.fontFamily(),
-            fontStyle: textNode.fontStyle(),
-        });
-        const textActualWidth = tempText.width();
-        tempText.destroy();
-        const textActualHeight = textNode.height();
-        
-        let textActualX = textX;
-        if (align === 'center') {
-            textActualX = textX - textActualWidth / 2;
-        } else if (align === 'right') {
-            textActualX = textX + textDisplayWidth - textActualWidth;
-        }
-        
-        let rectX = textActualX;
-        let rectY = element.y;
-        let rectWidth = textActualWidth;
-        let rectHeight = textActualHeight;
-        
-        rectX -= textPadding;
-        rectY -= textPadding;
-        rectWidth += textPadding * 2;
-        rectHeight += textPadding * 2;
+        const rectX = -textPadding;
+        const rectY = -textPadding;
+        const rectWidth = boxWidth + (textPadding * 2);
+        const rectHeight = textNode.height() + (textPadding * 2);
         
         if (!frameNode) {
             const frameRect = new Konva.Rect({
@@ -2446,6 +2310,7 @@ const updateTextNode = (node: any, element: LayoutElement) => {
             });
             
             node.add(frameRect);
+            frameRect.moveToBottom();
             element.textFrameNode = frameRect;
         } else {
             frameNode.x(rectX);
@@ -2454,6 +2319,7 @@ const updateTextNode = (node: any, element: LayoutElement) => {
             frameNode.height(rectHeight);
             frameNode.stroke(element.stroke);
             frameNode.strokeWidth(element.strokeWidth || 1);
+            frameNode.moveToBottom();
         }
     } else {
         if (frameNode) {
