@@ -54,8 +54,6 @@ const getWrapperContentWidth = () => {
     const paddingLeft = parseFloat(styles.paddingLeft || '0') || 0;
     const paddingRight = parseFloat(styles.paddingRight || '0') || 0;
 
-    // Important: sur mobile, certains layouts peuvent avoir un wrapper "large" (ex: min-width desktop),
-    // mais on veut fitter sur la largeur *visible* de l'écran.
     const viewportWidth =
         (window as any).visualViewport?.width ??
         document.documentElement.clientWidth ??
@@ -63,7 +61,6 @@ const getWrapperContentWidth = () => {
         0;
 
     const rect = el.getBoundingClientRect();
-    // Largeur réellement visible = intersection [rect.left, rect.right] ∩ [0, viewportWidth]
     const visibleLeft = Math.max(rect.left, 0);
     const visibleRight = Math.min(rect.right, viewportWidth);
     const visibleWidth = Math.max(visibleRight - visibleLeft, 0);
@@ -73,8 +70,6 @@ const getWrapperContentWidth = () => {
 };
 
 const ensureInitialScale = async () => {
-    // Sur mobile (et parfois lors d'un premier paint), la largeur peut être 0 au moment du mounted.
-    // On retente quelques fois pour garantir un scale correct.
     await nextTick();
     for (let i = 0; i < 10; i++) {
         if (getWrapperContentWidth() > 0) {
@@ -92,20 +87,16 @@ const updateStageScale = () => {
     const wrapperWidth = getWrapperContentWidth();
     if (!wrapperWidth) return;
 
-    // On évite l'upscale (souvent flou) : le canvas ne dépassera pas sa taille native.
     const nextScale = Math.min(wrapperWidth / props.layout.canvas_width, 1);
     scale.value = nextScale;
 
     const scaledW = Math.round(props.layout.canvas_width * nextScale);
     const scaledH = Math.round(props.layout.canvas_height * nextScale);
 
-    // 1) On scale le stage (coordonnées)
     stage.scale({ x: nextScale, y: nextScale });
 
-    // 2) On aligne la taille DOM du stage sur la taille scalée (sinon décalage/clipping)
     stage.size({ width: scaledW, height: scaledH });
 
-    // 3) On ajuste la taille du conteneur DOM pour matcher exactement
     containerRef.value.style.width = `${scaledW}px`;
     containerRef.value.style.height = `${scaledH}px`;
 
@@ -135,7 +126,6 @@ onMounted(() => {
 
     window.addEventListener('resize', handleResize);
 
-    // Plus robuste que window.resize (sidebar, layout, etc.)
     if (typeof ResizeObserver !== 'undefined') {
         resizeObserver = new ResizeObserver(() => {
             handleResize();
@@ -144,7 +134,6 @@ onMounted(() => {
         if (observeEl) resizeObserver.observe(observeEl);
     }
 
-    // Charge d'abord le contenu, puis fit (évite des comportements "fantômes")
     loadElementsToCanvas().finally(() => {
         ensureInitialScale();
     });
@@ -205,7 +194,6 @@ const loadElementsToCanvas = async () => {
         layer.draw();
     }
 
-    // Fit après chargement (images/texte)
     updateStageScale();
 };
 
@@ -218,7 +206,6 @@ const addImageToCanvas = async (element: LayoutElement) => {
         
         imageObj.onload = () => {
             try {
-                // Le composant peut être démonté avant la fin du chargement de l'image
                 if (!localLayer) {
                     resolve();
                     return;
@@ -231,7 +218,7 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     width: element.width || imageObj.width,
                     height: element.height || imageObj.height,
                     rotation: element.rotation || 0,
-                    draggable: false, // Lecture seule
+                    draggable: false,
                 });
 
                 localLayer.add(konvaImage);
@@ -282,7 +269,7 @@ const addTextToCanvas = (element: LayoutElement) => {
         fontSize: element.fontSize || 16,
         fontFamily: element.fontFamily || 'Arial',
         fill: element.fill || '#000000',
-        draggable: false, // Lecture seule
+        draggable: false,
     });
 
     if (isFooterText) {
