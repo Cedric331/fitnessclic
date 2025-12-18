@@ -105,6 +105,8 @@ interface LayoutElement {
     y: number;
     width?: number;
     height?: number;
+    scaleX?: number;
+    scaleY?: number;
     rotation?: number;
     imageUrl?: string;
     exerciseId?: number;
@@ -610,6 +612,8 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 const naturalHeight = imageObj.height || 200;
                 const aspectRatio = naturalWidth / naturalHeight;
                 
+                const isNewInsertWithoutSize = element.width === undefined && element.height === undefined;
+
                 let width = element.width;
                 let height = element.height;
                 
@@ -623,6 +627,7 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 } else if (height) {
                     width = height * aspectRatio;
                 } else {
+                    // Taille de base (sera ensuite normalisée via max/min)
                     width = naturalWidth;
                     height = naturalHeight;
                 }
@@ -647,6 +652,26 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     const ratio = minHeight / height;
                     height = minHeight;
                     width = width * ratio;
+                }
+
+                // Exigence: à l'insertion d'un exercice, la taille doit être divisée par 2.
+                // On applique donc le facteur sur la taille finale (après contraintes max/min),
+                // sinon les images déjà "capées" ne changent pas visuellement.
+                if (isNewInsertWithoutSize) {
+                    width = width / 2;
+                    height = height / 2;
+
+                    // Re-clamp pour éviter des éléments trop petits à manipuler
+                    if (width < minWidth) {
+                        const ratio = minWidth / width;
+                        width = minWidth;
+                        height = height * ratio;
+                    }
+                    if (height < minHeight) {
+                        const ratio = minHeight / height;
+                        height = minHeight;
+                        width = width * ratio;
+                    }
                 }
                 
                 let x = element.x ?? (canvasWidth.value / 2);
@@ -1104,6 +1129,11 @@ const addTableToCanvas = (element: LayoutElement) => {
         draggable: true,
         id: element.id,
     });
+
+    // Important: un tableau est un Konva.Group -> le resize se fait via scaleX/scaleY.
+    // On réapplique donc l'échelle persistée pour éviter que la taille "revienne" à l'origine.
+    tableGroup.scaleX(element.scaleX ?? 1);
+    tableGroup.scaleY(element.scaleY ?? 1);
     
     const tableBg = new Konva.Rect({
         x: 0,
@@ -1532,6 +1562,30 @@ const updateElementTransform = (id: string, node: any) => {
                     element.imageFrameNode.width(newWidth);
                     element.imageFrameNode.height(newHeight);
                 }
+
+                // Réadapte les overlays (bouton supprimer / titre) au nouveau format
+                if (element.deleteButtonNode) {
+                    const deleteButtonSize = 24;
+                    const deleteButtonX = newWidth - deleteButtonSize - 5;
+                    const deleteButtonY = 5;
+                    const buttonCenterX = deleteButtonX + deleteButtonSize / 2;
+                    const buttonCenterY = deleteButtonY + deleteButtonSize / 2;
+                    const bg = element.deleteButtonNode.findOne('Circle');
+                    const txt = element.deleteButtonNode.findOne('Text');
+                    if (bg) {
+                        bg.x(buttonCenterX);
+                        bg.y(buttonCenterY);
+                    }
+                    if (txt) {
+                        txt.x(buttonCenterX);
+                        txt.y(buttonCenterY);
+                        txt.offsetX(txt.width() / 2);
+                        txt.offsetY(txt.height() / 2);
+                    }
+                }
+                if (element.titleNode && element.exerciseData?.showTitle) {
+                    createExerciseTitle(element);
+                }
             } else {
                 const newWidth = node.width() * node.scaleX();
                 const newHeight = node.height() * node.scaleY();
@@ -1546,7 +1600,35 @@ const updateElementTransform = (id: string, node: any) => {
                     element.imageFrameNode.width(newWidth);
                     element.imageFrameNode.height(newHeight);
                 }
+
+                // Réadapte les overlays (bouton supprimer / titre) au nouveau format
+                if (element.deleteButtonNode) {
+                    const deleteButtonSize = 24;
+                    const deleteButtonX = newWidth - deleteButtonSize - 5;
+                    const deleteButtonY = 5;
+                    const buttonCenterX = deleteButtonX + deleteButtonSize / 2;
+                    const buttonCenterY = deleteButtonY + deleteButtonSize / 2;
+                    const bg = element.deleteButtonNode.findOne('Circle');
+                    const txt = element.deleteButtonNode.findOne('Text');
+                    if (bg) {
+                        bg.x(buttonCenterX);
+                        bg.y(buttonCenterY);
+                    }
+                    if (txt) {
+                        txt.x(buttonCenterX);
+                        txt.y(buttonCenterY);
+                        txt.offsetX(txt.width() / 2);
+                        txt.offsetY(txt.height() / 2);
+                    }
+                }
+                if (element.titleNode && element.exerciseData?.showTitle) {
+                    createExerciseTitle(element);
+                }
             }
+        } else if (element.type === 'table') {
+            // Konva.Group: on conserve la mise à l'échelle plutôt que d'essayer de modifier width/height
+            element.scaleX = node.scaleX();
+            element.scaleY = node.scaleY();
         } else if (element.type === 'text') {
             const textNode = node.findOne('Text');
             if (textNode) {
@@ -1604,6 +1686,12 @@ const updateElementTransform = (id: string, node: any) => {
         
         if (layer) {
             layer.draw();
+        }
+
+        // Force le recalcul du transformer après un resize (notamment images)
+        if (transformer && selectedElementId.value === id) {
+            transformer.forceUpdate();
+            layer?.batchDraw();
         }
         
         if (isTransforming && transformStartState) {
@@ -2249,6 +2337,8 @@ const addTable = () => {
         x: canvasWidth.value / 2 - 120,
         y: 200,
         tableData: defaultTableData,
+        scaleX: 1,
+        scaleY: 1,
     };
     
     elements.value.push(element);
@@ -2569,6 +2659,8 @@ const saveLayout = async () => {
             y: el.y,
             width: el.width,
             height: el.height,
+            scaleX: el.scaleX,
+            scaleY: el.scaleY,
             rotation: el.rotation,
             imageUrl: el.imageUrl,
             exerciseId: el.exerciseId,

@@ -2,16 +2,33 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import Konva from 'konva';
 
+interface ExerciseInstructionRow {
+    series?: number;
+    reps?: number;
+    duration?: number; // en secondes
+    useDuration?: boolean; // true = durée, false = répets
+    recovery?: number;
+    load?: number;
+    useBodyweight?: boolean; // true = poids de corps, false = charge
+}
+
+interface TableData {
+    rows: ExerciseInstructionRow[];
+}
+
 interface LayoutElement {
     id: string;
-    type: 'image' | 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight';
+    type: 'image' | 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight' | 'table';
     x: number;
     y: number;
     width?: number;
     height?: number;
+    scaleX?: number;
+    scaleY?: number;
     rotation?: number;
     imageUrl?: string;
     exerciseId?: number;
+    tableData?: TableData;
     text?: string;
     fontSize?: number;
     fontFamily?: string;
@@ -179,6 +196,8 @@ const loadElementsToCanvas = async () => {
                 await addImageToCanvas(element);
             } else if (element.type === 'text' && element.text) {
                 addTextToCanvas(element);
+            } else if (element.type === 'table' && element.tableData) {
+                addTableToCanvas(element);
             } else if (element.type === 'rect' || element.type === 'ellipse' || element.type === 'line' || element.type === 'arrow' || element.type === 'highlight') {
                 addShapeToCanvas(element);
             }
@@ -195,6 +214,130 @@ const loadElementsToCanvas = async () => {
     }
 
     updateStageScale();
+};
+
+const addTableToCanvas = (element: LayoutElement) => {
+    if (!layer || !element.tableData) return;
+
+    const cellPadding = 5;
+    const cellHeight = 28;
+    const colWidths = {
+        series: 55,
+        reps: 55,
+        recovery: 55,
+        load: 55
+    };
+    const tableWidth = Object.values(colWidths).reduce((a, b) => a + b, 0) + cellPadding * 5;
+    const headerHeight = 28;
+    const tableHeight = headerHeight + (element.tableData.rows.length * cellHeight) + cellPadding * 2;
+
+    const tableGroup = new Konva.Group({
+        x: element.x,
+        y: element.y,
+        draggable: false,
+        id: element.id,
+    });
+
+    tableGroup.scaleX(element.scaleX ?? 1);
+    tableGroup.scaleY(element.scaleY ?? 1);
+
+    const tableBg = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: tableWidth,
+        height: tableHeight,
+        fill: '#ffffff',
+        stroke: '#e5e7eb',
+        strokeWidth: 1,
+        cornerRadius: 4,
+        shadowColor: 'rgba(0, 0, 0, 0.15)',
+        shadowBlur: 8,
+        shadowOffset: { x: 0, y: 2 },
+        shadowOpacity: 1,
+    });
+    tableGroup.add(tableBg);
+
+    const headerBg = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: tableWidth,
+        height: headerHeight,
+        fill: '#E0F2FE',
+        cornerRadius: 4,
+    });
+    tableGroup.add(headerBg);
+
+    const firstRow = element.tableData.rows[0];
+    const repsLabel = firstRow?.useDuration ? 'durée (s)' : 'répets';
+    const loadLabel = firstRow?.useBodyweight ? 'poids de corps' : 'charge';
+
+    const headers = [
+        { text: 'série(s)', x: cellPadding, width: colWidths.series },
+        { text: repsLabel, x: cellPadding + colWidths.series, width: colWidths.reps },
+        { text: 'récup', x: cellPadding + colWidths.series + colWidths.reps, width: colWidths.recovery },
+        { text: loadLabel, x: cellPadding + colWidths.series + colWidths.reps + colWidths.recovery, width: colWidths.load }
+    ];
+
+    const headerLine = new Konva.Line({
+        points: [0, headerHeight, tableWidth, headerHeight],
+        stroke: '#d1d5db',
+        strokeWidth: 1,
+    });
+    tableGroup.add(headerLine);
+
+    headers.forEach(header => {
+        const headerText = new Konva.Text({
+            x: header.x,
+            y: cellPadding + 3,
+            text: header.text,
+            fontSize: 10,
+            fontFamily: 'Arial',
+            fill: '#374151',
+            width: header.width,
+            align: 'center',
+            fontStyle: 'bold',
+        });
+        tableGroup.add(headerText);
+    });
+
+    element.tableData.rows.forEach((row, rowIndex) => {
+        const rowY = headerHeight + (rowIndex * cellHeight) + cellPadding;
+
+        if (rowIndex > 0) {
+            const rowLine = new Konva.Line({
+                points: [0, rowY - cellPadding, tableWidth, rowY - cellPadding],
+                stroke: '#e5e7eb',
+                strokeWidth: 0.5,
+            });
+            tableGroup.add(rowLine);
+        }
+
+        const repsValue = row.useDuration ? (row.duration?.toString() || '') : (row.reps?.toString() || '');
+        const loadValue = row.useBodyweight ? 'Pdc' : (row.load?.toString() || '');
+
+        const cells = [
+            { text: row.series?.toString() || '', x: cellPadding, width: colWidths.series },
+            { text: repsValue, x: cellPadding + colWidths.series, width: colWidths.reps },
+            { text: row.recovery?.toString() || '', x: cellPadding + colWidths.series + colWidths.reps, width: colWidths.recovery },
+            { text: loadValue, x: cellPadding + colWidths.series + colWidths.reps + colWidths.recovery, width: colWidths.load }
+        ];
+
+        cells.forEach(cell => {
+            const cellText = new Konva.Text({
+                x: cell.x,
+                y: rowY + 5,
+                text: cell.text,
+                fontSize: 10,
+                fontFamily: 'Arial',
+                fill: '#111827',
+                width: cell.width,
+                align: 'center',
+            });
+            tableGroup.add(cellText);
+        });
+    });
+
+    layer.add(tableGroup);
 };
 
 const addImageToCanvas = async (element: LayoutElement) => {
