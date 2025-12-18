@@ -286,7 +286,7 @@ const handleLogout = () => {
                             'flex-1 h-9 text-sm',
                             currentEditMode === 'standard' 
                                 ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500' 
-                                : 'bg-transparent hover:bg-slate-800 text-slate-400 border-slate-600'
+                                : 'bg-transparent hover:bg-slate-800 hover:text-white text-slate-400 border-slate-600'
                         ]"
                         @click="switchMode('standard')"
                     >
@@ -299,7 +299,7 @@ const handleLogout = () => {
                             'flex-1 h-9 text-sm',
                             currentEditMode === 'libre' 
                                 ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500' 
-                                : 'bg-transparent hover:bg-slate-800 text-slate-400 border-slate-600'
+                                : 'bg-transparent hover:bg-slate-800 hover:text-white text-slate-400 border-slate-600'
                         ]"
                         @click="switchMode('libre')"
                     >

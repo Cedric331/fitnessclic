@@ -1933,4 +1933,3 @@ watch(sessionExercises, () => {
         </div>
     </AppLayout>
 </template>
-
