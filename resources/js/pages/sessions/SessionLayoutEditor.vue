@@ -40,7 +40,8 @@ import {
     AlignLeft,
     AlignCenter,
     AlignRight,
-    Pencil
+    Pencil,
+    Printer
 } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
 import Konva from 'konva';
@@ -345,8 +346,9 @@ onMounted(() => {
     });
 
     stage.on('click', (e) => {
-        if (e.target === stage || e.target === layer) {
-            transformer.nodes([]);
+        const target = e.target as any;
+        if (target === stage || target === layer) {
+            transformer?.nodes([]);
             selectedElementId.value = null;
             layer?.draw();
         }
@@ -601,6 +603,7 @@ const addDefaultFooterIfNeeded = async () => {
 
 const addImageToCanvas = async (element: LayoutElement) => {
     if (!layer) return;
+    const localLayer = layer;
 
     return new Promise<void>((resolve, reject) => {
         const imageObj = new Image();
@@ -853,10 +856,10 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 imageGroup.x(x);
                 imageGroup.y(y);
                 
-                layer.add(imageGroup);
+                localLayer.add(imageGroup);
                 element.konvaNode = imageGroup;
 
-                layer.draw();
+                localLayer.draw();
 
                 if (element.exerciseData) {
                     nextTick(() => {
@@ -874,9 +877,7 @@ const addImageToCanvas = async (element: LayoutElement) => {
                             if (transformer) {
                                 transformer.nodes([imageGroup]);
                                 transformer.forceUpdate();
-                                if (layer) {
-                                    layer.draw();
-                                }
+                                localLayer.draw();
                             }
                         });
                     }
@@ -900,14 +901,11 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     }
                 }
                 
-                layer.batchDraw();
-                
-                layer.draw();
+                localLayer.batchDraw();
+                localLayer.draw();
                 
                 setTimeout(() => {
-                    if (layer) {
-                        layer.draw();
-                    }
+                    localLayer.draw();
                 }, 100);
                 
                 resolve();
@@ -1931,6 +1929,8 @@ const filteredExercises = computed(() => {
 
 const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight') => {
     if (!stage || !layer) return;
+    const localStage = stage;
+    const localLayer = layer;
     
     if (tempShapeRef.value) {
         tempShapeRef.value.destroy();
@@ -1938,13 +1938,13 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
     }
     
     if (currentDrawingHandlers.mousedown) {
-        stage.off('mousedown', currentDrawingHandlers.mousedown);
+        localStage.off('mousedown', currentDrawingHandlers.mousedown);
     }
     if (currentDrawingHandlers.mousemove) {
-        stage.off('mousemove', currentDrawingHandlers.mousemove);
+        localStage.off('mousemove', currentDrawingHandlers.mousemove);
     }
     if (currentDrawingHandlers.mouseup) {
-        stage.off('mouseup', currentDrawingHandlers.mouseup);
+        localStage.off('mouseup', currentDrawingHandlers.mouseup);
     }
     
     currentDrawingHandlers = {};
@@ -1959,9 +1959,9 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
     
     const handleStageMouseDown = (e: any) => {
         if (!isDrawingShape.value || drawingShapeType.value !== type) return;
-        if (e.target !== stage && e.target !== layer) return;
+        if (e.target !== localStage && e.target !== localLayer) return;
         
-        const pointerPos = stage.getPointerPosition();
+        const pointerPos = localStage.getPointerPosition();
         if (!pointerPos) return;
         
         isMouseDown.value = true;
@@ -1972,7 +1972,7 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
     const handleStageMouseMove = (e: any) => {
         if (!isDrawingShape.value || !shapeStartPos.value || !isMouseDown.value) return;
         
-        const pointerPos = stage.getPointerPosition();
+        const pointerPos = localStage.getPointerPosition();
         if (!pointerPos) return;
         
         const width = pointerPos.x - shapeStartPos.value.x;
@@ -1994,7 +1994,7 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
                 strokeWidth: shapeStrokeWidth.value,
             });
             tempRect.name('temp-shape');
-            layer.add(tempRect);
+            localLayer.add(tempRect);
             tempShapeRef.value = tempRect;
         } else if (type === 'ellipse') {
             const tempEllipse = new Konva.Ellipse({
@@ -2008,7 +2008,7 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
                 strokeWidth: shapeStrokeWidth.value,
             });
             tempEllipse.name('temp-shape');
-            layer.add(tempEllipse);
+            localLayer.add(tempEllipse);
             tempShapeRef.value = tempEllipse;
         } else if (type === 'line' || type === 'arrow') {
             const points = [shapeStartPos.value.x, shapeStartPos.value.y, pointerPos.x, pointerPos.y];
@@ -2023,7 +2023,7 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
                     pointerWidth: 10,
                 });
                 tempArrow.name('temp-shape');
-                layer.add(tempArrow);
+                localLayer.add(tempArrow);
                 tempShapeRef.value = tempArrow;
             } else {
                 const tempLine = new Konva.Line({
@@ -2035,19 +2035,19 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
                     lineJoin: 'round',
                 });
                 tempLine.name('temp-shape');
-                layer.add(tempLine);
+                localLayer.add(tempLine);
                 tempShapeRef.value = tempLine;
             }
         }
         
-        layer.draw();
+        localLayer.draw();
     };
     
     const handleStageMouseUp = (e: any) => {
         if (!isDrawingShape.value || !shapeStartPos.value || !isMouseDown.value) return;
         
         isMouseDown.value = false;
-        const pointerPos = stage.getPointerPosition();
+        const pointerPos = localStage.getPointerPosition();
         if (!pointerPos) return;
         
         if (tempShapeRef.value) {
@@ -2060,7 +2060,7 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
         
         if (Math.abs(width) < 5 || Math.abs(height) < 5) {
             shapeStartPos.value = null;
-            layer.draw();
+            localLayer.draw();
             return;
         }
         
@@ -2141,9 +2141,9 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
     currentDrawingHandlers.mousemove = handleStageMouseMove;
     currentDrawingHandlers.mouseup = handleStageMouseUp;
     
-    stage.on('mousedown', handleStageMouseDown);
-    stage.on('mousemove', handleStageMouseMove);
-    stage.on('mouseup', handleStageMouseUp);
+    localStage.on('mousedown', handleStageMouseDown);
+    localStage.on('mousemove', handleStageMouseMove);
+    localStage.on('mouseup', handleStageMouseUp);
 };
 
 const addShapeToCanvas = (element: LayoutElement) => {
@@ -2614,7 +2614,7 @@ const generatePDFBlob = async (): Promise<Blob | null> => {
             
             await new Promise((resolve, reject) => {
                 script!.onload = () => {
-                    jsPDF = window.jspdf.jsPDF;
+                    jsPDF = (window as any).jspdf.jsPDF;
                     resolve(undefined);
                 };
                 script!.onerror = reject;
@@ -2757,6 +2757,47 @@ const exportToPDF = async () => {
         notifySuccess('PDF téléchargé avec succès');
     } catch (error: any) {
         notifyError('Erreur lors de l\'export PDF: ' + (error.message || 'Erreur inconnue'));
+    }
+};
+
+const printPDF = async () => {
+    if (!stage) return;
+
+    try {
+        notifySuccess('Préparation de l’impression…');
+
+        const pdfBlob = await generatePDFBlob();
+        if (!pdfBlob) {
+            throw new Error('Impossible de générer le PDF');
+        }
+
+        const url = URL.createObjectURL(pdfBlob);
+
+        // Ouvre le PDF dans un nouvel onglet pour proposer l'impression.
+        // On tente aussi un print() best-effort, mais selon le navigateur l'utilisateur peut devoir faire Ctrl+P.
+        const win = window.open(url, '_blank');
+        if (!win) {
+            notifyError('Votre navigateur a bloqué la fenêtre d’impression (pop-up).');
+            return;
+        }
+
+        // Tentative d'impression automatique (fallback : Ctrl+P)
+        const start = Date.now();
+        const timer = window.setInterval(() => {
+            if (Date.now() - start > 5000) {
+                clearInterval(timer);
+                return;
+            }
+            try {
+                win.focus();
+                win.print();
+                clearInterval(timer);
+            } catch (e) {
+                // ignore
+            }
+        }, 500);
+    } catch (error: any) {
+        notifyError('Erreur lors de l’impression: ' + (error.message || 'Erreur inconnue'));
     }
 };
 
@@ -3485,7 +3526,12 @@ const setupDragAndDrop = () => {
 
 <template>
     <AppLayout>
-        <div class="flex flex-col h-full">
+        <!--
+          On veut que la bibliothèque (droite) scrolle: il faut une hauteur contrainte.
+          - Desktop (lg+): pas de header AppSidebarHeader => on peut fixer à 100svh.
+          - Mobile: le header existe (lg:hidden) => on laisse flex-1 pour prendre la hauteur restante.
+        -->
+        <div class="flex flex-col flex-1 min-h-0 lg:flex-none lg:h-svh">
                     <!-- Toolbar -->
                     <div class="flex items-center justify-between p-4 border-b bg-white dark:bg-neutral-900">
             <div class="flex items-center gap-2">
@@ -3572,6 +3618,10 @@ const setupDragAndDrop = () => {
                     <Download class="h-4 w-4 mr-2" />
                     Exporter PDF
                 </Button>
+                <Button variant="outline" size="sm" @click="printPDF">
+                    <Printer class="h-4 w-4 mr-2" />
+                    Imprimer
+                </Button>
                 <Button size="sm" @click="saveLayout" :disabled="isSaving">
                     <Save class="h-4 w-4 mr-2" />
                     {{ isSaving ? 'Sauvegarde...' : 'Enregistrer' }}
@@ -3580,9 +3630,9 @@ const setupDragAndDrop = () => {
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 flex overflow-hidden">
+        <div class="flex-1 flex overflow-hidden min-h-0">
             <!-- Left Sidebar: Session Info -->
-            <div class="w-80 border-r bg-white dark:bg-neutral-900 flex flex-col overflow-hidden">
+            <div class="w-80 border-r bg-white dark:bg-neutral-900 flex flex-col overflow-hidden min-h-0">
                 <!-- Informations de la séance -->
                 <div class="p-4 border-b flex-1 overflow-y-auto">
                     <h3 class="font-semibold mb-4">Informations de la séance</h3>
@@ -3638,7 +3688,7 @@ const setupDragAndDrop = () => {
             </div>
 
             <!-- Canvas Container -->
-            <div class="flex-1 overflow-auto bg-neutral-100 dark:bg-neutral-800 p-4">
+            <div class="flex-1 overflow-auto bg-neutral-100 dark:bg-neutral-800 p-4 min-h-0">
                 <div class="flex justify-center">
                     <div 
                         ref="containerRef"
@@ -3657,7 +3707,7 @@ const setupDragAndDrop = () => {
             <!-- Exercise Library Sidebar -->
             <div 
                 v-if="showExerciseLibrary"
-                class="w-96 border-l bg-white dark:bg-neutral-900 flex flex-col overflow-hidden"
+                class="w-96 border-l bg-white dark:bg-neutral-900 flex flex-col overflow-hidden min-h-0"
             >
                 <div class="p-4 border-b space-y-3">
                     <h3 class="font-semibold flex items-center gap-2">
@@ -3709,7 +3759,7 @@ const setupDragAndDrop = () => {
                         </div>
                     </div>
                 </div>
-                <div class="flex-1 overflow-y-auto p-4">
+                <div class="flex-1 overflow-y-auto p-4 min-h-0">
                     <div v-if="filteredExercises.length === 0" class="text-center py-12 text-neutral-500">
                         <p class="text-sm">Aucun exercice avec image trouvé</p>
                     </div>
