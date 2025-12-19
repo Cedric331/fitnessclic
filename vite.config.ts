@@ -31,6 +31,7 @@ export default defineConfig({
             '@inertiajs/vue3',
             '@vueuse/core',
             'lucide-vue-next',
+            'es-errors',
         ],
         exclude: ['@tailwindcss/vite'],
     },
@@ -64,9 +65,18 @@ export default defineConfig({
             include: [/node_modules/],
             transformMixedEsModules: true,
         },
+        // Forcer la résolution correcte des exports conditionnels
+        ssrEmitAssets: false,
+        // S'assurer que tous les modules sont correctement résolus
+        modulePreload: {
+            polyfill: true,
+        },
     },
     resolve: {
         dedupe: ['vue', '@inertiajs/vue3'],
+        conditions: ['import', 'module', 'browser', 'default'],
+        // Forcer la résolution correcte des exports conditionnels
+        mainFields: ['browser', 'module', 'jsnext:main', 'jsnext', 'main'],
     },
     // Désactiver certaines vérifications en développement
     esbuild: {
