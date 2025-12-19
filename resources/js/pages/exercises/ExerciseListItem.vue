@@ -105,9 +105,13 @@ const imageObjectFit = computed(() => {
                 height="400"
             />
             
-            <!-- Overlay au survol avec titre et catégories - uniquement pour grid-2 -->
+            <!-- Overlay au survol avec titre et catégories - uniquement pour grid-2 sur mobile, toujours sur desktop -->
             <div 
-                class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-4"
+                :class="{
+                    'hidden md:flex': viewMode !== 'grid-2',
+                    'flex': viewMode === 'grid-2'
+                }"
+                class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex-col items-center justify-center p-6 gap-4"
             >
                 <div class="flex flex-col items-center gap-3">
                     <h3 class="font-semibold text-base text-white text-center line-clamp-2">
@@ -134,10 +138,14 @@ const imageObjectFit = computed(() => {
                 </div>
             </div>
             
-            <!-- Boutons d'action en bas au survol - uniquement pour grid-2 -->
+            <!-- Boutons d'action en bas au survol - uniquement pour grid-2 sur mobile, toujours sur desktop -->
             <div 
                 v-if="showOverlay"
-                class="absolute bottom-0 left-0 right-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity flex items-center justify-between p-3"
+                :class="{
+                    'hidden md:flex': viewMode !== 'grid-2',
+                    'flex': viewMode === 'grid-2'
+                }"
+                class="absolute bottom-0 left-0 right-0 bg-black/70 opacity-0 group-hover:opacity-100 md:group-hover:opacity-100 transition-opacity items-center justify-between p-3"
             >
                 <p class="text-xs text-white">
                     {{ formattedDate }}
@@ -176,8 +184,8 @@ const imageObjectFit = computed(() => {
             </div>
         </div>
 
-        <!-- Contenu visible uniquement pour grid-2 (1-2 par ligne) -->
-        <div class="flex flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-4 md:hidden">
+        <!-- Contenu visible uniquement pour grid-2 (1-2 par ligne) sur petits écrans -->
+        <div v-if="viewMode === 'grid-2'" class="flex flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-4 md:hidden">
             <!-- Titre et badge -->
             <div class="flex flex-col gap-1.5">
                 <h3

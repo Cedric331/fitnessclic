@@ -16,6 +16,13 @@ interface TableData {
     rows: ExerciseInstructionRow[];
 }
 
+interface ExerciseData {
+    imageFrame?: boolean;
+    imageFrameColor?: string;
+    imageFrameWidth?: number;
+    [key: string]: any;
+}
+
 interface LayoutElement {
     id: string;
     type: 'image' | 'text' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight' | 'table';
@@ -28,6 +35,7 @@ interface LayoutElement {
     rotation?: number;
     imageUrl?: string;
     exerciseId?: number;
+    exerciseData?: ExerciseData;
     tableData?: TableData;
     text?: string;
     fontSize?: number;
@@ -354,17 +362,48 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     return;
                 }
 
-                const konvaImage = new Konva.Image({
+                const imageWidth = element.width || imageObj.width;
+                const imageHeight = element.height || imageObj.height;
+
+                // Créer un groupe pour contenir l'image et éventuellement le cadre
+                const imageGroup = new Konva.Group({
                     x: element.x,
                     y: element.y,
-                    image: imageObj,
-                    width: element.width || imageObj.width,
-                    height: element.height || imageObj.height,
                     rotation: element.rotation || 0,
                     draggable: false,
                 });
 
-                localLayer.add(konvaImage);
+                const konvaImage = new Konva.Image({
+                    x: 0,
+                    y: 0,
+                    image: imageObj,
+                    width: imageWidth,
+                    height: imageHeight,
+                });
+
+                imageGroup.add(konvaImage);
+
+                // Ajouter le cadre si nécessaire
+                if (element.exerciseData?.imageFrame) {
+                    const frameColor = element.exerciseData.imageFrameColor || '#000000';
+                    const frameWidth = element.exerciseData.imageFrameWidth || 2;
+                    
+                    const imageFrame = new Konva.Rect({
+                        x: 0,
+                        y: 0,
+                        width: imageWidth,
+                        height: imageHeight,
+                        fill: undefined,
+                        stroke: frameColor,
+                        strokeWidth: frameWidth,
+                        cornerRadius: 0,
+                    });
+                    
+                    imageFrame.moveToBottom();
+                    imageGroup.add(imageFrame);
+                }
+
+                localLayer.add(imageGroup);
                 
                 const isFooterLogo = element.id && element.id.includes('footer-logo');
                 if (isFooterLogo) {

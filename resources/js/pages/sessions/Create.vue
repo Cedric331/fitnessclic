@@ -1925,6 +1925,7 @@ watch(sessionExercises, () => {
             <SessionLayoutEditor
                 :session-id="savedSessionId || undefined"
                 :exercises="exercises"
+                :categories="categories"
                 :customers="customers"
                 :session-name="form.name"
                 @close="showLayoutEditor = false"

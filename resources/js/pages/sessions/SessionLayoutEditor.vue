@@ -45,7 +45,7 @@ import {
 } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
 import Konva from 'konva';
-import type { Exercise } from './types';
+import type { Exercise, Category } from './types';
 
 interface ExerciseInstructionRow {
     series?: number;
@@ -141,6 +141,7 @@ interface LayoutElement {
 const props = defineProps<{
     sessionId?: number;
     exercises: Exercise[];
+    categories?: Category[];
     initialLayout?: {
         layout_data: LayoutElement[];
         canvas_width: number;
@@ -203,6 +204,7 @@ const textStrokeWidth = ref(1);
 const isSaving = ref(false);
 const showExerciseLibrary = ref(true);
 const exerciseSearchTerm = ref('');
+const selectedCategoryId = ref<number | null>(null);
 const draggingExerciseId = ref<number | null>(null);
 const showExerciseInstructionsModal = ref(false);
 const editingExerciseElement = ref<LayoutElement | null>(null);
@@ -1795,14 +1797,24 @@ const libraryGridCols = computed(() => {
 });
 
 const filteredExercises = computed(() => {
-    if (!exerciseSearchTerm.value.trim()) {
-        return props.exercises.filter(ex => ex.image_url);
+    let exercises = props.exercises.filter(ex => ex.image_url);
+    
+    // Filtre par recherche
+    if (exerciseSearchTerm.value.trim()) {
+        const search = exerciseSearchTerm.value.toLowerCase();
+        exercises = exercises.filter(ex => 
+            ex.title.toLowerCase().includes(search)
+        );
     }
-    const search = exerciseSearchTerm.value.toLowerCase();
-    return props.exercises.filter(ex => 
-        ex.image_url && 
-        ex.title.toLowerCase().includes(search)
-    );
+    
+    // Filtre par catégorie
+    if (selectedCategoryId.value) {
+        exercises = exercises.filter(ex => 
+            ex.categories?.some(cat => cat.id === selectedCategoryId.value)
+        );
+    }
+    
+    return exercises;
 });
 
 const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight') => {
@@ -3587,6 +3599,22 @@ const setupDragAndDrop = () => {
                             placeholder="Rechercher un exercice..."
                             class="pl-9"
                         />
+                    </div>
+                    <!-- Filtre par catégorie -->
+                    <div v-if="categories && categories.length > 0">
+                        <select
+                            v-model="selectedCategoryId"
+                            class="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                        >
+                            <option :value="null">Toutes les catégories</option>
+                            <option
+                                v-for="category in categories"
+                                :key="category.id"
+                                :value="category.id"
+                            >
+                                {{ category.name }}
+                            </option>
+                        </select>
                     </div>
                     <!-- View mode selector -->
                     <div class="flex items-center gap-2">

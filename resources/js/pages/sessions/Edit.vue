@@ -1900,6 +1900,7 @@ const handleLayoutSaved = async (sessionId: number) => {
                 v-else
                 :session-id="session.id"
                 :exercises="exercises"
+                :categories="categories"
                 :initial-layout="sessionLayout"
                 :customers="customers"
                 :session-name="session.name"

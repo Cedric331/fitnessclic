@@ -382,7 +382,7 @@ const confirmRemove = () => {
                         </div>
                     </div>
                     
-                    <div class="space-y-1.5">
+                    <div class="space-y-1.5 pt-2">
                         <!-- Afficher les sets réels de l'exercice -->
                         <div
                             v-for="(set, setIndex) in (props.sessionExercise.sets || [])"

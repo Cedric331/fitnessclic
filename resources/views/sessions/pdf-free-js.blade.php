@@ -118,18 +118,51 @@
                             if (element.imageUrl) {
                                 try {
                                     const imageObj = await loadImage(element.imageUrl);
-                                    konvaShape = new Konva.Image({
+                                    const imageWidth = element.width || imageObj.width;
+                                    const imageHeight = element.height || imageObj.height;
+                                    
+                                    // Créer un groupe pour contenir l'image et éventuellement le cadre
+                                    const imageGroup = new Konva.Group({
                                         x: element.x || 0,
                                         y: element.y || 0,
-                                        image: imageObj,
-                                        width: element.width || imageObj.width,
-                                        height: element.height || imageObj.height,
                                         rotation: element.rotation || 0,
+                                    });
+                                    
+                                    const konvaImage = new Konva.Image({
+                                        x: 0,
+                                        y: 0,
+                                        image: imageObj,
+                                        width: imageWidth,
+                                        height: imageHeight,
                                         opacity: element.opacity !== undefined ? element.opacity : 1,
                                     });
                                     
+                                    imageGroup.add(konvaImage);
+                                    
+                                    // Ajouter le cadre si nécessaire
+                                    if (element.exerciseData && element.exerciseData.imageFrame) {
+                                        const frameColor = element.exerciseData.imageFrameColor || '#000000';
+                                        const frameWidth = element.exerciseData.imageFrameWidth || 2;
+                                        
+                                        const imageFrame = new Konva.Rect({
+                                            x: 0,
+                                            y: 0,
+                                            width: imageWidth,
+                                            height: imageHeight,
+                                            fill: undefined,
+                                            stroke: frameColor,
+                                            strokeWidth: frameWidth,
+                                            cornerRadius: 0,
+                                        });
+                                        
+                                        imageFrame.moveToBottom();
+                                        imageGroup.add(imageFrame);
+                                    }
+                                    
+                                    konvaShape = imageGroup;
+                                    
                                     if (elementId.includes('footer-logo')) {
-                                        footerLogoNode = konvaShape;
+                                        footerLogoNode = konvaImage;
                                     }
                                 } catch (e) {
                                     console.error('Error loading image:', e);

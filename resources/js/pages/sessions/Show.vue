@@ -355,20 +355,51 @@ const addImageToTempStage = async (layer: Konva.Layer, element: any): Promise<Ko
         
         imageObj.onload = () => {
             try {
-                const konvaImage = new Konva.Image({
+                const imageWidth = element.width || imageObj.width;
+                const imageHeight = element.height || imageObj.height;
+
+                // Créer un groupe pour contenir l'image et éventuellement le cadre
+                const imageGroup = new Konva.Group({
                     x: element.x,
                     y: element.y,
-                    image: imageObj,
-                    width: element.width || imageObj.width,
-                    height: element.height || imageObj.height,
                     rotation: element.rotation || 0,
                 });
-                
+
+                const konvaImage = new Konva.Image({
+                    x: 0,
+                    y: 0,
+                    image: imageObj,
+                    width: imageWidth,
+                    height: imageHeight,
+                });
+
+                imageGroup.add(konvaImage);
+
+                // Ajouter le cadre si nécessaire
+                if (element.exerciseData?.imageFrame) {
+                    const frameColor = element.exerciseData.imageFrameColor || '#000000';
+                    const frameWidth = element.exerciseData.imageFrameWidth || 2;
+                    
+                    const imageFrame = new Konva.Rect({
+                        x: 0,
+                        y: 0,
+                        width: imageWidth,
+                        height: imageHeight,
+                        fill: undefined,
+                        stroke: frameColor,
+                        strokeWidth: frameWidth,
+                        cornerRadius: 0,
+                    });
+                    
+                    imageFrame.moveToBottom();
+                    imageGroup.add(imageFrame);
+                }
+
                 if (element.id) {
-                    konvaImage.id(element.id);
+                    imageGroup.id(element.id);
                 }
                 
-                layer.add(konvaImage);
+                layer.add(imageGroup);
                 
                 if (element.id && element.id.includes('footer-logo')) {
                     resolve(konvaImage);
