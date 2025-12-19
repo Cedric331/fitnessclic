@@ -342,6 +342,21 @@
                     opacity: element.opacity !== undefined ? element.opacity : 1,
                   });
                   
+                  // Appliquer l'ombre si nécessaire
+                  if (element.exerciseData && element.exerciseData.imageShadow) {
+                    const shadowColor = element.exerciseData.imageShadowColor || '#000000';
+                    const shadowBlur = (element.exerciseData.imageShadowBlur || 10) * scale;
+                    const shadowOffsetX = (element.exerciseData.imageShadowOffsetX || 5) * scale;
+                    const shadowOffsetY = (element.exerciseData.imageShadowOffsetY || 5) * scale;
+                    const shadowOpacity = element.exerciseData.imageShadowOpacity !== undefined ? element.exerciseData.imageShadowOpacity : 0.5;
+                    
+                    konvaImage.shadowColor(shadowColor);
+                    konvaImage.shadowBlur(shadowBlur);
+                    konvaImage.shadowOffsetX(shadowOffsetX);
+                    konvaImage.shadowOffsetY(shadowOffsetY);
+                    konvaImage.shadowOpacity(shadowOpacity);
+                  }
+                  
                   imageGroup.add(konvaImage);
                   
                   // Ajouter le cadre si nécessaire

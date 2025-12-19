@@ -88,6 +88,12 @@ interface ExerciseData {
     imageFrame?: boolean; // Encadrer l'image
     imageFrameColor?: string; // Couleur du cadre de l'image
     imageFrameWidth?: number; // Épaisseur du cadre de l'image
+    imageShadow?: boolean; // Afficher une ombre sur l'image
+    imageShadowColor?: string; // Couleur de l'ombre
+    imageShadowBlur?: number; // Flou de l'ombre
+    imageShadowOffsetX?: number; // Décalage horizontal de l'ombre
+    imageShadowOffsetY?: number; // Décalage vertical de l'ombre
+    imageShadowOpacity?: number; // Opacité de l'ombre
     instructions?: string; // Consignes globales
     showInstructions?: boolean;
     instructionsPosition?: 'above' | 'below'; // Position des consignes par rapport à l'image
@@ -237,6 +243,12 @@ const exerciseImageData = ref<{
     imageFrame: boolean;
     imageFrameColor: string;
     imageFrameWidth: number;
+    imageShadow: boolean;
+    imageShadowColor: string;
+    imageShadowBlur: number;
+    imageShadowOffsetX: number;
+    imageShadowOffsetY: number;
+    imageShadowOpacity: number;
 }>({
     title: '',
     showTitle: true,
@@ -249,7 +261,13 @@ const exerciseImageData = ref<{
     strokeWidth: 0,
     imageFrame: false,
     imageFrameColor: '#000000',
-    imageFrameWidth: 2
+    imageFrameWidth: 2,
+    imageShadow: false,
+    imageShadowColor: '#000000',
+    imageShadowBlur: 10,
+    imageShadowOffsetX: 5,
+    imageShadowOffsetY: 5,
+    imageShadowOpacity: 0.5
 });
 
 const sessionName = ref(props.sessionName || '');
@@ -408,6 +426,7 @@ const loadElementsToCanvas = async (addFooter: boolean = true) => {
                     nextTick(() => {
                         createExerciseTitle(element);
                         createImageFrame(element);
+                        applyImageShadow(element);
                     });
                 }
             } else if (element.type === 'text' && element.text) {
@@ -867,6 +886,7 @@ const addImageToCanvas = async (element: LayoutElement) => {
                     nextTick(() => {
                         createExerciseTitle(element);
                         createImageFrame(element);
+                        applyImageShadow(element);
                     });
                 }
 
@@ -2812,7 +2832,13 @@ const openExerciseImageModal = (element: LayoutElement) => {
             strokeWidth: element.exerciseData.titleStyle?.strokeWidth || 0,
             imageFrame: element.exerciseData.imageFrame || false,
             imageFrameColor: element.exerciseData.imageFrameColor || '#000000',
-            imageFrameWidth: element.exerciseData.imageFrameWidth || 2
+            imageFrameWidth: element.exerciseData.imageFrameWidth || 2,
+            imageShadow: element.exerciseData.imageShadow || false,
+            imageShadowColor: element.exerciseData.imageShadowColor || '#000000',
+            imageShadowBlur: element.exerciseData.imageShadowBlur || 10,
+            imageShadowOffsetX: element.exerciseData.imageShadowOffsetX || 5,
+            imageShadowOffsetY: element.exerciseData.imageShadowOffsetY || 5,
+            imageShadowOpacity: element.exerciseData.imageShadowOpacity !== undefined ? element.exerciseData.imageShadowOpacity : 0.5
         };
     } else {
         const exercise = props.exercises.find(ex => ex.id === element.exerciseId);
@@ -2828,7 +2854,13 @@ const openExerciseImageModal = (element: LayoutElement) => {
             strokeWidth: 0,
             imageFrame: false,
             imageFrameColor: '#000000',
-            imageFrameWidth: 2
+            imageFrameWidth: 2,
+            imageShadow: false,
+            imageShadowColor: '#000000',
+            imageShadowBlur: 10,
+            imageShadowOffsetX: 5,
+            imageShadowOffsetY: 5,
+            imageShadowOpacity: 0.5
         };
     }
     showExerciseImageModal.value = true;
@@ -2866,9 +2898,17 @@ const saveExerciseImageData = () => {
     editingExerciseImageElement.value.exerciseData.imageFrameColor = exerciseImageData.value.imageFrameColor;
     editingExerciseImageElement.value.exerciseData.imageFrameWidth = exerciseImageData.value.imageFrameWidth;
     
+    editingExerciseImageElement.value.exerciseData.imageShadow = exerciseImageData.value.imageShadow;
+    editingExerciseImageElement.value.exerciseData.imageShadowColor = exerciseImageData.value.imageShadowColor;
+    editingExerciseImageElement.value.exerciseData.imageShadowBlur = exerciseImageData.value.imageShadowBlur;
+    editingExerciseImageElement.value.exerciseData.imageShadowOffsetX = exerciseImageData.value.imageShadowOffsetX;
+    editingExerciseImageElement.value.exerciseData.imageShadowOffsetY = exerciseImageData.value.imageShadowOffsetY;
+    editingExerciseImageElement.value.exerciseData.imageShadowOpacity = exerciseImageData.value.imageShadowOpacity;
+    
     createExerciseTitle(editingExerciseImageElement.value);
     
     createImageFrame(editingExerciseImageElement.value);
+    applyImageShadow(editingExerciseImageElement.value);
     
     showExerciseImageModal.value = false;
     editingExerciseImageElement.value = null;
@@ -3180,6 +3220,39 @@ const createImageFrame = (element: LayoutElement) => {
     }
     
     element.imageFrameNode = imageFrame;
+    
+    if (layer) {
+        layer.draw();
+    }
+};
+
+const applyImageShadow = (element: LayoutElement) => {
+    if (!layer || !element.konvaNode || !element.exerciseData) return;
+    
+    const imageNode = element.konvaNode;
+    const imageShape = imageNode.findOne('Image');
+    
+    if (!imageShape) return;
+    
+    if (element.exerciseData.imageShadow) {
+        const shadowColor = element.exerciseData.imageShadowColor || '#000000';
+        const shadowBlur = element.exerciseData.imageShadowBlur || 10;
+        const shadowOffsetX = element.exerciseData.imageShadowOffsetX || 5;
+        const shadowOffsetY = element.exerciseData.imageShadowOffsetY || 5;
+        const shadowOpacity = element.exerciseData.imageShadowOpacity !== undefined ? element.exerciseData.imageShadowOpacity : 0.5;
+        
+        imageShape.shadowColor(shadowColor);
+        imageShape.shadowBlur(shadowBlur);
+        imageShape.shadowOffsetX(shadowOffsetX);
+        imageShape.shadowOffsetY(shadowOffsetY);
+        imageShape.shadowOpacity(shadowOpacity);
+    } else {
+        imageShape.shadowColor(null);
+        imageShape.shadowBlur(0);
+        imageShape.shadowOffsetX(0);
+        imageShape.shadowOffsetY(0);
+        imageShape.shadowOpacity(1);
+    }
     
     if (layer) {
         layer.draw();
@@ -4446,6 +4519,87 @@ const setupDragAndDrop = () => {
                                         min="1"
                                         max="20"
                                         placeholder="2"
+                                        class="w-full"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Options d'ombre pour l'image -->
+                        <div class="space-y-3 p-4 border rounded-lg">
+                            <div class="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    :checked="exerciseImageData.imageShadow"
+                                    @change="(e: Event) => {
+                                        const target = e.target as HTMLInputElement;
+                                        exerciseImageData.imageShadow = target.checked;
+                                    }"
+                                    class="rounded"
+                                    id="imageShadow"
+                                />
+                                <Label for="imageShadow" class="cursor-pointer">Afficher une ombre</Label>
+                            </div>
+                            <div v-if="exerciseImageData.imageShadow" class="space-y-3 ml-6">
+                                <div class="space-y-2">
+                                    <Label class="text-xs">Couleur de l'ombre</Label>
+                                    <div class="flex gap-2">
+                                        <Input
+                                            v-model="exerciseImageData.imageShadowColor"
+                                            type="color"
+                                            class="w-16 h-10"
+                                        />
+                                        <Input
+                                            v-model="exerciseImageData.imageShadowColor"
+                                            placeholder="#000000"
+                                            class="flex-1"
+                                        />
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <Label class="text-xs">Flou de l'ombre (px)</Label>
+                                    <Input
+                                        v-model.number="exerciseImageData.imageShadowBlur"
+                                        type="number"
+                                        min="0"
+                                        max="50"
+                                        placeholder="10"
+                                        class="w-full"
+                                    />
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="space-y-2">
+                                        <Label class="text-xs">Décalage horizontal (px)</Label>
+                                        <Input
+                                            v-model.number="exerciseImageData.imageShadowOffsetX"
+                                            type="number"
+                                            min="-50"
+                                            max="50"
+                                            placeholder="5"
+                                            class="w-full"
+                                        />
+                                    </div>
+                                    <div class="space-y-2">
+                                        <Label class="text-xs">Décalage vertical (px)</Label>
+                                        <Input
+                                            v-model.number="exerciseImageData.imageShadowOffsetY"
+                                            type="number"
+                                            min="-50"
+                                            max="50"
+                                            placeholder="5"
+                                            class="w-full"
+                                        />
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <Label class="text-xs">Opacité de l'ombre (0-1)</Label>
+                                    <Input
+                                        v-model.number="exerciseImageData.imageShadowOpacity"
+                                        type="number"
+                                        min="0"
+                                        max="1"
+                                        step="0.1"
+                                        placeholder="0.5"
                                         class="w-full"
                                     />
                                 </div>
