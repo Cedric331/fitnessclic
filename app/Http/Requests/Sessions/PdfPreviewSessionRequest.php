@@ -23,6 +23,7 @@ class PdfPreviewSessionRequest extends BaseSessionRequest
             'name' => ['nullable', 'string', 'max:255'],
             'session_date' => ['nullable', 'date'],
             'notes' => ['nullable', 'string'],
+            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
         ], $this->exerciseRules());
     }
 

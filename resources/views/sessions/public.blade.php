@@ -1036,8 +1036,8 @@
     <table class="header-info-table">
       <tr>
         <td style="width: 33%;">
-          @if(isset($session->user))
-            {{ strtoupper($session->user->name) }}
+          @if(isset($customer) && $customer)
+            {{ strtoupper($customer->full_name ?? ($customer->first_name . ' ' . $customer->last_name)) }}
           @endif
         </td>
         <td style="width: 34%; text-align: center;">

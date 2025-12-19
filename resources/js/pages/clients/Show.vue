@@ -497,7 +497,9 @@ const handleDownloadPdf = async (session: TrainingSessionHistory) => {
         return;
     }
     
-    window.open(`/sessions/${session.id}/pdf`, '_blank');
+    // Passer le client actuel au PDF
+    const url = `/sessions/${session.id}/pdf?customer_id=${props.customer.id}`;
+    window.open(url, '_blank');
 };
 
 const handlePrint = async (session: TrainingSessionHistory) => {
@@ -533,7 +535,9 @@ const handlePrint = async (session: TrainingSessionHistory) => {
         return;
     }
 
-    fetch(`/sessions/${session.id}/pdf`, {
+    // Passer le client actuel au PDF
+    const url = `/sessions/${session.id}/pdf?customer_id=${props.customer.id}`;
+    fetch(url, {
         method: 'GET',
         headers: {
             'X-CSRF-TOKEN': csrfToken,

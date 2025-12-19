@@ -619,9 +619,29 @@ class SessionsController extends Controller
                 ->with('info', 'Les séances libres doivent être exportées depuis la page de la séance.');
         }
 
+        // Récupérer le client sélectionné si plusieurs clients sont associés
+        $selectedCustomer = null;
+        $customers = $session->customers ?? collect();
+        
+        if ($customers->count() > 1) {
+            // Si plusieurs clients, vérifier si un customer_id est fourni
+            $customerId = $request->input('customer_id');
+            if ($customerId) {
+                $selectedCustomer = $customers->firstWhere('id', $customerId);
+            }
+            // Si aucun customer_id fourni, utiliser le premier client par défaut
+            if (!$selectedCustomer && $customers->count() > 0) {
+                $selectedCustomer = $customers->first();
+            }
+        } elseif ($customers->count() === 1) {
+            // Si un seul client, l'utiliser
+            $selectedCustomer = $customers->first();
+        }
+
         // Pour les séances standard, générer le PDF normalement
         $pdf = Pdf::loadView('sessions.pdf', [
             'session' => $session,
+            'customer' => $selectedCustomer,
         ])->setOption('enable-local-file-access', true);
 
         $fileName = $session->name ?: "seance-{$session->id}";
@@ -653,8 +673,21 @@ class SessionsController extends Controller
 
             $session->load(['customers', 'sessionExercises.exercise.categories', 'sessionExercises.exercise.media', 'sessionExercises.sets', 'user']);
 
+            // Récupérer le client sélectionné si plusieurs clients sont associés
+            $selectedCustomer = null;
+            $customers = $session->customers ?? collect();
+            
+            if ($customers->count() > 1) {
+                // Si plusieurs clients, utiliser le premier par défaut pour la prévisualisation
+                $selectedCustomer = $customers->first();
+            } elseif ($customers->count() === 1) {
+                // Si un seul client, l'utiliser
+                $selectedCustomer = $customers->first();
+            }
+
             $pdf = Pdf::loadView('sessions.pdf', [
                 'session' => $session,
+                'customer' => $selectedCustomer,
             ])->setOption('enable-local-file-access', true);
 
             $fileName = $session->name ?: "seance-{$session->id}";
@@ -761,8 +794,20 @@ class SessionsController extends Controller
                 })->filter()->sortBy('order')->values(),
             ];
 
+            // Pour les prévisualisations depuis la page de création, pas de client associé
+            // Récupérer le client sélectionné si un customer_id est fourni
+            $selectedCustomer = null;
+            $customerId = $request->input('customer_id');
+            if ($customerId) {
+                $selectedCustomer = Customer::where('id', $customerId)
+                    ->where('user_id', Auth::id())
+                    ->where('is_active', true)
+                    ->first();
+            }
+
             $pdf = Pdf::loadView('sessions.pdf', [
                 'session' => (object) $sessionData,
+                'customer' => $selectedCustomer,
             ])->setOption('enable-local-file-access', true);
 
             $fileName = $sessionData['name'] ? Str::slug($sessionData['name']) : 'nouvelle-seance';

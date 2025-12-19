@@ -20,6 +20,7 @@ class PublicSessionController extends Controller
         $session = Session::where('share_token', $shareToken)
             ->with([
                 'user',
+                'customers',
                 'sessionExercises.exercise',
                 'sessionExercises.exercise.media',
                 'sessionExercises.sets',
@@ -34,6 +35,12 @@ class PublicSessionController extends Controller
             ]);
         }
 
+        // Récupérer le premier client associé à la séance (s'il y en a)
+        $customer = null;
+        if ($session->customers && $session->customers->count() > 0) {
+            $customer = $session->customers->first();
+        }
+
         // Vérifier si c'est une séance libre (avec layout personnalisé)
         $hasCustomLayout = $session->layout !== null;
 
@@ -41,11 +48,13 @@ class PublicSessionController extends Controller
             return view('sessions.public-free', [
                 'session' => $session,
                 'layout' => $session->layout,
+                'customer' => $customer,
             ]);
         }
 
         return view('sessions.public', [
             'session' => $session,
+            'customer' => $customer,
         ]);
     }
 

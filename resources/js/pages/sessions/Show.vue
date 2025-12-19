@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Trash2, Download, Calendar, Users, FileText, Layout } from 'lucide-vue-next';
+import { ArrowLeft, Edit, Trash2, Download, Calendar, Users, FileText, Layout, Printer } from 'lucide-vue-next';
 import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import SessionDeleteDialog from './SessionDeleteDialog.vue';
@@ -14,6 +14,15 @@ import SessionLayoutViewer from './SessionLayoutViewer.vue';
 import type { Session } from './types';
 import { useNotifications } from '@/composables/useNotifications';
 import Konva from 'konva';
+import { 
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 interface Props {
     session: Session;
@@ -92,6 +101,12 @@ const isDeleteProcessing = ref(false);
 const showLayoutEditor = ref(false);
 const sessionLayout = ref<any>(null);
 const customers = computed(() => props.customers || []);
+const sessionCustomers = computed(() => props.session.customers || []);
+
+// Dialog pour sélectionner un client avant export PDF/impression
+const isCustomerSelectDialogOpen = ref(false);
+const selectedCustomerId = ref<number | null>(null);
+const pendingAction = ref<'download' | 'print' | null>(null);
 
 const formatDate = (value?: string | null) => {
     if (!value) {
@@ -190,7 +205,7 @@ const confirmDelete = () => {
 };
 
 // Export PDF for free sessions (using layout)
-const exportFreeSessionPdf = async () => {
+const exportFreeSessionPdf = async (shouldPrint: boolean = false) => {
     if (!props.session.layout || !props.session.has_custom_layout) {
         notifyError('Aucune mise en page disponible pour cette séance');
         return;
@@ -268,7 +283,28 @@ const exportFreeSessionPdf = async () => {
         const name = props.session.name || 'mise-en-page';
         const fileName = `${name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.pdf`;
         
-        pdf.save(fileName);
+        if (shouldPrint) {
+            const pdfBlob = pdf.output('blob');
+            const url = window.URL.createObjectURL(pdfBlob);
+            const printWindow = window.open(url, '_blank');
+
+            if (printWindow) {
+                printWindow.onload = () => {
+                    setTimeout(() => {
+                        printWindow.print();
+                    }, 250);
+                };
+            } else {
+                window.open(url, '_blank');
+                notifyError('Veuillez autoriser les popups pour cette fonctionnalité.', 'Information');
+            }
+
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+            }, 1000);
+        } else {
+            pdf.save(fileName);
+        }
         
         if (script) {
             document.head.removeChild(script);
@@ -554,11 +590,145 @@ const handleDownloadPdf = () => {
     // Si c'est une séance libre, utiliser l'export basé sur le layout
     if (props.session.has_custom_layout && props.session.layout) {
         exportFreeSessionPdf();
-    } else {
-        // Pour les séances standard, utiliser l'export serveur
-        window.open(`/sessions/${props.session.id}/pdf`, '_blank');
+        return;
     }
+    
+    // Vérifier si plusieurs clients sont associés
+    if (sessionCustomers.value.length > 1) {
+        pendingAction.value = 'download';
+        selectedCustomerId.value = null;
+        isCustomerSelectDialogOpen.value = true;
+        return;
+    }
+    
+    // Si un seul client ou aucun, procéder directement
+    const customerId = sessionCustomers.value.length === 1 ? sessionCustomers.value[0].id : null;
+    const url = customerId 
+        ? `/sessions/${props.session.id}/pdf?customer_id=${customerId}`
+        : `/sessions/${props.session.id}/pdf`;
+    window.open(url, '_blank');
 };
+
+const handlePrint = () => {
+    // Si c'est une séance libre, utiliser l'export basé sur le layout avec impression
+    if (props.session.has_custom_layout && props.session.layout) {
+        exportFreeSessionPdf(true);
+        return;
+    }
+    
+    // Vérifier si plusieurs clients sont associés
+    if (sessionCustomers.value.length > 1) {
+        pendingAction.value = 'print';
+        selectedCustomerId.value = null;
+        isCustomerSelectDialogOpen.value = true;
+        return;
+    }
+    
+    // Si un seul client ou aucun, procéder directement
+    const customerId = sessionCustomers.value.length === 1 ? sessionCustomers.value[0].id : null;
+    executePrint(customerId);
+};
+
+const executePrint = (customerId: number | null = null) => {
+    const getCsrfToken = () => {
+        const propsToken = (page.props as any).csrfToken;
+        if (propsToken) return propsToken;
+        
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'XSRF-TOKEN') {
+                return decodeURIComponent(value);
+            }
+        }
+        return '';
+    };
+    
+    const csrfToken = getCsrfToken();
+    
+    if (!csrfToken) {
+        notifyError('Token CSRF manquant. Veuillez rafraîchir la page.', 'Erreur');
+        return;
+    }
+
+    const url = customerId 
+        ? `/sessions/${props.session.id}/pdf?customer_id=${customerId}`
+        : `/sessions/${props.session.id}/pdf`;
+
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/pdf',
+        },
+        credentials: 'include',
+    })
+    .then(async response => {
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (contentType && !contentType.includes('application/pdf')) {
+            throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
+        }
+        
+        return response.blob();
+    })
+    .then(blob => {
+        if (blob.size === 0) {
+            throw new Error('Le PDF généré est vide');
+        }
+        
+        const url = window.URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank');
+        
+        if (printWindow) {
+            printWindow.onload = () => {
+                setTimeout(() => {
+                    printWindow.print();
+                }, 250);
+            };
+        } else {
+            window.open(url, '_blank');
+            notifyError('Veuillez autoriser les popups pour cette fonctionnalité.', 'Information');
+        }
+        
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+        }, 1000);
+    })
+    .catch(error => {
+        notifyError(error.message || 'Une erreur est survenue lors de l\'ouverture du PDF.', 'Erreur');
+    });
+};
+
+const confirmCustomerSelection = () => {
+    if (!selectedCustomerId.value) {
+        notifyError('Veuillez sélectionner un client', 'Erreur');
+        return;
+    }
+    
+    if (pendingAction.value === 'download') {
+        const url = `/sessions/${props.session.id}/pdf?customer_id=${selectedCustomerId.value}`;
+        window.open(url, '_blank');
+    } else if (pendingAction.value === 'print') {
+        executePrint(selectedCustomerId.value);
+    }
+    
+    isCustomerSelectDialogOpen.value = false;
+    pendingAction.value = null;
+    selectedCustomerId.value = null;
+};
+
+watch(isCustomerSelectDialogOpen, (open) => {
+    if (!open) {
+        pendingAction.value = null;
+        selectedCustomerId.value = null;
+    }
+});
 
 watch(isDeleteDialogOpen, (open) => {
     if (!open) {
@@ -1029,6 +1199,15 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                         <span>PDF</span>
                     </Button>
                     <Button
+                        variant="outline"
+                        size="sm"
+                        class="inline-flex items-center gap-2 w-full sm:w-auto"
+                        @click="handlePrint"
+                    >
+                        <Printer class="size-4" />
+                        <span>Imprimer</span>
+                    </Button>
+                    <Button
                         v-if="session.has_custom_layout"
                         variant="outline"
                         size="sm"
@@ -1184,6 +1363,53 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                 :loading="isDeleteProcessing"
                 @confirm="confirmDelete"
             />
+
+            <!-- Modal de sélection du client pour PDF/impression -->
+            <Dialog v-model:open="isCustomerSelectDialogOpen">
+                <DialogContent class="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Sélectionner un client</DialogTitle>
+                        <DialogDescription>
+                            Cette séance est associée à plusieurs clients. Veuillez sélectionner le client pour lequel générer le PDF{{ pendingAction === 'print' ? ' et imprimer' : '' }}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div class="space-y-4 py-4">
+                        <div class="space-y-2">
+                            <Label for="customer-select-pdf">Client</Label>
+                            <select
+                                id="customer-select-pdf"
+                                v-model="selectedCustomerId"
+                                class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                            >
+                                <option :value="null">Sélectionner un client</option>
+                                <option
+                                    v-for="customer in sessionCustomers"
+                                    :key="customer.id"
+                                    :value="customer.id"
+                                >
+                                    {{ customer.full_name }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            @click="isCustomerSelectDialogOpen = false"
+                        >
+                            Annuler
+                        </Button>
+                        <Button
+                            @click="confirmCustomerSelection"
+                            :disabled="!selectedCustomerId"
+                        >
+                            {{ pendingAction === 'print' ? 'Imprimer' : 'Télécharger' }}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <!-- Layout Editor -->
             <div v-if="showLayoutEditor" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900">

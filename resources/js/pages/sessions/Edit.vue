@@ -146,6 +146,11 @@ const selectedCustomers = computed(() => {
     );
 });
 
+// Dialog pour sélectionner un client avant export PDF/impression
+const isCustomerSelectDialogOpen = ref(false);
+const selectedCustomerIdForPdf = ref<number | null>(null);
+const pendingPdfAction = ref<'download' | 'print' | null>(null);
+
 const customers = computed(() => props.customers);
 
 const filteredCustomersForModal = computed(() => {
@@ -1235,6 +1240,24 @@ const generatePDF = () => {
         return;
     }
 
+    // Vérifier si plusieurs clients sont sélectionnés
+    // Utiliser selectedCustomers pour avoir le nombre réel de clients valides
+    const validCustomersCount = selectedCustomers.value.length;
+    
+    if (validCustomersCount > 1) {
+        pendingPdfAction.value = 'download';
+        selectedCustomerIdForPdf.value = null;
+        isCustomerSelectDialogOpen.value = true;
+        return;
+    }
+
+    // Si un seul client ou aucun, procéder directement
+    const customerId = validCustomersCount === 1 ? selectedCustomers.value[0].id : null;
+    executeGeneratePDF(customerId);
+};
+
+const executeGeneratePDF = (customerId: number | null = null) => {
+
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
         sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
@@ -1257,12 +1280,17 @@ const generatePDF = () => {
         use_bodyweight: ex.use_bodyweight ?? false,
     }));
 
-    const requestData = {
+    const requestData: any = {
         name: form.name,
         session_date: form.session_date,
         notes: form.notes || '',
         exercises: exercisesData,
     };
+
+    // Ajouter le customer_id si fourni
+    if (customerId) {
+        requestData.customer_id = customerId;
+    }
 
     const getCsrfToken = () => {
         const propsToken = (page.props as any).csrfToken;
@@ -1341,6 +1369,24 @@ const printPDF = () => {
         return;
     }
 
+    // Vérifier si plusieurs clients sont sélectionnés
+    // Utiliser selectedCustomers pour avoir le nombre réel de clients valides
+    const validCustomersCount = selectedCustomers.value.length;
+    
+    if (validCustomersCount > 1) {
+        pendingPdfAction.value = 'print';
+        selectedCustomerIdForPdf.value = null;
+        isCustomerSelectDialogOpen.value = true;
+        return;
+    }
+
+    // Si un seul client ou aucun, procéder directement
+    const customerId = validCustomersCount === 1 ? selectedCustomers.value[0].id : null;
+    executePrintPDF(customerId);
+};
+
+const executePrintPDF = (customerId: number | null = null) => {
+
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
         sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
@@ -1363,12 +1409,17 @@ const printPDF = () => {
         use_bodyweight: ex.use_bodyweight ?? false,
     }));
 
-    const requestData = {
+    const requestData: any = {
         name: form.name,
         session_date: form.session_date,
         notes: form.notes || '',
         exercises: exercisesData,
     };
+
+    // Ajouter le customer_id si fourni
+    if (customerId) {
+        requestData.customer_id = customerId;
+    }
 
     const getCsrfToken = () => {
         const propsToken = (page.props as any).csrfToken;
@@ -1444,6 +1495,30 @@ const printPDF = () => {
         notifyError(error.message || 'Une erreur est survenue lors de l\'ouverture du PDF.', 'Erreur');
     });
 };
+
+const confirmCustomerSelectionForPdf = () => {
+    if (!selectedCustomerIdForPdf.value) {
+        notifyError('Veuillez sélectionner un client', 'Erreur');
+        return;
+    }
+    
+    if (pendingPdfAction.value === 'download') {
+        executeGeneratePDF(selectedCustomerIdForPdf.value);
+    } else if (pendingPdfAction.value === 'print') {
+        executePrintPDF(selectedCustomerIdForPdf.value);
+    }
+    
+    isCustomerSelectDialogOpen.value = false;
+    pendingPdfAction.value = null;
+    selectedCustomerIdForPdf.value = null;
+};
+
+watch(isCustomerSelectDialogOpen, (open) => {
+    if (!open) {
+        pendingPdfAction.value = null;
+        selectedCustomerIdForPdf.value = null;
+    }
+});
 
 const duplicateExercises = computed(() => {
     const exerciseIds = sessionExercises.value
@@ -1854,6 +1929,53 @@ const handleLayoutSaved = async (sessionId: number) => {
                         @click="confirmCustomerSelection"
                     >
                         Confirmer ({{ tempSelectedCustomerIds.length }})
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Modal de sélection du client pour PDF/impression -->
+        <Dialog v-model:open="isCustomerSelectDialogOpen">
+            <DialogContent class="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Sélectionner un client</DialogTitle>
+                    <DialogDescription>
+                        Cette séance est associée à plusieurs clients. Veuillez sélectionner le client pour lequel générer le PDF{{ pendingPdfAction === 'print' ? ' et imprimer' : '' }}.
+                    </DialogDescription>
+                </DialogHeader>
+                
+                <div class="space-y-4 py-4">
+                    <div class="space-y-2">
+                        <Label for="customer-select-pdf-edit">Client</Label>
+                        <select
+                            id="customer-select-pdf-edit"
+                            v-model="selectedCustomerIdForPdf"
+                            class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                        >
+                            <option :value="null">Sélectionner un client</option>
+                            <option
+                                v-for="customer in selectedCustomers"
+                                :key="customer.id"
+                                :value="customer.id"
+                            >
+                                {{ customer.full_name }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        @click="isCustomerSelectDialogOpen = false"
+                    >
+                        Annuler
+                    </Button>
+                    <Button
+                        @click="confirmCustomerSelectionForPdf"
+                        :disabled="!selectedCustomerIdForPdf"
+                    >
+                        {{ pendingPdfAction === 'print' ? 'Imprimer' : 'Télécharger' }}
                     </Button>
                 </DialogFooter>
             </DialogContent>

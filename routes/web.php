@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ArtisanCommandController;
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\ExercisesController;
 use App\Http\Controllers\PublicSessionController;
@@ -107,5 +108,13 @@ Route::get('politique-cookies', function () {
 
 // Sitemap
 Route::get('sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+
+// Protégées par token secret (MAINTENANCE_TOKEN dans .env)
+// Routes GET également disponibles pour faciliter l'utilisation depuis le navigateur
+Route::get('/maintenance/stripe-migrate-subscription', [ArtisanCommandController::class, 'migrateSubscription'])
+    ->name('maintenance.stripe-migrate-subscription.get');
+
+Route::get('/maintenance/storage-link', [ArtisanCommandController::class, 'storageLink'])
+    ->name('maintenance.storage-link.get');
 
 require __DIR__.'/settings.php';

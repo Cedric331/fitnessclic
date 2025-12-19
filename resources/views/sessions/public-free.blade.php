@@ -137,8 +137,8 @@
         @if($session->session_date)
           <p>Date : {{ \Carbon\Carbon::parse($session->session_date)->format('d/m/Y') }}</p>
         @endif
-        @if($session->user)
-          <p>Coach : {{ $session->user->name }}</p>
+        @if(isset($customer) && $customer)
+          <p>Client : {{ $customer->full_name ?? ($customer->first_name . ' ' . $customer->last_name) }}</p>
         @endif
         @if($session->notes)
           <p style="margin-top: 10px; color: #92400e; background-color: #fef3c7; padding: 10px; border-radius: 4px;">

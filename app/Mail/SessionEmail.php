@@ -279,6 +279,7 @@ class SessionEmail extends Mailable
         try {
             $pdf = Pdf::loadView('sessions.pdf', [
                 'session' => $this->session,
+                'customer' => $this->customer,
                 'use_optimized_images' => true,
             ])->setPaper('a4', 'portrait')
                 ->setOption('enable-local-file-access', true)
