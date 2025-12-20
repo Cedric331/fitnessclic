@@ -80,7 +80,7 @@ const handleAddExercise = (exercise: Exercise) => {
     emit('addExercise', exercise);
 };
 
-// Gestion du drag depuis la bibliothèque
+// Gestion du drag depuis la bibliothèque (desktop uniquement)
 const handleDragStart = (event: DragEvent, exercise: Exercise) => {
     if (!event.dataTransfer) return;
     
@@ -277,7 +277,8 @@ const handleDragEnd = () => {
                     :draggable="true"
                     @dragstart="handleDragStart($event, exercise)"
                     @dragend="handleDragEnd"
-                    @click="handleAddExercise(exercise)"
+                    @click.stop="handleAddExercise(exercise)"
+                    @mousedown.stop
                 >
                     <CardContent class="p-0">
                         <!-- Image qui remplit tout le cadre -->
@@ -287,7 +288,7 @@ const handleDragEnd = () => {
                                 :src="exercise.image_url"
                                 :alt="exercise.title"
                                 :class="[
-                                    'h-full w-full',
+                                    'h-full w-full pointer-events-none',
                                     viewMode === 'grid-6' ? 'object-cover' : 'object-contain object-top'
                                 ]"
                                 loading="lazy"
@@ -303,7 +304,7 @@ const handleDragEnd = () => {
                                 <span class="text-xs">Aucune image</span>
                             </div>
                             <!-- Overlay au survol avec titre et icône -->
-                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-3 gap-2">
+                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-3 gap-2 pointer-events-none">
                                 <div class="flex flex-col items-center gap-2">
                                     <h3 
                                         :class="{
@@ -340,7 +341,8 @@ const handleDragEnd = () => {
                     :draggable="true"
                     @dragstart="handleDragStart($event, exercise)"
                     @dragend="handleDragEnd"
-                    @click="handleAddExercise(exercise)"
+                    @click.stop="handleAddExercise(exercise)"
+                    @mousedown.stop
                 >
                     <CardContent class="p-0">
                         <div class="flex items-stretch gap-0">
@@ -350,7 +352,7 @@ const handleDragEnd = () => {
                                     v-if="exercise.image_url"
                                     :src="exercise.image_url"
                                     :alt="exercise.title"
-                                    class="h-full w-full object-contain"
+                                    class="h-full w-full object-contain pointer-events-none"
                                     loading="lazy"
                                     width="96"
                                     height="96"

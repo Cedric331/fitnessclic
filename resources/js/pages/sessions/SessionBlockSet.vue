@@ -26,7 +26,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     drop: [event: DragEvent, blockId: number];
-    'remove-exercise': [index: number];
+    'remove-exercise': [exerciseId: number];
     'update-exercise': [index: number, updates: Partial<SessionExercise>];
     'update-block-description': [description: string];
     'convert-to-standard': [];
@@ -175,7 +175,17 @@ const handleRemoveExerciseClick = (exerciseIndex: number) => {
 // Confirmer la suppression d'un exercice
 const confirmRemoveExercise = () => {
     if (exerciseToRemoveIndex.value !== null) {
-        emit('remove-exercise', exerciseToRemoveIndex.value);
+        const exercise = props.block.exercises[exerciseToRemoveIndex.value];
+        console.log('SessionBlockSet - confirmRemoveExercise:', {
+            exerciseToRemoveIndex: exerciseToRemoveIndex.value,
+            exercise: exercise,
+            exerciseId: exercise?.id,
+            allExercises: props.block.exercises.map((e, i) => ({ index: i, id: e.id, title: e.exercise?.title }))
+        });
+        if (exercise && exercise.id) {
+            // Passer l'ID de l'exercice au lieu de l'index
+            emit('remove-exercise', exercise.id);
+        }
         showRemoveExerciseDialog.value = false;
         exerciseToRemoveIndex.value = null;
     }

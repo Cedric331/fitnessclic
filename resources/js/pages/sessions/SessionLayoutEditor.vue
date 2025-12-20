@@ -1761,8 +1761,7 @@ const handleExerciseDrop = async (exercise: Exercise, x?: number, y?: number) =>
         if (layer) {
             layer.draw();
         }
-        
-        notifySuccess(`Image de "${exercise.title}" ajoutée`);
+  
     } catch (error: any) {
         notifyError(`Erreur lors de l'ajout de l'image: ${error.message || 'Erreur inconnue'}`);
         
@@ -2632,7 +2631,6 @@ const exportToPDF = async () => {
     if (!stage) return;
 
     try {
-        notifySuccess('Génération du PDF en cours...');
         
         const pdfBlob = await generatePDFBlob();
         
@@ -2662,7 +2660,6 @@ const printPDF = async () => {
     if (!stage) return;
 
     try {
-        notifySuccess('Préparation de l’impression…');
 
         const pdfBlob = await generatePDFBlob();
         if (!pdfBlob) {
@@ -2671,8 +2668,6 @@ const printPDF = async () => {
 
         const url = URL.createObjectURL(pdfBlob);
 
-        // Ouvre le PDF dans un nouvel onglet pour proposer l'impression.
-        // On tente aussi un print() best-effort, mais selon le navigateur l'utilisateur peut devoir faire Ctrl+P.
         const win = window.open(url, '_blank');
         if (!win) {
             notifyError('Votre navigateur a bloqué la fenêtre d’impression (pop-up).');

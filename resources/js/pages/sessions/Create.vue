@@ -16,7 +16,8 @@ import {
     X,
     AlertTriangle,
     Library,
-    Printer
+    Printer,
+    Plus
 } from 'lucide-vue-next';
 import type { CreateSessionProps, Exercise, SessionExercise, SessionBlock, ExerciseSet } from './types';
 import SessionExerciseItem from './SessionExerciseItem.vue';
@@ -255,7 +256,13 @@ const getEditMode = (): 'standard' | 'libre' => {
 };
 
 onMounted(() => {
+    // Mettre à jour la détection mobile
+    updateMobileDevice();
+    
     const handleResize = () => {
+        // Mettre à jour la détection mobile
+        updateMobileDevice();
+        
         if (window.innerWidth < 640 && viewMode.value !== 'grid-6') {
             viewMode.value = 'grid-6';
         } else if (window.innerWidth >= 640 && viewMode.value === 'grid-6' && window.innerWidth < 1024) {
@@ -286,6 +293,14 @@ const isSaving = ref(false);
 const isLibraryOpen = ref(false);
 const isClearDialogOpen = ref(false);
 const libraryToggleButton = ref<HTMLElement | null>(null);
+
+// Modal pour choisir le super set sur mobile
+const showSuperSetModal = ref(false);
+const pendingExercise = ref<Exercise | null>(null);
+const availableSuperSets = computed(() => {
+    const blocks = groupExercisesIntoBlocks();
+    return blocks.set;
+});
 
 const sessionExercises = ref<SessionExercise[]>([]);
 
@@ -322,6 +337,19 @@ const loadExercisesFromStorage = () => {
                         }
                         return ex;
                     });
+                
+                // Mettre à jour le compteur pour éviter les IDs dupliqués
+                // Trouver le plus petit ID négatif et initialiser le compteur en dessous
+                const minId = validExercises.reduce((min: number, ex: SessionExercise) => {
+                    if (ex.id && ex.id < 0 && ex.id < min) {
+                        return ex.id;
+                    }
+                    return min;
+                }, 0);
+                if (minId < 0) {
+                    sessionExerciseIdCounter = minId - 1;
+                }
+                
                 if (validExercises.length > 0) {
                     sessionExercises.value = validExercises;
                     form.exercises = validExercises;
@@ -345,37 +373,78 @@ const saveExercisesToStorage = () => {
 
 loadExercisesFromStorage();
 
-const addExerciseToSession = (exercise: Exercise) => {
+// Détecter si on est sur mobile/tablette (même logique que le reste du codebase)
+const isMobileDevice = ref(false);
+const updateMobileDevice = () => {
+    if (typeof window !== 'undefined') {
+        isMobileDevice.value = window.innerWidth < DESKTOP_MIN_WIDTH;
+    }
+};
+
+const addExerciseToSession = (exercise: Exercise, targetBlockId?: number) => {
     if (!exercise || !exercise.id) {
         return;
     }
-    const sessionExercise: SessionExercise = {
-        id: --sessionExerciseIdCounter, // ID unique négatif pour les nouveaux exercices
-        exercise_id: exercise.id,
-        exercise: exercise,
-        sets: [{
-            set_number: 1,
+    
+    // Si on est sur mobile/tablette et qu'il y a des super sets, afficher la modal
+    if (isMobileDevice.value && availableSuperSets.value.length > 0 && targetBlockId === undefined) {
+        pendingExercise.value = exercise;
+        showSuperSetModal.value = true;
+        return;
+    }
+    
+    // Ajouter l'exercice normalement ou dans un super set
+    if (targetBlockId) {
+        addExerciseToSetBlock(exercise, targetBlockId);
+    } else {
+        const sessionExercise: SessionExercise = {
+            id: --sessionExerciseIdCounter,
+            exercise_id: exercise.id,
+            exercise: exercise,
+            sets: [{
+                set_number: 1,
+                repetitions: null,
+                weight: null,
+                rest_time: null,
+                duration: null,
+                order: 0
+            }],
             repetitions: null,
             weight: null,
             rest_time: null,
             duration: null,
-            order: 0
-        }],
-        repetitions: null,
-        weight: null,
-        rest_time: null,
-        duration: null,
-        description: '',
-        sets_count: null,
-        order: sessionExercises.value.length,
-        block_id: null,
-        block_type: null,
-        position_in_block: null,
-    };
-    sessionExercises.value.push(sessionExercise);
-    sessionExercises.value = [...sessionExercises.value];
-    form.exercises = [...sessionExercises.value];
-    saveExercisesToStorage();
+            description: '',
+            sets_count: null,
+            order: sessionExercises.value.length,
+            block_id: null,
+            block_type: null,
+            position_in_block: null,
+        };
+        sessionExercises.value.push(sessionExercise);
+        sessionExercises.value = [...sessionExercises.value];
+        form.exercises = [...sessionExercises.value];
+        saveExercisesToStorage();
+    }
+};
+
+// Confirmer l'ajout dans un super set depuis la modal
+const confirmAddToSuperSet = (blockId: number) => {
+    if (pendingExercise.value) {
+        addExerciseToSetBlock(pendingExercise.value, blockId);
+        showSuperSetModal.value = false;
+        pendingExercise.value = null;
+        isLibraryOpen.value = false;
+    }
+};
+
+// Ajouter normalement (sans super set)
+const addToSessionNormal = () => {
+    if (pendingExercise.value) {
+        addExerciseToSession(pendingExercise.value, undefined);
+        showSuperSetModal.value = false;
+        pendingExercise.value = null;
+        isLibraryOpen.value = false;
+    }
 };
 
 const createNewSetBlock = (exercise: Exercise) => {
@@ -493,20 +562,52 @@ const handleRemoveExercise = (item: { type: 'standard' | 'set', exercise?: Sessi
     }
 };
 
-const handleRemoveExerciseFromBlock = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }, index: number) => {
-    if (!item?.block?.id) {
+const handleRemoveExerciseFromBlock = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }, exerciseId: number) => {
+    console.log('Create - handleRemoveExerciseFromBlock:', {
+        exerciseId,
+        item,
+        blockId: item?.block?.id,
+        allSessionExercises: sessionExercises.value.map((e, i) => ({ 
+            index: i, 
+            id: e.id, 
+            block_id: e.block_id, 
+            position_in_block: e.position_in_block,
+            title: e.exercise?.title 
+        }))
+    });
+    
+    if (!exerciseId) {
+        console.log('Create - handleRemoveExerciseFromBlock: No exerciseId provided');
         return;
     }
-    const blockExercises = sessionExercises.value.filter(
-        (ex: SessionExercise) => ex?.block_id === item.block!.id && ex?.block_type === 'set'
-    );
-    if (!blockExercises[index]?.id) {
-        return;
+    
+    // Si plusieurs exercices ont le même ID (bug), trouver celui qui correspond au bloc
+    let exerciseIndex = -1;
+    if (item?.block?.id) {
+        // Chercher dans le bloc spécifique d'abord
+        const blockExercises = sessionExercises.value.filter(
+            (ex: SessionExercise) => ex?.block_id === item.block!.id && ex?.block_type === 'set'
+        );
+        const exerciseInBlock = blockExercises.find((ex: SessionExercise) => ex?.id === exerciseId);
+        if (exerciseInBlock) {
+            exerciseIndex = sessionExercises.value.findIndex((e: SessionExercise) => e === exerciseInBlock);
+        }
     }
-    const exerciseIndex = sessionExercises.value.findIndex(
-        (ex: SessionExercise) => ex?.id === blockExercises[index].id
-    );
+    
+    // Si pas trouvé dans le bloc, chercher globalement (fallback)
+    if (exerciseIndex === -1) {
+        exerciseIndex = sessionExercises.value.findIndex(
+            (ex: SessionExercise) => ex?.id === exerciseId
+        );
+    }
+        
     if (exerciseIndex !== -1) {
+        const exerciseToRemove = sessionExercises.value[exerciseIndex];
+        console.log('Create - handleRemoveExerciseFromBlock: Removing exercise:', {
+            index: exerciseIndex,
+            id: exerciseToRemove.id,
+            title: exerciseToRemove.exercise?.title
+        });
         removeExerciseFromSession(exerciseIndex);
     }
 };
@@ -1046,51 +1147,59 @@ const handleDragLeaveMain = (e: DragEvent) => {
 };
 
 const handleDropMain = (e: DragEvent) => {
-    if (!e.dataTransfer) return;
     const target = e.target as HTMLElement;
     const supersetDropZone = target.closest('.superset-block [class*="border-dashed"]');
     if (supersetDropZone) return;
-    if (e.dataTransfer.types.includes('application/json')) {
+    
+    // Vérifier si c'est un drop custom (mobile) ou un drop HTML5 normal
+    const customData = (e.dataTransfer as any)?.dropData;
+    if (customData || (e.dataTransfer && e.dataTransfer.types.includes('application/json'))) {
         handleDropFromLibrary(e);
     }
 };
 
 const handleDropFromLibrary = (event: DragEvent, targetBlockId?: number) => {
     isDraggingOver.value = false;
-    if (!event.dataTransfer) return;
     
-    const types = event.dataTransfer.types;
-    if (!types.includes('application/json')) {
-        return;
-    }
+    let exercise: Exercise | null = null;
     
-    try {
-        const exerciseData = event.dataTransfer.getData('application/json');
-        if (exerciseData) {
-            const exercise: Exercise = JSON.parse(exerciseData);
-            
-            if (targetBlockId) {
-                addExerciseToSetBlock(exercise, targetBlockId);
-            } else if (isSetMode.value) {
-                createNewSetBlock(exercise);
+    // Vérifier si c'est un drop custom (mobile)
+    const customData = (event.dataTransfer as any)?.dropData;
+    if (customData) {
+        exercise = customData.exercise || JSON.parse(customData.json);
+    } else if (event.dataTransfer) {
+        const types = event.dataTransfer.types;
+        if (!types.includes('application/json')) {
+            return;
+        }
+        
+        try {
+            const exerciseData = event.dataTransfer.getData('application/json');
+            if (exerciseData) {
+                exercise = JSON.parse(exerciseData);
             } else {
-                addExerciseToSession(exercise);
-            }
-        } else {
-            const exerciseId = event.dataTransfer.getData('text/plain');
-            if (exerciseId) {
-                const exercise = props.exercises.find(ex => ex.id === parseInt(exerciseId));
-                if (exercise) {
-                    if (targetBlockId) {
-                        addExerciseToSetBlock(exercise, targetBlockId);
-                    } else if (isSetMode.value) {
-                        createNewSetBlock(exercise);
-                    } else {
-                        addExerciseToSession(exercise);
-                    }
+                const exerciseId = event.dataTransfer.getData('text/plain');
+                if (exerciseId) {
+                    exercise = props.exercises.find(ex => ex.id === parseInt(exerciseId)) || null;
                 }
             }
+        } catch (error) {
+            return;
         }
+    }
+    
+    if (!exercise) return;
+    
+    try {
+        if (targetBlockId) {
+            addExerciseToSetBlock(exercise, targetBlockId);
+        } else if (isSetMode.value) {
+            createNewSetBlock(exercise);
+        } else {
+            addExerciseToSession(exercise);
+        }
+        // Fermer la bibliothèque après un drop réussi
+        isLibraryOpen.value = false;
     } catch (error) {
     }
 };
@@ -1637,6 +1746,7 @@ watch(sessionExercises, () => {
                         <!-- Liste des exercices de la séance -->
                         <Card class="shadow-md py-3">
                             <CardContent
+                                data-drop-zone
                                 @dragover.prevent="handleDragOverMain"
                                 @dragleave="handleDragLeaveMain"
                                 @drop.prevent="handleDropMain"
@@ -1690,7 +1800,7 @@ watch(sessionExercises, () => {
                                                 :draggable="true"
                                                 :total-count="orderedItems.length"
                                                 @drop="(event: DragEvent, blockId: number) => handleDropFromLibrary(event, blockId)"
-                                                @remove-exercise="(index: number) => handleRemoveExerciseFromBlock(item, index)"
+                                                @remove-exercise="(exerciseId: number) => handleRemoveExerciseFromBlock(item, exerciseId)"
                                                 @update-exercise="(exerciseIdOrIndex: number, updates: Partial<SessionExercise>) => handleUpdateExerciseFromBlock(item, exerciseIdOrIndex, updates)"
                                                 @update-block-description="(description: string) => handleUpdateBlockDescription(item.block!.id, description)"
                                                 @convert-to-standard="convertBlockToStandard(item.block!)"
@@ -1888,11 +1998,73 @@ watch(sessionExercises, () => {
                         @category-change="(id: number | null) => { selectedCategoryId = id; }"
                         @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
                         @filter-change="(showOnly: boolean) => { showOnlyMine = showOnly; }"
-                        @add-exercise="(exercise: Exercise) => { addExerciseToSession(exercise); isLibraryOpen = false; }"
+                        @add-exercise="(exercise: Exercise) => { addExerciseToSession(exercise); if (!showSuperSetModal.value) { isLibraryOpen = false; } }"
                     />
                 </div>
             </SheetContent>
         </Sheet>
+
+        <!-- Modal de sélection du super set sur mobile -->
+        <Dialog v-model:open="showSuperSetModal">
+            <DialogContent class="sm:max-w-[480px]">
+                <DialogHeader>
+                    <DialogTitle class="text-xl font-semibold">Ajouter l'exercice</DialogTitle>
+                    <DialogDescription>
+                        {{ pendingExercise?.title }}
+                    </DialogDescription>
+                </DialogHeader>
+                
+                <div class="space-y-4 py-4">
+                    <div class="space-y-2">
+                        <p class="text-sm text-neutral-600 dark:text-neutral-400">
+                            Où souhaitez-vous ajouter cet exercice ?
+                        </p>
+                        
+                        <!-- Option : Ajouter normalement -->
+                        <Button
+                            variant="outline"
+                            class="w-full justify-start"
+                            @click="addToSessionNormal"
+                        >
+                            <Plus class="h-4 w-4 mr-2" />
+                            Ajouter à la séance (normal)
+                        </Button>
+                        
+                        <!-- Liste des super sets disponibles -->
+                        <div v-if="availableSuperSets.length > 0" class="space-y-2">
+                            <p class="text-sm font-medium text-neutral-700 dark:text-neutral-300 mt-4">
+                                Ou ajouter dans un Super Set :
+                            </p>
+                            <div
+                                v-for="block in availableSuperSets"
+                                :key="block.id"
+                                class="border rounded-lg p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
+                                @click="confirmAddToSuperSet(block.id)"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="font-medium">Super Set #{{ block.id }}</p>
+                                        <p class="text-xs text-neutral-500 dark:text-neutral-400">
+                                            {{ block.exercises.length }} exercice(s)
+                                        </p>
+                                    </div>
+                                    <Plus class="h-4 w-4 text-blue-600" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        @click="showSuperSetModal = false; pendingExercise = null"
+                    >
+                        Annuler
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <!-- Modal de confirmation d'effacement -->
         <Dialog v-model:open="isClearDialogOpen">
