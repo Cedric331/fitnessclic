@@ -261,6 +261,7 @@ onMounted(() => {
 const showOnlyMine = ref(false);
 const isSaving = ref(false);
 const isLibraryOpen = ref(false);
+const libraryToggleButton = ref<HTMLElement | null>(null);
 // Mode d'édition: 'standard' ou 'libre'
 // Initialiser le mode en fonction de l'URL et des props
 const getInitialEditMode = (): 'standard' | 'libre' => {
@@ -1981,17 +1982,28 @@ const handleLayoutSaved = async (sessionId: number) => {
             </DialogContent>
         </Dialog>
 
-        <!-- Bouton flottant pour ouvrir la bibliothèque sur mobile -->
+        <!-- Bouton flottant pour ouvrir/fermer la bibliothèque sur mobile -->
         <Button
-            class="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg lg:hidden"
-            @click="isLibraryOpen = true"
+            ref="libraryToggleButton"
+            class="fixed bottom-6 right-6 z-[60] pointer-events-auto h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg lg:hidden"
+            @click.stop="isLibraryOpen = !isLibraryOpen"
         >
-            <Library class="h-6 w-6" />
+            <X v-if="isLibraryOpen" class="h-6 w-6" />
+            <Library v-else class="h-6 w-6" />
         </Button>
 
         <!-- Sheet pour la bibliothèque sur mobile -->
         <Sheet v-model:open="isLibraryOpen">
-            <SheetContent side="right" class="w-full sm:max-w-lg p-0">
+            <SheetContent 
+                side="right" 
+                class="w-full sm:max-w-lg p-0"
+                @pointer-down-outside="(event: any) => {
+                    const target = event.detail.originalEvent.target as HTMLElement;
+                    if (libraryToggleButton.value && (target === libraryToggleButton.value || libraryToggleButton.value.contains(target))) {
+                        event.preventDefault();
+                    }
+                }"
+            >
                 <div class="h-full">
                     <ExerciseLibrary
                         :exercises="filteredExercises"
