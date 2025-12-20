@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\User;
 
 class SessionsController extends Controller
 {
@@ -168,6 +169,7 @@ class SessionsController extends Controller
     {
         $validated = $request->validated();
         $user = Auth::user();
+        $isPublic = $user->isAdmin();
 
         if (! $user->canSaveSessions()) {
             return redirect()->route('sessions.create')
@@ -181,6 +183,7 @@ class SessionsController extends Controller
             'name' => $validated['name'] ?? 'Nouvelle Séance',
             'notes' => $validated['notes'] ?? null,
             'session_date' => $validated['session_date'] ?? now(),
+            'is_public' => $isPublic,
         ]);
 
         if (! empty($customerIds)) {

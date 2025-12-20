@@ -32,6 +32,7 @@ class Session extends Model
         'notes',
         'session_date',
         'share_token',
+        'is_public',
     ];
 
     /**
@@ -43,6 +44,7 @@ class Session extends Model
     {
         return [
             'session_date' => 'date',
+            'is_public' => 'boolean',
         ];
     }
 
@@ -90,6 +92,14 @@ class Session extends Model
     public function layout(): HasOne
     {
         return $this->hasOne(SessionLayout::class, 'session_id');
+    }
+
+    /**
+     * Check if the session is public
+     */
+    public function isPublic(): bool
+    {
+        return $this->is_public;
     }
 
     /**
