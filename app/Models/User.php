@@ -174,7 +174,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
      */
     public function isPro(): bool
     {
-        return $this->hasActiveSubscription();
+        return $this->hasActiveSubscription() || $this->isAdmin();
     }
 
     /**

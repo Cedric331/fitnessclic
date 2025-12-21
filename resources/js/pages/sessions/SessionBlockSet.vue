@@ -176,12 +176,6 @@ const handleRemoveExerciseClick = (exerciseIndex: number) => {
 const confirmRemoveExercise = () => {
     if (exerciseToRemoveIndex.value !== null) {
         const exercise = props.block.exercises[exerciseToRemoveIndex.value];
-        console.log('SessionBlockSet - confirmRemoveExercise:', {
-            exerciseToRemoveIndex: exerciseToRemoveIndex.value,
-            exercise: exercise,
-            exerciseId: exercise?.id,
-            allExercises: props.block.exercises.map((e, i) => ({ index: i, id: e.id, title: e.exercise?.title }))
-        });
         if (exercise && exercise.id) {
             // Passer l'ID de l'exercice au lieu de l'index
             emit('remove-exercise', exercise.id);

@@ -77,6 +77,9 @@ const mainNavItems: NavItem[] = [
 ];
 
 const subscriptionTitle = computed(() => {
+    if (user.value?.isAdmin) {
+        return 'Administrateur';
+    }
     return hasActiveSubscription.value ? 'Abonnement' : 'Passer à FitnessClicPro';
 });
 

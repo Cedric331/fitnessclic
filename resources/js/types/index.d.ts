@@ -36,6 +36,7 @@ export interface User {
     updated_at: string;
     hasActiveSubscription?: boolean;
     isPro?: boolean;
+    isAdmin?: boolean | null;
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
