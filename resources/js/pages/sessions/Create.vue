@@ -1924,13 +1924,11 @@ watch(sessionExercises, () => {
                     <div class="hidden xl:block w-full xl:w-2/5 overflow-y-auto rounded-xl min-h-0">
                         <div>
                             <ExerciseLibrary
-                                :exercises="filteredExercises"
                                 :categories="categories"
                                 :search-term="localSearchTerm"
                                 :selected-category-id="selectedCategoryId"
                                 :view-mode="viewMode"
                                 :show-only-mine="showOnlyMine"
-                                :current-user-id="currentUserId"
                                 @search="(term: string) => { localSearchTerm = term; }"
                                 @category-change="(id: number | null) => { selectedCategoryId = id; }"
                                 @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"
@@ -2079,13 +2077,11 @@ watch(sessionExercises, () => {
             >
                 <div class="h-full">
                     <ExerciseLibrary
-                        :exercises="filteredExercises"
                         :categories="categories"
                         :search-term="localSearchTerm"
                         :selected-category-id="selectedCategoryId"
                         :view-mode="viewMode"
                         :show-only-mine="showOnlyMine"
-                        :current-user-id="currentUserId"
                         @search="(term: string) => { localSearchTerm = term; }"
                         @category-change="(id: number | null) => { selectedCategoryId = id; }"
                         @view-mode-change="(mode: 'grid-2' | 'grid-4' | 'grid-6' | 'list') => viewMode = mode"

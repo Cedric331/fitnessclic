@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,20 +15,21 @@ import {
     Filter
 } from 'lucide-vue-next';
 import type { Exercise, Category } from './types';
+import { useNotifications } from '@/composables/useNotifications';
 
 const draggingExerciseId = ref<number | null>(null);
 
 const page = usePage();
+const { error: notifyError } = useNotifications();
 const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
+const currentUserId = computed(() => (page.props.auth as any)?.user?.id);
 
 const props = defineProps<{
-    exercises: Exercise[];
     categories: Category[];
     searchTerm: string;
     selectedCategoryId: number | null;
     viewMode: 'grid-2' | 'grid-4' | 'grid-6' | 'list';
     showOnlyMine?: boolean;
-    currentUserId?: number;
 }>();
 
 const emit = defineEmits<{
@@ -38,6 +39,13 @@ const emit = defineEmits<{
     filterChange: [showOnlyMine: boolean];
     addExercise: [exercise: Exercise];
 }>();
+
+// Pagination des exercices
+const loadedExercises = ref<Exercise[]>([]);
+const isLoadingExercises = ref(false);
+const hasMoreExercises = ref(true);
+const currentExercisePage = ref(1);
+const exerciseSearchTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 // Valeur locale de recherche pour une mise à jour immédiate de l'input
 const localSearchValue = ref(props.searchTerm);
@@ -53,6 +61,7 @@ watch(localSearchValue, (newValue) => {
     }
     searchTimeout = setTimeout(() => {
         emit('search', newValue);
+        reloadExercises();
     }, 300);
 });
 
@@ -79,6 +88,100 @@ const handleCategoryChange = (event: Event) => {
 const handleAddExercise = (exercise: Exercise) => {
     emit('addExercise', exercise);
 };
+
+// Charger les exercices depuis l'API
+const loadExercises = async (page: number = 1, reset: boolean = false) => {
+    if (isLoadingExercises.value) return;
+    
+    isLoadingExercises.value = true;
+    
+    try {
+        const params = new URLSearchParams({
+            page: page.toString(),
+            require_image: 'false', // ExerciseLibrary affiche tous les exercices, pas seulement ceux avec images
+        });
+        
+        if (localSearchValue.value.trim()) {
+            params.append('search', localSearchValue.value.trim());
+        }
+        
+        if (props.selectedCategoryId) {
+            params.append('category_id', props.selectedCategoryId.toString());
+        }
+        
+        // Ajouter le filtre user_id si showOnlyMine est activé
+        if (props.showOnlyMine && currentUserId.value) {
+            params.append('user_id', currentUserId.value.toString());
+        }
+        
+        const response = await fetch(`/sessions/layout/exercises?${params.toString()}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erreur lors du chargement des exercices');
+        }
+        
+        const data = await response.json();
+        
+        if (reset) {
+            loadedExercises.value = data.data;
+        } else {
+            loadedExercises.value = [...loadedExercises.value, ...data.data];
+        }
+        
+        hasMoreExercises.value = data.has_more;
+        currentExercisePage.value = data.current_page;
+    } catch (error) {
+        console.error('Erreur lors du chargement des exercices:', error);
+        notifyError('Erreur lors du chargement des exercices');
+    } finally {
+        isLoadingExercises.value = false;
+    }
+};
+
+// Charger plus d'exercices
+const loadMoreExercises = () => {
+    if (!isLoadingExercises.value && hasMoreExercises.value) {
+        loadExercises(currentExercisePage.value + 1, false);
+    }
+};
+
+// Recharger les exercices avec les nouveaux filtres
+const reloadExercises = () => {
+    loadedExercises.value = [];
+    currentExercisePage.value = 1;
+    hasMoreExercises.value = true;
+    loadExercises(1, true);
+};
+
+// Watcher avec debounce pour la recherche
+watch(localSearchValue, () => {
+    if (exerciseSearchTimeout.value) {
+        clearTimeout(exerciseSearchTimeout.value);
+    }
+    exerciseSearchTimeout.value = setTimeout(() => {
+        reloadExercises();
+    }, 500);
+});
+
+// Watcher pour la catégorie
+watch(() => props.selectedCategoryId, () => {
+    reloadExercises();
+});
+
+// Watcher pour showOnlyMine
+watch(() => props.showOnlyMine, () => {
+    reloadExercises();
+});
+
+// Charger les exercices au montage du composant
+onMounted(() => {
+    loadExercises(1, true);
+});
 
 // Gestion du drag depuis la bibliothèque (desktop uniquement)
 const handleDragStart = (event: DragEvent, exercise: Exercise) => {
@@ -251,9 +354,13 @@ const handleDragEnd = () => {
 
             <!-- Liste des exercices -->
             <CardContent class="flex-1 overflow-y-auto p-6">
-            <div v-if="exercises.length === 0" class="text-center py-12 text-neutral-500">
+            <div v-if="!isLoadingExercises && loadedExercises.length === 0" class="text-center py-12 text-neutral-500">
                 <p>Aucun exercice trouvé</p>
                 <p class="text-sm mt-1">Essayez de modifier vos filtres de recherche</p>
+            </div>
+
+            <div v-else-if="isLoadingExercises && loadedExercises.length === 0" class="text-center py-12 text-neutral-500">
+                <p class="text-sm">Chargement des exercices...</p>
             </div>
 
             <!-- Vue en grille -->
@@ -266,7 +373,7 @@ const handleDragEnd = () => {
                 ]"
             >
                 <Card
-                    v-for="exercise in exercises"
+                    v-for="exercise in loadedExercises"
                     :key="exercise.id"
                     data-exercise-card
                     :class="{
@@ -330,7 +437,7 @@ const handleDragEnd = () => {
             <!-- Vue en liste -->
             <div v-else class="space-y-2">
                 <Card
-                    v-for="exercise in exercises"
+                    v-for="exercise in loadedExercises"
                     :key="exercise.id"
                     data-exercise-card
                     :class="{
@@ -387,6 +494,21 @@ const handleDragEnd = () => {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+            
+            <!-- Bouton Charger plus -->
+            <div v-if="hasMoreExercises || isLoadingExercises" class="mt-4 flex justify-center">
+                <Button
+                    v-if="hasMoreExercises && !isLoadingExercises"
+                    @click="loadMoreExercises"
+                    variant="outline"
+                    class="w-full max-w-48 bg-blue-500 text-white hover:bg-blue-400 hover:text-white cursor-pointer shadow-sm hover:shadow-md"
+                >
+                    Charger plus
+                </Button>
+                <div v-else-if="isLoadingExercises" class="text-sm text-neutral-600 py-2">
+                    Chargement...
+                </div>
             </div>
             </CardContent>
         </Card>

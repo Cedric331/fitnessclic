@@ -1003,17 +1003,20 @@ class SessionsController extends Controller
     {
         $searchTerm = trim((string) $request->input('search', ''));
         $categoryId = $request->input('category_id');
+        $userId = $request->input('user_id'); // Pour le filtre "Mes exercices uniquement"
+        $requireImage = filter_var($request->input('require_image', true), FILTER_VALIDATE_BOOLEAN); // Par défaut true pour le layout editor
         $page = (int) $request->input('page', 1);
-        $perPage = 20;
+        $perPage = 1;
 
         $exercisesQuery = Exercise::query()
             ->where('is_shared', true)
-            ->whereHas('media', function ($query) {
+            ->when($requireImage, fn ($query) => $query->whereHas('media', function ($query) {
                 $query->where('collection_name', Exercise::MEDIA_IMAGE);
-            })
+            }))
             ->with(['categories', 'media'])
             ->when($searchTerm !== '', fn ($query) => $query->where('title', 'like', "%{$searchTerm}%"))
-            ->when($categoryId, fn ($query, $value) => $query->whereHas('categories', fn ($query) => $query->where('categories.id', $value)));
+            ->when($categoryId, fn ($query, $value) => $query->whereHas('categories', fn ($query) => $query->where('categories.id', $value)))
+            ->when($userId, fn ($query, $value) => $query->where('user_id', $value));
 
         $paginatedExercises = $exercisesQuery
             ->orderBy('title')
