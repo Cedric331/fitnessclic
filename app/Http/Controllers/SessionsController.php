@@ -727,12 +727,7 @@ class SessionsController extends Controller
         $user = Auth::user();
         // Vérifier via policy (on utilise une session temporaire pour la vérification)
         $tempSession = new Session(['user_id' => $user->id]);
-        if (! $user->can('exportPdf', $tempSession)) {
-            return response()->json([
-                'error' => 'L\'export PDF est réservé aux abonnés Pro. Passez à Pro pour exporter vos séances en PDF.',
-            ], 403);
-        }
-
+        
         try {
             // S'assurer que les fonctions helper sont chargées
             if (!function_exists('formatRestTime')) {
