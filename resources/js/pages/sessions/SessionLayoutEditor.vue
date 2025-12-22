@@ -212,6 +212,13 @@ const showExerciseLibrary = ref(true);
 const exerciseSearchTerm = ref('');
 const selectedCategoryId = ref<number | null>(null);
 const draggingExerciseId = ref<number | null>(null);
+
+// Pagination des exercices
+const loadedExercises = ref<Exercise[]>([]);
+const isLoadingExercises = ref(false);
+const hasMoreExercises = ref(true);
+const currentExercisePage = ref(1);
+const exerciseSearchTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 const showExerciseInstructionsModal = ref(false);
 const editingExerciseElement = ref<LayoutElement | null>(null);
 const exerciseData = ref<ExerciseData>({
@@ -911,7 +918,7 @@ const addImageToCanvas = async (element: LayoutElement) => {
                 element.y = y;
 
                 if (element.exerciseId && !element.exerciseData) {
-                    const exercise = props.exercises.find(ex => ex.id === element.exerciseId);
+                    const exercise = allExercises.value.find(ex => ex.id === element.exerciseId);
                     if (exercise) {
                         element.exerciseData = {
                             title: exercise.title,
@@ -1785,6 +1792,12 @@ const handleExerciseDragEnd = () => {
     draggingExerciseId.value = null;
 };
 
+const handleExerciseClick = (exercise: Exercise) => {
+    const centerX = canvasWidth.value / 2;
+    const centerY = canvasHeight.value / 2;
+    handleExerciseDrop(exercise, centerX, centerY);
+};
+
 const availableCustomers = computed(() => props.customers || []);
 const selectedCustomers = computed(() => {
     return availableCustomers.value.filter(c => selectedCustomerIds.value.includes(c.id));
@@ -1815,25 +1828,103 @@ const libraryGridCols = computed(() => {
     }
 });
 
+// Tous les exercices disponibles (pour les recherches par ID)
+const allExercises = computed(() => {
+    // Combiner les exercices chargés via API avec ceux des props (pour compatibilité)
+    const apiExercises = loadedExercises.value;
+    const propExercises = props.exercises || [];
+    // Créer un Map pour éviter les doublons
+    const exerciseMap = new Map<number, Exercise>();
+    propExercises.forEach(ex => exerciseMap.set(ex.id, ex));
+    apiExercises.forEach(ex => exerciseMap.set(ex.id, ex));
+    return Array.from(exerciseMap.values());
+});
+
+// Charger les exercices depuis l'API
+const loadExercises = async (page: number = 1, reset: boolean = false) => {
+    if (isLoadingExercises.value) return;
+    
+    isLoadingExercises.value = true;
+    
+    try {
+        const params = new URLSearchParams({
+            page: page.toString(),
+        });
+        
+        if (exerciseSearchTerm.value.trim()) {
+            params.append('search', exerciseSearchTerm.value.trim());
+        }
+        
+        if (selectedCategoryId.value) {
+            params.append('category_id', selectedCategoryId.value.toString());
+        }
+        
+        const response = await fetch(`/sessions/layout/exercises?${params.toString()}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erreur lors du chargement des exercices');
+        }
+        
+        const data = await response.json();
+        
+        if (reset) {
+            loadedExercises.value = data.data;
+        } else {
+            loadedExercises.value = [...loadedExercises.value, ...data.data];
+        }
+        
+        hasMoreExercises.value = data.has_more;
+        currentExercisePage.value = data.current_page;
+    } catch (error) {
+        console.error('Erreur lors du chargement des exercices:', error);
+        notifyError('Erreur lors du chargement des exercices');
+    } finally {
+        isLoadingExercises.value = false;
+    }
+};
+
+// Charger plus d'exercices
+const loadMoreExercises = () => {
+    if (!isLoadingExercises.value && hasMoreExercises.value) {
+        loadExercises(currentExercisePage.value + 1, false);
+    }
+};
+
+// Recharger les exercices avec les nouveaux filtres
+const reloadExercises = () => {
+    loadedExercises.value = [];
+    currentExercisePage.value = 1;
+    hasMoreExercises.value = true;
+    loadExercises(1, true);
+};
+
+// Watcher avec debounce pour la recherche
+watch(exerciseSearchTerm, () => {
+    if (exerciseSearchTimeout.value) {
+        clearTimeout(exerciseSearchTimeout.value);
+    }
+    exerciseSearchTimeout.value = setTimeout(() => {
+        reloadExercises();
+    }, 500);
+});
+
+// Watcher pour la catégorie
+watch(selectedCategoryId, () => {
+    reloadExercises();
+});
+
+// Charger les exercices au montage du composant
+onMounted(() => {
+    loadExercises(1, true);
+});
+
 const filteredExercises = computed(() => {
-    let exercises = props.exercises.filter(ex => ex.image_url);
-    
-    // Filtre par recherche
-    if (exerciseSearchTerm.value.trim()) {
-        const search = exerciseSearchTerm.value.toLowerCase();
-        exercises = exercises.filter(ex => 
-            ex.title.toLowerCase().includes(search)
-        );
-    }
-    
-    // Filtre par catégorie
-    if (selectedCategoryId.value) {
-        exercises = exercises.filter(ex => 
-            ex.categories?.some(cat => cat.id === selectedCategoryId.value)
-        );
-    }
-    
-    return exercises;
+    return loadedExercises.value;
 });
 
 const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highlight') => {
@@ -2719,7 +2810,7 @@ const openExerciseInstructionsModal = (element: LayoutElement) => {
             exerciseData.value.instructionsPosition = 'below';
         }
     } else {
-        const exercise = props.exercises.find(ex => ex.id === element.exerciseId);
+        const exercise = allExercises.value.find(ex => ex.id === element.exerciseId);
         exerciseData.value = {
             title: exercise?.title || '',
             showTitle: true,
@@ -2836,7 +2927,7 @@ const openExerciseImageModal = (element: LayoutElement) => {
             imageShadowOpacity: element.exerciseData.imageShadowOpacity !== undefined ? element.exerciseData.imageShadowOpacity : 0.5
         };
     } else {
-        const exercise = props.exercises.find(ex => ex.id === element.exerciseId);
+        const exercise = allExercises.value.find(ex => ex.id === element.exerciseId);
         exerciseImageData.value = {
             title: exercise?.title || '',
             showTitle: true,
@@ -3446,7 +3537,7 @@ const setupDragAndDrop = () => {
             } else {
                 const exerciseId = e.dataTransfer?.getData('text/plain');
                 if (exerciseId) {
-                    const exercise = props.exercises.find(ex => ex.id === parseInt(exerciseId));
+                    const exercise = allExercises.value.find(ex => ex.id === parseInt(exerciseId));
                     if (exercise) {
                         await handleExerciseDrop(exercise, pointerPos.x, pointerPos.y);
                     }
@@ -3472,11 +3563,6 @@ const setupDragAndDrop = () => {
 
 <template>
     <AppLayout>
-        <!--
-          On veut que la bibliothèque (droite) scrolle: il faut une hauteur contrainte.
-          - Desktop (lg+): pas de header AppSidebarHeader => on peut fixer à 100svh.
-          - Mobile: le header existe (lg:hidden) => on laisse flex-1 pour prendre la hauteur restante.
-        -->
         <div class="flex flex-col flex-1 min-h-0 lg:flex-none lg:h-svh">
                     <!-- Toolbar -->
                     <div class="flex items-center justify-between p-4 border-b bg-white dark:bg-neutral-900">
@@ -3672,7 +3758,7 @@ const setupDragAndDrop = () => {
                     <div v-if="categories && categories.length > 0">
                         <select
                             v-model="selectedCategoryId"
-                            class="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                            class="w-full h-9 rounded-md border border-input bg-transparent dark:bg-neutral-800 px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                         >
                             <option :value="null">Toutes les catégories</option>
                             <option
@@ -3722,51 +3808,68 @@ const setupDragAndDrop = () => {
                     </div>
                 </div>
                 <div class="flex-1 overflow-y-auto p-4 min-h-0">
-                    <div v-if="filteredExercises.length === 0" class="text-center py-12 text-neutral-500">
+                    <div v-if="!isLoadingExercises && filteredExercises.length === 0" class="text-center py-12 text-neutral-500">
                         <p class="text-sm">Aucun exercice avec image trouvé</p>
                     </div>
-                    <div v-else :class="['grid gap-3', libraryGridCols]">
-                        <div
-                            v-for="exercise in filteredExercises"
-                            :key="exercise.id"
-                            :class="{
-                                'group cursor-move hover:shadow-lg transition-all relative rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500': true,
-                                'opacity-70 scale-95': draggingExerciseId === exercise.id,
-                                'ring-2 ring-blue-500': draggingExerciseId === exercise.id
-                            }"
-                            :draggable="true"
-                            @dragstart="handleExerciseDragStart($event, exercise)"
-                            @dragend="handleExerciseDragEnd"
-                            @click="(e: MouseEvent) => {
-                                e.stopPropagation();
-                                const centerX = canvasWidth.value / 2;
-                                const centerY = canvasHeight.value / 2;
-                                handleExerciseDrop(exercise, centerX, centerY);
-                            }"
-                        >
-                            <div class="relative aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                                <img
-                                    v-if="exercise.image_url"
-                                    :src="exercise.image_url"
-                                    :alt="exercise.title"
-                                    class="h-full w-full object-cover"
-                                    draggable="false"
-                                />
-                                <div
-                                    v-else
-                                    class="h-full w-full flex items-center justify-center text-neutral-400"
-                                >
-                                    <span class="text-xs">Aucune image</span>
-                                </div>
-                                <!-- Overlay au survol -->
-                                <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <p class="text-white text-xs text-center px-2 line-clamp-2">
-                                        {{ exercise.title }}
-                                    </p>
+                    <div v-else-if="isLoadingExercises && filteredExercises.length === 0" class="text-center py-12 text-neutral-500">
+                        <p class="text-sm">Chargement des exercices...</p>
+                    </div>
+                    <template v-else>
+                        <div :class="['grid gap-3', libraryGridCols]">
+                            <div
+                                v-for="exercise in filteredExercises"
+                                :key="exercise.id"
+                                :class="{
+                                    'group cursor-move shadow-md transition-all relative rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500': true,
+                                    'opacity-70 scale-95': draggingExerciseId === exercise.id,
+                                    'ring-2 ring-blue-500': draggingExerciseId === exercise.id
+                                }"
+                                :draggable="true"
+                                @dragstart="handleExerciseDragStart($event, exercise)"
+                                @dragend="handleExerciseDragEnd"
+                                @click="(e: MouseEvent) => {
+                                    e.stopPropagation();
+                                    handleExerciseClick(exercise);
+                                }"
+                            >
+                                <div class="relative aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                                    <img
+                                        v-if="exercise.image_url"
+                                        :src="exercise.image_url"
+                                        :alt="exercise.title"
+                                        class="h-full w-full object-cover"
+                                        draggable="false"
+                                    />
+                                    <div
+                                        v-else
+                                        class="h-full w-full flex items-center justify-center text-neutral-400"
+                                    >
+                                        <span class="text-xs">Aucune image</span>
+                                    </div>
+                                    <!-- Overlay au survol -->
+                                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <p class="text-white text-xs text-center px-2 line-clamp-2">
+                                            {{ exercise.title }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        <!-- Bouton Charger plus -->
+                        <div v-if="hasMoreExercises || isLoadingExercises" class="mt-4 flex justify-center">
+                            <Button
+                                v-if="hasMoreExercises && !isLoadingExercises"
+                                @click="loadMoreExercises"
+                                variant="outline"
+                                class="w-full max-w-48 bg-blue-500 text-white hover:bg-blue-400 hover:text-white cursor-pointer shadow-sm hover:shadow-md"
+                            >
+                                Charger plus
+                            </Button>
+                            <div v-else-if="isLoadingExercises" class="text-sm text-neutral-600 py-2">
+                                Chargement...
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
         </div>

@@ -997,6 +997,54 @@ class SessionsController extends Controller
     }
 
     /**
+     * Get paginated exercises for the layout editor.
+     */
+    public function getExercisesForLayout(Request $request)
+    {
+        $searchTerm = trim((string) $request->input('search', ''));
+        $categoryId = $request->input('category_id');
+        $page = (int) $request->input('page', 1);
+        $perPage = 20;
+
+        $exercisesQuery = Exercise::query()
+            ->where('is_shared', true)
+            ->whereHas('media', function ($query) {
+                $query->where('collection_name', Exercise::MEDIA_IMAGE);
+            })
+            ->with(['categories', 'media'])
+            ->when($searchTerm !== '', fn ($query) => $query->where('title', 'like', "%{$searchTerm}%"))
+            ->when($categoryId, fn ($query, $value) => $query->whereHas('categories', fn ($query) => $query->where('categories.id', $value)));
+
+        $paginatedExercises = $exercisesQuery
+            ->orderBy('title')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $exercises = $paginatedExercises->map(function ($exercise) {
+            return [
+                'id' => $exercise->id,
+                'title' => $exercise->title,
+                'description' => $exercise->description,
+                'image_url' => $exercise->image_url,
+                'suggested_duration' => $exercise->suggested_duration,
+                'user_id' => $exercise->user_id,
+                'categories' => $exercise->categories->map(fn ($cat) => [
+                    'id' => $cat->id,
+                    'name' => $cat->name,
+                ]),
+            ];
+        });
+
+        return response()->json([
+            'data' => $exercises,
+            'current_page' => $paginatedExercises->currentPage(),
+            'last_page' => $paginatedExercises->lastPage(),
+            'per_page' => $paginatedExercises->perPage(),
+            'total' => $paginatedExercises->total(),
+            'has_more' => $paginatedExercises->hasMorePages(),
+        ]);
+    }
+
+    /**
      * Generate PDF from session layout.
      */
     public function pdfFromLayout(Session $session)

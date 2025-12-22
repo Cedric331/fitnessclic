@@ -63,6 +63,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/sessions/layout', [SessionsController::class, 'saveLayout'])->name('sessions.layout.save-new');
     Route::get('/sessions/{session}/layout', [SessionsController::class, 'getLayout'])->name('sessions.layout.get');
     Route::get('/sessions/{session}/layout/pdf', [SessionsController::class, 'pdfFromLayout'])->name('sessions.layout.pdf');
+    Route::get('/sessions/layout/exercises', [SessionsController::class, 'getExercisesForLayout'])->name('sessions.layout.exercises');
 
     // Subscription routes
     Route::get('/subscription', [\App\Http\Controllers\SubscriptionController::class, 'index'])->name('subscription.index');

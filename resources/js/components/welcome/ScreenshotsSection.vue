@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 
-// Les screenshots seront ajoutés ici
 const screenshots = [
     {
         id: 1,
@@ -10,6 +9,13 @@ const screenshots = [
         description: 'Interface intuitive pour créer vos séances en quelques clics',
         image: '/assets/screenshots/screenshot-creation.png',
         alt: 'Capture d\'écran de la création de séance',
+    },
+    {
+        id: 1,
+        title: 'Création de séance libre avec mise en page',
+        description: 'Interface intuitive pour créer vos séances avec mise en page en quelques clics',
+        image: '/assets/screenshots/screenshot-session-libre.png',
+        alt: 'Capture d\'écran de la création de séance avec mise en page',
     },
     {
         id: 2,
@@ -27,10 +33,10 @@ const screenshots = [
     },
     {
         id: 4,
-        title: 'Vue d\'ensemble du dashboard',
-        description: 'Tableau de bord complet pour suivre toutes vos activités',
-        image: '/assets/screenshots/screenshot-dashboard.png',
-        alt: 'Capture d\'écran du dashboard',
+        title: 'Vue PDF',
+        description: 'Vue PDF de la séance',
+        image: '/assets/screenshots/screenshot-pdf.png',
+        alt: 'Capture d\'écran de la vue PDF',
     },
 ];
 
@@ -84,7 +90,6 @@ const goToScreenshot = (index: number) => {
                                         height="675"
                                         @error="(e) => { e.target.style.display = 'none'; }"
                                     />
-                                    <!-- Placeholder si l'image n'existe pas encore -->
                                     <div
                                         v-if="!currentScreenshot.image || currentScreenshot.image.includes('placeholder')"
                                         class="absolute inset-0 flex items-center justify-center"

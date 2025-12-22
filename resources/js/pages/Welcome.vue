@@ -26,7 +26,7 @@ const siteUrl = computed(() => {
     if (typeof window !== 'undefined') {
         return window.location.origin;
     }
-    return 'https://fitnessclic.com'; // À remplacer par votre URL de production
+    return 'https://fitnessclic.com';
 });
 const currentUrl = computed(() => {
     if (typeof window !== 'undefined') {
@@ -38,9 +38,8 @@ const title = 'FitnessClic - Créez vos séances d\'entraînement en quelques cl
 const description = 'L\'outil professionnel pour les coachs sportifs et particuliers. Créez, organisez et partagez vos programmes d\'entraînement facilement. Bibliothèque d\'exercices, gestion de clients, export PDF. Compte gratuit disponible.';
 const keywords = 'coach sportif, séance d\'entraînement, programme fitness, création séance, gestion clients, bibliothèque exercices, fitness, sport, entraînement personnalisé';
 const imageUrl = computed(() => `${siteUrl.value}/assets/logo_fitnessclic.png`);
-const twitterHandle = '@FitnessClic'; // À remplacer par votre handle Twitter
+const twitterHandle = '@FitnessClic';
 
-// Structured Data (JSON-LD)
 const structuredData = computed(() => ({
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
@@ -73,18 +72,15 @@ const organizationData = computed(() => ({
     url: siteUrl.value,
     logo: imageUrl.value,
     sameAs: [
-        // Ajoutez vos liens sociaux ici
         // 'https://www.facebook.com/fitnessclic',
         // 'https://twitter.com/fitnessclic',
         // 'https://www.instagram.com/fitnessclic',
     ],
 }));
 
-// Injection des scripts JSON-LD dans le head
 let structuredDataScripts: HTMLScriptElement[] = [];
 
 onMounted(() => {
-    // Créer et injecter le script pour WebApplication
     const script1 = document.createElement('script');
     script1.type = 'application/ld+json';
     script1.id = 'structured-data-webapp';
@@ -92,7 +88,6 @@ onMounted(() => {
     document.head.appendChild(script1);
     structuredDataScripts.push(script1);
 
-    // Créer et injecter le script pour Organization
     const script2 = document.createElement('script');
     script2.type = 'application/ld+json';
     script2.id = 'structured-data-org';
@@ -102,7 +97,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    // Nettoyer les scripts lors du démontage du composant
     structuredDataScripts.forEach((script) => {
         if (script.parentNode) {
             script.parentNode.removeChild(script);
