@@ -1006,7 +1006,7 @@ class SessionsController extends Controller
         $userId = $request->input('user_id'); // Pour le filtre "Mes exercices uniquement"
         $requireImage = filter_var($request->input('require_image', true), FILTER_VALIDATE_BOOLEAN); // Par défaut true pour le layout editor
         $page = (int) $request->input('page', 1);
-        $perPage = 1;
+        $perPage = 20;
 
         $exercisesQuery = Exercise::query()
             ->where('is_shared', true)
