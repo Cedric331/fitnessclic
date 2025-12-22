@@ -55,6 +55,11 @@ const isUpgradeModalOpen = ref(false);
 const showLayoutEditor = ref(false);
 const savedSessionId = ref<number | null>(null);
 
+// Dialog pour sélectionner un client avant export PDF/impression
+const isCustomerSelectDialogOpen = ref(false);
+const selectedCustomerIdForPdf = ref<number | null>(null);
+const pendingPdfAction = ref<'download' | 'print' | null>(null);
+
 // Empêche le "scroll fantôme" de la page quand l'éditeur libre (overlay) est ouvert
 const previousOverflow = ref<{ html: string; body: string } | null>(null);
 const lockPageScroll = () => {
@@ -403,18 +408,18 @@ const addExerciseToSession = (exercise: Exercise, targetBlockId?: number) => {
             exercise: exercise,
             sets: [{
                 set_number: 1,
-                repetitions: null,
-                weight: null,
-                rest_time: null,
-                duration: null,
+                repetitions: 10,
+                weight: 10,
+                rest_time: '30s',
+                duration: '30s',
                 order: 0
             }],
-            repetitions: null,
-            weight: null,
-            rest_time: null,
-            duration: null,
+            repetitions: 10,
+            weight: 10,
+            rest_time: '30s',
+            duration: '30s',
             description: '',
-            sets_count: null,
+            sets_count: 1,
             order: sessionExercises.value.length,
             block_id: null,
             block_type: null,
@@ -496,18 +501,18 @@ const addExerciseToSetBlock = (exercise: Exercise, blockId: number) => {
         exercise: exercise,
         sets: [{
             set_number: 1,
-            repetitions: null,
-            weight: null,
-            rest_time: null,
-            duration: null,
+            repetitions: 10,
+            weight: 10,
+            rest_time: '30s',
+            duration: '30',
             order: 0
         }],
-        repetitions: null,
-        weight: null,
-        rest_time: null,
-        duration: null,
+        repetitions: 10,
+        weight: 10,
+        rest_time: '30s',
+        duration: '30',
         description: '',
-        sets_count: null,
+        sets_count: 1,
         block_id: blockId,
         block_type: 'set',
         position_in_block: positionInBlock,
@@ -998,8 +1003,31 @@ const convertExerciseToSet = (exercise: SessionExercise) => {
     if (index === -1) return;
     
     const blockId = nextBlockId++;
+    const updatedSets = exercise.sets && exercise.sets.length > 0 
+        ? exercise.sets.map(set => ({
+            ...set,
+            repetitions: set.repetitions ?? 10,
+            weight: set.weight ?? 10,
+            rest_time: set.rest_time ?? '30s',
+            duration: set.duration ?? '30',
+        }))
+        : [{
+            set_number: 1,
+            repetitions: 10,
+            weight: 10,
+            rest_time: '30s',
+            duration: '30',
+            order: 0
+        }];
+    
     const updatedExercise: SessionExercise = {
         ...exercise,
+        sets: updatedSets,
+        repetitions: exercise.repetitions ?? 10,
+        weight: exercise.weight ?? 10,
+        rest_time: exercise.rest_time ?? '30s',
+        duration: exercise.duration ?? '30',
+        sets_count: exercise.sets_count ?? 1,
         block_id: blockId,
         block_type: 'set',
         position_in_block: 0,
@@ -1363,15 +1391,34 @@ const generatePDF = () => {
         return;
     }
 
+    // Vérifier si plusieurs clients sont sélectionnés
+    const validCustomersCount = selectedCustomers.value.length;
+    
+    if (validCustomersCount > 1) {
+        pendingPdfAction.value = 'download';
+        selectedCustomerIdForPdf.value = null;
+        isCustomerSelectDialogOpen.value = true;
+        return;
+    }
+
+    // Si un seul client ou aucun, procéder directement
+    const customerId = validCustomersCount === 1 ? selectedCustomers.value[0].id : null;
+    executeGeneratePDF(customerId);
+};
+
+const executeGeneratePDF = (customerId: number | null = null) => {
     // Formater les exercices pour l'envoi au backend
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
+        custom_exercise_name: ex.custom_exercise_name ?? null,
         sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
             set_number: set.set_number || idx + 1,
             repetitions: set.repetitions ?? null,
             weight: set.weight ?? null,
             rest_time: set.rest_time ?? null,
             duration: set.duration ?? null,
+            use_duration: set.use_duration !== undefined ? set.use_duration : (ex.use_duration ?? false),
+            use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (ex.use_bodyweight ?? false),
             order: set.order ?? idx
         })) : undefined,
         repetitions: ex.repetitions ?? null,
@@ -1393,6 +1440,7 @@ const generatePDF = () => {
         session_date: form.session_date,
         notes: form.notes || '',
         exercises: exercisesData,
+        customer_id: customerId,
     };
 
     const getCsrfToken = () => {
@@ -1474,9 +1522,26 @@ const printPDF = () => {
         return;
     }
 
+    // Vérifier si plusieurs clients sont sélectionnés
+    const validCustomersCount = selectedCustomers.value.length;
+    
+    if (validCustomersCount > 1) {
+        pendingPdfAction.value = 'print';
+        selectedCustomerIdForPdf.value = null;
+        isCustomerSelectDialogOpen.value = true;
+        return;
+    }
+
+    // Si un seul client ou aucun, procéder directement
+    const customerId = validCustomersCount === 1 ? selectedCustomers.value[0].id : null;
+    executePrintPDF(customerId);
+};
+
+const executePrintPDF = (customerId: number | null = null) => {
     // Formater les exercices pour l'envoi au backend
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
+        custom_exercise_name: ex.custom_exercise_name ?? null,
         sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set: any, idx) => ({
             set_number: set.set_number || idx + 1,
             repetitions: set.repetitions ?? null,
@@ -1494,6 +1559,8 @@ const printPDF = () => {
         description: ex.description ?? null,
         sets_count: ex.sets_count ?? null,
         order: ex.order,
+        use_duration: ex.use_duration ?? false,
+        use_bodyweight: ex.use_bodyweight ?? false,
         // Champs Super Set
         block_id: ex.block_id ?? null,
         block_type: ex.block_type ?? null,
@@ -1505,6 +1572,7 @@ const printPDF = () => {
         session_date: form.session_date,
         notes: form.notes || '',
         exercises: exercisesData,
+        customer_id: customerId,
     };
 
     const getCsrfToken = () => {
@@ -1581,6 +1649,30 @@ const printPDF = () => {
         notifyError(error.message || 'Une erreur est survenue lors de l\'ouverture du PDF.', 'Erreur');
     });
 };
+
+const confirmCustomerSelectionForPdf = () => {
+    if (!selectedCustomerIdForPdf.value) {
+        notifyError('Veuillez sélectionner un client', 'Erreur');
+        return;
+    }
+    
+    if (pendingPdfAction.value === 'download') {
+        executeGeneratePDF(selectedCustomerIdForPdf.value);
+    } else if (pendingPdfAction.value === 'print') {
+        executePrintPDF(selectedCustomerIdForPdf.value);
+    }
+    
+    isCustomerSelectDialogOpen.value = false;
+    pendingPdfAction.value = null;
+    selectedCustomerIdForPdf.value = null;
+};
+
+watch(isCustomerSelectDialogOpen, (open) => {
+    if (!open) {
+        pendingPdfAction.value = null;
+        selectedCustomerIdForPdf.value = null;
+    }
+});
 
 const duplicateExercises = computed(() => {
     const exerciseIds = sessionExercises.value
@@ -2103,6 +2195,53 @@ watch(sessionExercises, () => {
             v-model:open="isUpgradeModalOpen"
             feature="La sélection de clients et l'enregistrement des séances sont réservés aux abonnés Pro. Passez à Pro pour débloquer toutes les fonctionnalités."
         />
+
+        <!-- Modal de sélection du client pour PDF/impression -->
+        <Dialog v-model:open="isCustomerSelectDialogOpen">
+            <DialogContent class="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Sélectionner un client</DialogTitle>
+                    <DialogDescription>
+                        Cette séance est associée à plusieurs clients. Veuillez sélectionner le client pour lequel générer le PDF{{ pendingPdfAction === 'print' ? ' et imprimer' : '' }}.
+                    </DialogDescription>
+                </DialogHeader>
+                
+                <div class="space-y-4 py-4">
+                    <div class="space-y-2">
+                        <Label for="customer-select-pdf-create">Client</Label>
+                        <select
+                            id="customer-select-pdf-create"
+                            v-model="selectedCustomerIdForPdf"
+                            class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                        >
+                            <option :value="null">Sélectionner un client</option>
+                            <option
+                                v-for="customer in selectedCustomers"
+                                :key="customer.id"
+                                :value="customer.id"
+                            >
+                                {{ customer.full_name || `${customer.first_name} ${customer.last_name}` }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        @click="isCustomerSelectDialogOpen = false"
+                    >
+                        Annuler
+                    </Button>
+                    <Button
+                        @click="confirmCustomerSelectionForPdf"
+                        :disabled="!selectedCustomerIdForPdf"
+                    >
+                        {{ pendingPdfAction === 'print' ? 'Imprimer' : 'Télécharger' }}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <!-- Layout Editor -->
         <div v-if="showLayoutEditor" class="fixed inset-0 z-50 bg-white dark:bg-neutral-900 overflow-hidden">

@@ -484,17 +484,17 @@ const addExerciseToSession = (exercise: Exercise, targetBlockId?: number) => {
             exercise: exercise,
             sets: [{
                 set_number: 1,
-                repetitions: null,
-                weight: null,
-                rest_time: null,
-                duration: null,
+                repetitions: 10,
+                weight: 10,
+                rest_time: '30s',
+                duration: '30',
                 order: 0
             }],
-            repetitions: null,
-            weight: null,
-            sets_count: null,
-            rest_time: null,
-            duration: null,
+            repetitions: 10,
+            weight: 10,
+            sets_count: 1,
+            rest_time: '30s',
+            duration: '30',
             description: '',
             order: sessionExercises.value.length,
             block_id: null,
@@ -578,18 +578,18 @@ const addExerciseToSetBlock = (exercise: Exercise, blockId: number) => {
         exercise: exercise,
         sets: [{
             set_number: 1,
-            repetitions: null,
-            weight: null,
-            rest_time: null,
-            duration: null,
+            repetitions: 10,
+            weight: 10,
+            rest_time: '30s',
+            duration: '30',
             order: 0
         }],
-        repetitions: null,
-        weight: null,
-        rest_time: null,
-        duration: null,
+        repetitions: 10,
+        weight: 10,
+        rest_time: '30s',
+        duration: '30',
         description: '',
-        sets_count: null,
+        sets_count: 1,
         block_id: blockId,
         block_type: 'set',
         position_in_block: positionInBlock,
@@ -687,8 +687,31 @@ const convertExerciseToSet = (exercise: SessionExercise) => {
     if (index === -1) return;
     
     const blockId = nextBlockId++;
+    const updatedSets = exercise.sets && exercise.sets.length > 0 
+        ? exercise.sets.map(set => ({
+            ...set,
+            repetitions: set.repetitions ?? 10,
+            weight: set.weight ?? 10,
+            rest_time: set.rest_time ?? '30s',
+            duration: set.duration ?? '30',
+        }))
+        : [{
+            set_number: 1,
+            repetitions: 10,
+            weight: 10,
+            rest_time: '30s',
+            duration: '30',
+            order: 0
+        }];
+    
     const updatedExercise: SessionExercise = {
         ...exercise,
+        sets: updatedSets,
+        repetitions: exercise.repetitions ?? 10,
+        weight: exercise.weight ?? 10,
+        rest_time: exercise.rest_time ?? '30s',
+        duration: exercise.duration ?? '30',
+        sets_count: exercise.sets_count ?? 1,
         block_id: blockId,
         block_type: 'set',
         position_in_block: 0,
@@ -844,6 +867,10 @@ const handleDropMain = (e: DragEvent) => {
     if (customData || (e.dataTransfer && e.dataTransfer.types.includes('application/json'))) {
         handleDropFromLibrary(e);
     }
+};
+
+const handleTouchEndOnDropZone = (e: TouchEvent) => {
+    e.preventDefault();
 };
 
 const handleRemoveExercise = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }) => {
@@ -1369,9 +1396,9 @@ const generatePDF = () => {
 };
 
 const executeGeneratePDF = (customerId: number | null = null) => {
-
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
+        custom_exercise_name: ex.custom_exercise_name ?? null,
         sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
             set_number: set.set_number || idx + 1,
             repetitions: set.repetitions ?? null,
@@ -1387,9 +1414,13 @@ const executeGeneratePDF = (customerId: number | null = null) => {
         rest_time: ex.rest_time ?? null,
         duration: ex.duration ?? null,
         description: ex.description ?? null,
+        sets_count: ex.sets_count ?? null,
         order: ex.order,
         use_duration: ex.use_duration ?? false,
         use_bodyweight: ex.use_bodyweight ?? false,
+        block_id: ex.block_id ?? null,
+        block_type: ex.block_type ?? null,
+        position_in_block: ex.position_in_block ?? null,
     }));
 
     const requestData: any = {
@@ -1498,9 +1529,9 @@ const printPDF = () => {
 };
 
 const executePrintPDF = (customerId: number | null = null) => {
-
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
+        custom_exercise_name: ex.custom_exercise_name ?? null,
         sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
             set_number: set.set_number || idx + 1,
             repetitions: set.repetitions ?? null,
@@ -1516,9 +1547,13 @@ const executePrintPDF = (customerId: number | null = null) => {
         rest_time: ex.rest_time ?? null,
         duration: ex.duration ?? null,
         description: ex.description ?? null,
+        sets_count: ex.sets_count ?? null,
         order: ex.order,
         use_duration: ex.use_duration ?? false,
         use_bodyweight: ex.use_bodyweight ?? false,
+        block_id: ex.block_id ?? null,
+        block_type: ex.block_type ?? null,
+        position_in_block: ex.position_in_block ?? null,
     }));
 
     const requestData: any = {
