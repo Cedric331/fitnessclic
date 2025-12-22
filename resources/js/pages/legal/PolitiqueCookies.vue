@@ -185,13 +185,13 @@ import { ArrowLeft } from 'lucide-vue-next';
                         9. Contact
                     </h2>
                     <p class="mb-4 text-gray-700 dark:text-gray-300">
-                        Pour toute question concernant notre utilisation des cookies, contactez-nous à : [À compléter]
+                        Pour toute question concernant notre utilisation des cookies, contactez-nous à : fitnessclic@gmail.com
                     </p>
                 </section>
 
                 <section class="mb-8">
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Dernière mise à jour : {{ new Date().toLocaleDateString('fr-FR') }}
+                        Dernière mise à jour : 22/12/2025
                     </p>
                 </section>
             </div>

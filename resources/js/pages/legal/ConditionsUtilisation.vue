@@ -59,8 +59,7 @@ import { ArrowLeft } from 'lucide-vue-next';
                         <li>Création de séances d'entraînement</li>
                         <li>Gestion d'une bibliothèque d'exercices personnalisée</li>
                         <li>Organisation des séances par client</li>
-                        <li>Suivi de la progression</li>
-                        <li>Export et impression des séances</li>
+                        <li>Export PDF et impression des séances</li>
                     </ul>
                 </section>
 
@@ -182,13 +181,13 @@ import { ArrowLeft } from 'lucide-vue-next';
                         11. Contact
                     </h2>
                     <p class="mb-4 text-gray-700 dark:text-gray-300">
-                        Pour toute question concernant ces CGU, contactez-nous à : [À compléter]
+                        Pour toute question concernant ces CGU, contactez-nous à : fitnessclic@gmail.com
                     </p>
                 </section>
 
                 <section class="mb-8">
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Dernière mise à jour : {{ new Date().toLocaleDateString('fr-FR') }}
+                        Dernière mise à jour : 22/12/2025
                     </p>
                 </section>
             </div>

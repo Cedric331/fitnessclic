@@ -30,10 +30,10 @@ import { ArrowLeft } from 'lucide-vue-next';
                     </p>
                     <ul class="mb-4 list-disc pl-6 text-gray-700 dark:text-gray-300">
                         <li>Dénomination sociale : FitnessClic</li>
-                        <li>Forme juridique : [À compléter]</li>
-                        <li>Siège social : [À compléter]</li>
-                        <li>SIRET : [À compléter]</li>
-                        <li>Directeur de publication : [À compléter]</li>
+                        <li>Forme juridique : Entreprise individuelle</li>
+                        <li>Siège social : 1, lieu-dit la rivière, 71990 Saint-Prix</li>
+                        <li>SIRET : 482 969 284</li>
+                        <li>Directeur de publication : Julien WIART</li>
                     </ul>
                 </section>
 
@@ -45,9 +45,9 @@ import { ArrowLeft } from 'lucide-vue-next';
                         Le site est hébergé par :
                     </p>
                     <ul class="mb-4 list-disc pl-6 text-gray-700 dark:text-gray-300">
-                        <li>Hébergeur : [À compléter]</li>
-                        <li>Adresse : [À compléter]</li>
-                        <li>Téléphone : [À compléter]</li>
+                        <li>Hébergeur : Groupe CELESTE - Nuxit</li>
+                        <li>Adresse : 20 rue Albert Einstein, 77420 Champs sur Marne</li>
+                        <li>Mail : commercial@nuxit.com</li>
                     </ul>
                 </section>
 
@@ -71,7 +71,7 @@ import { ArrowLeft } from 'lucide-vue-next';
                         Conformément à la loi « Informatique et Libertés » du 6 janvier 1978 modifiée et au Règlement Général sur la Protection des Données (RGPD), vous disposez d'un droit d'accès, de rectification, de suppression et d'opposition aux données personnelles vous concernant.
                     </p>
                     <p class="mb-4 text-gray-700 dark:text-gray-300">
-                        Pour exercer ces droits, vous pouvez nous contacter à l'adresse : [À compléter]
+                        Pour exercer ces droits, vous pouvez nous contacter à l'adresse : fitnessclic@gmail.com
                     </p>
                     <p class="mb-4 text-gray-700 dark:text-gray-300">
                         Pour plus d'informations, consultez notre
@@ -113,13 +113,13 @@ import { ArrowLeft } from 'lucide-vue-next';
                         7. Contact
                     </h2>
                     <p class="mb-4 text-gray-700 dark:text-gray-300">
-                        Pour toute question concernant les présentes mentions légales, vous pouvez nous contacter à l'adresse suivante : [À compléter]
+                        Pour toute question concernant les présentes mentions légales, vous pouvez nous contacter à l'adresse suivante : fitnessclic@gmail.com
                     </p>
                 </section>
 
                 <section class="mb-8">
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Dernière mise à jour : {{ new Date().toLocaleDateString('fr-FR') }}
+                        Dernière mise à jour : 22/12/2025
                     </p>
                 </section>
             </div>
