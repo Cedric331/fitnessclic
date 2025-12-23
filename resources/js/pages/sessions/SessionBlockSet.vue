@@ -263,11 +263,11 @@ const exerciseToRemoveName = computed(() => {
                 <div
                     v-for="(exercise, index) in props.block.exercises"
                     :key="`exercise-${exercise.id}-${exercise.use_duration}-${exercise.use_bodyweight}-${exercise.custom_exercise_name}`"
-                    class="relative flex items-center gap-2 p-2 bg-white border border-neutral-200 rounded-lg hover:shadow-md transition-shadow"
+                    class="relative flex items-center gap-2 p-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg hover:shadow-md transition-shadow"
                     @mousedown.stop
                     @click.stop
                 >
-                    <div class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-neutral-100">
+                    <div class="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-700">
                         <img
                             v-if="exercise.exercise?.image_url"
                             :src="exercise.exercise.image_url"
@@ -365,7 +365,7 @@ const exerciseToRemoveName = computed(() => {
                                     @mousedown.stop
                                     @click.stop
                                     placeholder="Nombre"
-                                    class="h-8 text-sm"
+                                    class="h-8 text-sm dark:text-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md"
                                     min="1"
                                 />
                             </div>
@@ -445,7 +445,7 @@ const exerciseToRemoveName = computed(() => {
                                     @mousedown.stop
                                     @click.stop
                                     placeholder="10"
-                                    class="h-8 text-sm"
+                                    class="h-8 text-sm dark:text-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md"
                                     min="0"
                                 />
                                 <Input
@@ -508,7 +508,7 @@ const exerciseToRemoveName = computed(() => {
                                     @mousedown.stop
                                     @click.stop
                                     placeholder="30s"
-                                    class="h-8 text-sm"
+                                    class="h-8 text-sm dark:text-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md"
                                 />
                             </div>
                             
@@ -588,7 +588,7 @@ const exerciseToRemoveName = computed(() => {
                                     @mousedown.stop
                                     @click.stop
                                     placeholder="20"
-                                    class="h-8 text-sm"
+                                    class="h-8 text-sm dark:text-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md"
                                     min="0"
                                 />
                                 <div
@@ -662,7 +662,7 @@ const exerciseToRemoveName = computed(() => {
                                     @mousedown.stop
                                     @click.stop
                                     placeholder="30s"
-                                    class="h-8 text-sm"
+                                    class="h-8 text-sm dark:text-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md"
                                 />
                             </div>
                         </div>
