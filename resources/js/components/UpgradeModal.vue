@@ -111,7 +111,7 @@ const proFeatures = [
                     @click="handleUpgrade"
                 >
                     <Star class="size-4" />
-                    Passer à FitnessClicPro
+                    FitnessClic Pro
                 </Button>
             </DialogFooter>
         </DialogContent>

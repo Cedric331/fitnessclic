@@ -219,7 +219,7 @@ const proFeatures = [
                                 size="lg"
                             >
                                 <Zap class="mr-2 h-5 w-5" />
-                                Passer à Pro maintenant
+                               FitnessClic Pro
                             </Button>
                             <Button
                                 v-else
