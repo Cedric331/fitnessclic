@@ -235,7 +235,7 @@ const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
 
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>(getDefaultViewMode());
 
-const DESKTOP_MIN_WIDTH = 1700; // 2xl breakpoint
+const DESKTOP_MIN_WIDTH = 1536; // 2xl breakpoint
 const isDesktopWidth = () => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`).matches;

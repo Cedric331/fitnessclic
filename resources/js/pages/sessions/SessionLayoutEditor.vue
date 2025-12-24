@@ -41,11 +41,18 @@ import {
     AlignCenter,
     AlignRight,
     Pencil,
-    Printer
+    Printer,
+    MoreVertical
 } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
 import Konva from 'konva';
 import type { Exercise, Category } from './types';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface ExerciseInstructionRow {
     series?: number;
@@ -3566,7 +3573,7 @@ const setupDragAndDrop = () => {
         <div class="flex flex-col flex-1 min-h-0 lg:flex-none lg:h-svh">
                     <!-- Toolbar -->
                     <div class="flex items-center justify-between p-4 border-b bg-white dark:bg-neutral-900">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-1">
                 <Button 
                     variant="ghost" 
                     size="sm" 
@@ -3575,10 +3582,39 @@ const setupDragAndDrop = () => {
                     <ArrowLeft class="h-4 w-4 mr-2" />
                     Retour
                 </Button>
-                <h2 class="text-lg font-semibold">Éditeur de mise en page</h2>
+                <h2 class="text-lg font-semibold max-[1780px]:hidden">Éditeur de mise en page</h2>
+                
+                <!-- Informations de la séance - Affichées sous 1780px en haut -->
+                <div class="hidden max-[1780px]:flex items-center gap-3 flex-1 ml-4">
+                    <!-- Session Name -->
+                    <div class="flex items-center gap-2">
+                        <Label class="text-xs whitespace-nowrap">Nom:</Label>
+                        <Input
+                            v-model="sessionName"
+                            placeholder="Nom de la séance..."
+                            class="w-48 h-8 text-sm"
+                        />
+                    </div>
+
+                    <!-- Customers -->
+                    <div class="flex items-center gap-2">
+                        <Label class="text-xs whitespace-nowrap flex items-center gap-1">
+                            <Users class="h-3 w-3" />
+                            Clients:
+                        </Label>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            @click="showCustomerModal = true"
+                            class="text-xs h-8"
+                        >
+                            {{ selectedCustomerIds.length > 0 ? `${selectedCustomerIds.length} sélectionné(s)` : 'Ajouter' }}
+                        </Button>
+                    </div>
+                </div>
             </div>
             <!-- Boutons de forme au centre -->
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 max-[1780px]:hidden">
                 <Button 
                     variant="outline" 
                     size="sm" 
@@ -3644,6 +3680,52 @@ const setupDragAndDrop = () => {
                 </Button>
             </div>
             
+            <!-- Dropdown pour les boutons d'action sous 1780px -->
+            <div class="hidden max-[1780px]:flex items-center gap-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                        <Button variant="outline" size="sm">
+                            <MoreVertical class="h-4 w-4 mr-2" />
+                            Outils
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem @click="undo" :disabled="!canUndo">
+                            <RotateCcw class="h-4 w-4 mr-2" />
+                            Annuler
+                        </DropdownMenuItem>
+                        <DropdownMenuItem @click="startDrawingShape('arrow')">
+                            <ArrowRight class="h-4 w-4 mr-2" />
+                            Flèche
+                        </DropdownMenuItem>
+                        <DropdownMenuItem @click="startDrawingShape('rect')">
+                            <Square class="h-4 w-4 mr-2" />
+                            Carré
+                        </DropdownMenuItem>
+                        <DropdownMenuItem @click="startDrawingShape('ellipse')">
+                            <Circle class="h-4 w-4 mr-2" />
+                            Rond
+                        </DropdownMenuItem>
+                        <DropdownMenuItem @click="startDrawingShape('line')">
+                            <Minus class="h-4 w-4 mr-2" />
+                            Ligne
+                        </DropdownMenuItem>
+                        <DropdownMenuItem @click="startDrawingShape('highlight')">
+                            <Highlighter class="h-4 w-4 mr-2" />
+                            Surligner
+                        </DropdownMenuItem>
+                        <DropdownMenuItem @click="addText">
+                            <Type class="h-4 w-4 mr-2" />
+                            Texte
+                        </DropdownMenuItem>
+                        <DropdownMenuItem @click="addTable">
+                            <Grid2x2 class="h-4 w-4 mr-2" />
+                            Consignes
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+            
             <!-- Boutons d'action à droite -->
             <div class="flex items-center gap-2">
                 <Button variant="outline" size="sm" @click="exportToPDF">
@@ -3663,8 +3745,8 @@ const setupDragAndDrop = () => {
 
         <!-- Main Content -->
         <div class="flex-1 flex overflow-hidden min-h-0">
-            <!-- Left Sidebar: Session Info -->
-            <div class="w-80 border-r bg-white dark:bg-neutral-900 flex flex-col overflow-hidden min-h-0">
+            <!-- Left Sidebar: Session Info - Caché sous 1780px -->
+            <div class="w-80 border-r bg-white dark:bg-neutral-900 flex flex-col overflow-hidden min-h-0 max-[1780px]:hidden">
                 <!-- Informations de la séance -->
                 <div class="p-4 border-b flex-1 overflow-y-auto">
                     <h3 class="font-semibold mb-4">Informations de la séance</h3>
