@@ -235,7 +235,7 @@ const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
 
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'list'>(getDefaultViewMode());
 
-const DESKTOP_MIN_WIDTH = 1024;
+const DESKTOP_MIN_WIDTH = 1700; // 2xl breakpoint
 const isDesktopWidth = () => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`).matches;
@@ -1798,9 +1798,9 @@ const handleLayoutSaved = async (sessionId: number) => {
             </div>
 
                     <!-- Contenu principal -->
-                    <div class="flex-1 flex flex-col xl:flex-row overflow-hidden gap-4">
+                    <div class="flex-1 flex flex-col 2xl:flex-row overflow-hidden gap-4">
                         <!-- Panneau gauche -->
-                        <div class="w-full xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
+                        <div class="w-full 2xl:w-3/5 overflow-y-auto rounded-xl min-h-0">
                             <div class="space-y-6">
                         <Card class="shadow-md">
                             <CardContent class="space-y-4">
@@ -1955,7 +1955,7 @@ const handleLayoutSaved = async (sessionId: number) => {
                 </div>
 
                     <!-- Panneau droit -->
-                    <div class="hidden xl:block w-full xl:w-2/5 overflow-y-auto rounded-xl min-h-0">
+                    <div class="hidden 2xl:block w-full 2xl:w-2/5 overflow-y-auto rounded-xl min-h-0">
                         <div>
                             <ExerciseLibrary
                                 :categories="categories"
@@ -2133,7 +2133,7 @@ const handleLayoutSaved = async (sessionId: number) => {
         <!-- Bouton flottant pour ouvrir/fermer la bibliothèque sur mobile -->
         <Button
             ref="libraryToggleButton"
-            class="fixed bottom-6 right-6 z-[60] pointer-events-auto h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg lg:hidden"
+            class="fixed bottom-6 right-6 z-[60] pointer-events-auto h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg 2xl:hidden"
             @click.stop="isLibraryOpen = !isLibraryOpen"
         >
             <X v-if="isLibraryOpen" class="h-6 w-6" />
@@ -2144,7 +2144,7 @@ const handleLayoutSaved = async (sessionId: number) => {
         <Sheet v-model:open="isLibraryOpen">
             <SheetContent 
                 side="right" 
-                class="w-full sm:max-w-lg p-0"
+                class="w-full sm:max-w-lg 2xl:hidden p-0"
                 @pointer-down-outside="(event: any) => {
                     const target = event.detail.originalEvent.target as HTMLElement;
                     if (libraryToggleButton.value && (target === libraryToggleButton.value || libraryToggleButton.value.contains(target))) {

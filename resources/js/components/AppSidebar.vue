@@ -95,7 +95,7 @@ const isCurrentRoute = computed(
     () => (url: NonNullable<InertiaLinkProps['href']>) => urlIsActive(url, page.url),
 );
 
-const DESKTOP_MIN_WIDTH = 1024;
+const DESKTOP_MIN_WIDTH = 1536; // 2xl breakpoint
 const DESKTOP_MEDIA_QUERY = `(min-width: ${DESKTOP_MIN_WIDTH}px)`;
 const isDesktopWidth = () => {
     if (typeof window === 'undefined') return false;
