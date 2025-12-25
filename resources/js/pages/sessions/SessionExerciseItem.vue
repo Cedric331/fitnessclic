@@ -543,7 +543,7 @@ const confirmRemove = () => {
                                         @update:model-value="(value: string) => updateSet(setIndex, 'rest_time', value)"
                                         @mousedown.stop
                                         @dragstart.stop
-                                        placeholder="30s"
+                                        placeholder="30"
                                         class="h-8 text-sm"
                                     />
                                 </div>

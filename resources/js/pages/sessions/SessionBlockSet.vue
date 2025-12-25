@@ -661,7 +661,7 @@ const exerciseToRemoveName = computed(() => {
                                     }"
                                     @mousedown.stop
                                     @click.stop
-                                    placeholder="30s"
+                                    placeholder="30"
                                     class="h-8 text-sm dark:text-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md"
                                 />
                             </div>
