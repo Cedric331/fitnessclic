@@ -470,7 +470,7 @@ const exerciseToRemoveName = computed(() => {
                                                     set_number: 1,
                                                     repetitions: exercise.repetitions ?? 10,
                                                     weight: exercise.weight ?? 20,
-                                                    rest_time: exercise.rest_time ?? '30s',
+                                                    rest_time: exercise.rest_time ?? '30',
                                                     duration: value || '30s',
                                                     order: 0
                                                 };
@@ -494,7 +494,7 @@ const exerciseToRemoveName = computed(() => {
                                                     set_number: 1,
                                                     repetitions: exercise.repetitions ?? 10,
                                                     weight: exercise.weight ?? 20,
-                                                    rest_time: exercise.rest_time ?? '30s',
+                                                    rest_time: exercise.rest_time ?? '30',
                                                     duration: value || '30s',
                                                     order: 0
                                                 };
