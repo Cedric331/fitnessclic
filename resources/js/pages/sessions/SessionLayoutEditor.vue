@@ -217,7 +217,44 @@ const textStrokeWidth = ref(1);
 const isSaving = ref(false);
 const showExerciseLibrary = ref(true);
 const exerciseSearchTerm = ref('');
-const selectedCategoryId = ref<number | null>(null);
+
+// Clé pour le cache du filtre de catégorie
+const CATEGORY_FILTER_CACHE_KEY = 'session-layout-editor-category-filter';
+
+// Restaurer le filtre de catégorie depuis le localStorage
+const getCachedCategoryFilter = (): number | null => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+    try {
+        const cached = localStorage.getItem(CATEGORY_FILTER_CACHE_KEY);
+        if (cached) {
+            const categoryId = parseInt(cached, 10);
+            return isNaN(categoryId) ? null : categoryId;
+        }
+    } catch {
+        // Ignorer les erreurs de localStorage
+    }
+    return null;
+};
+
+// Sauvegarder le filtre de catégorie dans le localStorage
+const saveCategoryFilterToCache = (categoryId: number | null) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+    try {
+        if (categoryId === null) {
+            localStorage.removeItem(CATEGORY_FILTER_CACHE_KEY);
+        } else {
+            localStorage.setItem(CATEGORY_FILTER_CACHE_KEY, categoryId.toString());
+        }
+    } catch {
+        // Ignorer les erreurs de localStorage
+    }
+};
+
+const selectedCategoryId = ref<number | null>(getCachedCategoryFilter());
 const draggingExerciseId = ref<number | null>(null);
 
 // Pagination des exercices
@@ -1921,13 +1958,30 @@ watch(exerciseSearchTerm, () => {
 });
 
 // Watcher pour la catégorie
-watch(selectedCategoryId, () => {
+watch(selectedCategoryId, (newCategoryId) => {
+    // Sauvegarder le filtre de catégorie dans le localStorage
+    saveCategoryFilterToCache(newCategoryId);
     reloadExercises();
 });
 
 // Charger les exercices au montage du composant
 onMounted(() => {
     loadExercises(1, true);
+    
+    // Recharger les exercices quand la page redevient visible (après modification d'un exercice)
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            // Recharger les exercices avec le filtre de catégorie actuel
+            reloadExercises();
+        }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Nettoyer l'événement au démontage
+    onUnmounted(() => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    });
 });
 
 const filteredExercises = computed(() => {

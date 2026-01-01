@@ -647,6 +647,14 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
             v-model:open="isExerciseDialogOpen"
             :exercise="editingExercise"
             :categories="props.categories"
+            @updated="() => {
+                // Recharger les exercices avec les filtres actuels après modification
+                applyFilters(true);
+            }"
+            @saved="() => {
+                // Recharger les exercices avec les filtres actuels après création
+                applyFilters(true);
+            }"
         />
 
         <ExerciseImportDialog

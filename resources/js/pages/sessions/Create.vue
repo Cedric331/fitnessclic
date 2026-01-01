@@ -223,7 +223,44 @@ const removeCustomer = (customerId: number) => {
 
 const searchTerm = ref(props.filters.search || '');
 const localSearchTerm = ref(props.filters.search || '');
-const selectedCategoryId = ref<number | null>(props.filters.category_id || null);
+
+// Clé pour le cache du filtre de catégorie dans Create.vue
+const CATEGORY_FILTER_CACHE_KEY_CREATE = 'session-create-category-filter';
+
+// Restaurer le filtre de catégorie depuis le localStorage
+const getCachedCategoryFilter = (): number | null => {
+    if (typeof window === 'undefined') {
+        return props.filters.category_id || null;
+    }
+    try {
+        const cached = localStorage.getItem(CATEGORY_FILTER_CACHE_KEY_CREATE);
+        if (cached) {
+            const categoryId = parseInt(cached, 10);
+            return isNaN(categoryId) ? (props.filters.category_id || null) : categoryId;
+        }
+    } catch {
+        // Ignorer les erreurs de localStorage
+    }
+    return props.filters.category_id || null;
+};
+
+// Sauvegarder le filtre de catégorie dans le localStorage
+const saveCategoryFilterToCache = (categoryId: number | null) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+    try {
+        if (categoryId === null) {
+            localStorage.removeItem(CATEGORY_FILTER_CACHE_KEY_CREATE);
+        } else {
+            localStorage.setItem(CATEGORY_FILTER_CACHE_KEY_CREATE, categoryId.toString());
+        }
+    } catch {
+        // Ignorer les erreurs de localStorage
+    }
+};
+
+const selectedCategoryId = ref<number | null>(getCachedCategoryFilter());
 const getDefaultViewMode = (): 'grid-2' | 'grid-4' | 'grid-6' | 'list' => {
     if (typeof window !== 'undefined') {
         if (window.innerWidth < 640) {
@@ -1260,6 +1297,11 @@ const filteredExercises = computed(() => {
 });
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+// Watcher pour sauvegarder le filtre de catégorie
+watch(selectedCategoryId, (newCategoryId) => {
+    saveCategoryFilterToCache(newCategoryId);
+});
+
 watch(localSearchTerm, (newValue) => {
     if (searchTimeout) {
         clearTimeout(searchTimeout);

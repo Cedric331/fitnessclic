@@ -34,6 +34,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
     'update:open': [value: boolean];
+    'saved': [];
+    'updated': [];
 }>();
 
 const isOpen = ref(props.open);
@@ -148,6 +150,7 @@ const handleSubmit = () => {
                 exerciseForm.reset();
                 imagePreview.value = null;
                 imageFile.value = null;
+                emit('updated');
             },
             onError: (errors) => {
                 // Afficher la première erreur via notification
@@ -169,6 +172,7 @@ const handleSubmit = () => {
                 exerciseForm.reset();
                 imagePreview.value = null;
                 imageFile.value = null;
+                emit('saved');
             },
             onError: (errors) => {
                 // Afficher la première erreur via notification
