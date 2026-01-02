@@ -538,7 +538,7 @@ const confirmRemove = () => {
                                 <div class="row-start-2 col-start-3 sm:row-start-1 sm:col-start-5">
                                     <Label class="text-xs text-neutral-500 mb-1 block">Repos</Label>
                                     <Input
-                                        type="text"
+                                        type="number"
                                         :model-value="set.rest_time"
                                         @update:model-value="(value: string) => updateSet(setIndex, 'rest_time', value)"
                                         @mousedown.stop
