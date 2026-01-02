@@ -78,6 +78,9 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
     // Convert the value to a number if it is a string for rest_time
     if (field === 'rest_time' && typeof value === 'string') {
         value = parseInt(value);
+
+        // Convert the value to a string
+        value = value.toString();
     }
 
     const hasSets = props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0;
