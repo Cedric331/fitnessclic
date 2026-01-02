@@ -74,7 +74,13 @@ const updateField = (field: keyof SessionExercise, value: any) => {
 
 const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
     let currentSets: ExerciseSet[];
-    
+    // nettois le champ pour garder les données en string mais que la valeur soit un nombre
+    if (field === 'rest_time' && typeof value === 'string') {
+        value = value.replace(/[^0-9]/g, '');
+        value = parseInt(value);
+        value = value.toString();
+    }
+
     const hasSets = props.sessionExercise.sets && Array.isArray(props.sessionExercise.sets) && props.sessionExercise.sets.length > 0;
     
     if (hasSets) {
@@ -538,9 +544,9 @@ const confirmRemove = () => {
                                 <div class="row-start-2 col-start-3 sm:row-start-1 sm:col-start-5">
                                     <Label class="text-xs text-neutral-500 mb-1 block">Repos</Label>
                                     <Input
-                                        type="number"
+                                        type="text"
                                         :model-value="set.rest_time"
-                                        @update:model-value="(value: string | number) => updateSet(setIndex, 'rest_time', value || null)"
+                                        @update:model-value="(value: string) => updateSet(setIndex, 'rest_time', value)"
                                         @mousedown.stop
                                         @dragstart.stop
                                         placeholder="30"
