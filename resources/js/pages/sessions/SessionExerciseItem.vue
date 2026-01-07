@@ -346,11 +346,11 @@ const confirmRemove = () => {
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- Commentaires/Consignes de réalisationn -->
                         <div class="mb-1.5">
                             <Textarea
-                                :model-value="sessionExercise.description || ''"
+                                :model-value="sessionExercise.exercise?.description"
                                 @update:model-value="(value: string) => updateField('description', value)"
                                 @mousedown.stop
                                 @dragstart.stop

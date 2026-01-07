@@ -46,7 +46,7 @@ import { Star } from 'lucide-vue-next';
 
                 <!-- Description améliorée -->
                 <p class="mb-12 text-xl leading-8 text-gray-600 sm:text-2xl dark:text-gray-300 max-w-3xl mx-auto">
-                    L'outil professionnel pour les <span class="font-semibold text-gray-900 dark:text-white">coachs sportifs</span> ou les <span class="font-semibold text-gray-900 dark:text-white">particuliers</span> qui souhaitent créer, organiser et partager leurs programmes d'entraînement de manière simple et efficace.
+                    L'outil professionnel pour les <span class="font-semibold text-gray-900 dark:text-white">coachs sportifs, kinésithérapeutes, éducateurs d'activités physique adaptés et salle de remise en forme</span> ou les <span class="font-semibold text-gray-900 dark:text-white">particuliers</span> qui souhaitent créer, organiser et partager leurs programmes d'entraînement de manière simple et efficace.
                 </p>
 
                 <!-- Statistiques -->
