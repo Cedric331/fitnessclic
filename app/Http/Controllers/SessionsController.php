@@ -32,10 +32,25 @@ class SessionsController extends Controller
     public function index(IndexSessionRequest $request): Response
     {
         $validated = $request->validated();
+        $userId = Auth::id();
+        $source = $validated['source'] ?? 'my_sessions';
 
-        $query = Session::where('user_id', Auth::id())
-            ->with(['customers', 'exercises.media', 'layout'])
+        $query = Session::query()
+            ->with(['customers', 'exercises.media', 'layout', 'user'])
             ->withCount('exercises');
+
+        // Filtrer selon la source
+        if ($source === 'public_sessions') {
+            // Séances publiques créées par des admins (exclure les siennes)
+            $query->where('is_public', true)
+                // ->where('user_id', '!=', $userId)
+                ->whereHas('user', function ($q) {
+                    $q->where('role', 'admin');
+                });
+        } else {
+            // Mes séances uniquement
+            $query->where('user_id', $userId);
+        }
 
         if (! empty($validated['search'])) {
             $search = $validated['search'];
@@ -45,7 +60,8 @@ class SessionsController extends Controller
             });
         }
 
-        if (! empty($validated['customer_id'])) {
+        // Le filtre par client ne s'applique qu'aux séances personnelles
+        if (! empty($validated['customer_id']) && $source === 'my_sessions') {
             $query->whereHas('customers', function ($q) use ($validated) {
                 $q->where('customers.id', $validated['customer_id']);
             });
@@ -60,7 +76,7 @@ class SessionsController extends Controller
 
         $sessions = $query->paginate(12);
 
-        $sessions->getCollection()->transform(function ($session) {
+        $sessions->getCollection()->transform(function ($session) use ($userId) {
             $session->customers = $session->customers->map(function ($customer) {
                 return [
                     'id' => $customer->id,
@@ -74,11 +90,15 @@ class SessionsController extends Controller
             });
             // Ajouter l'information sur la mise en page personnalisée
             $session->has_custom_layout = $session->layout !== null;
+            // Ajouter l'information sur la propriété
+            $session->is_owner = $session->user_id === $userId;
+            // Ajouter le nom du créateur pour les séances publiques
+            $session->creator_name = $session->user?->name;
 
             return $session;
         });
 
-        $customers = Customer::where('user_id', Auth::id())
+        $customers = Customer::where('user_id', $userId)
             ->where('is_active', true)
             ->orderBy('first_name')
             ->orderBy('last_name')
@@ -98,7 +118,7 @@ class SessionsController extends Controller
         return Inertia::render('sessions/Index', [
             'sessions' => $sessions,
             'customers' => $customers,
-            'filters' => $request->only(['search', 'customer_id', 'sort']),
+            'filters' => $request->only(['search', 'customer_id', 'sort', 'source']),
         ]);
     }
 
@@ -235,7 +255,12 @@ class SessionsController extends Controller
      */
     public function show(Session $session): Response
     {
-        if ($session->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
+        $user = Auth::user();
+        // Autoriser l'accès si :
+        // - L'utilisateur est propriétaire de la séance
+        // - L'utilisateur est admin
+        // - La séance est publique
+        if ($session->user_id !== Auth::id() && ! $user->isAdmin() && ! $session->is_public) {
             abort(403);
         }
 
@@ -896,11 +921,16 @@ class SessionsController extends Controller
                 ->firstOrFail();
         }
 
+
         // Si toujours pas de session, créer une nouvelle session temporaire
         if (! $session) {
+            $user = Auth::user();
+            $isPublic = $user->isAdmin();
+
             $session = Session::create([
                 'user_id' => Auth::id(),
                 'name' => $validated['session_name'] ?? 'Séance avec mise en page',
+                'is_public' => $isPublic,
                 'session_date' => now(),
             ]);
         }
@@ -1071,5 +1101,85 @@ class SessionsController extends Controller
             'layout' => $layout,
             'session' => $session,
         ]);
+    }
+
+    /**
+     * Duplicate a public session for the current user.
+     */
+    public function duplicate(Session $session): RedirectResponse
+    {
+        $user = Auth::user();
+
+        // Vérifier que l'utilisateur peut sauvegarder des séances
+        if (! $user->canSaveSessions()) {
+            return redirect()->route('sessions.index')
+                ->with('error', 'La duplication de séances est réservée aux abonnés Pro. Passez à Pro pour dupliquer des séances.');
+        }
+
+        // Vérifier que la séance est publique ou appartient à l'utilisateur
+        if (! $session->is_public && $session->user_id !== Auth::id()) {
+            return redirect()->route('sessions.index')
+                ->with('error', 'Vous ne pouvez pas dupliquer cette séance.');
+        }
+
+        // Créer la nouvelle séance
+        $newSession = Session::create([
+            'user_id' => Auth::id(),
+            'name' => $session->name.' (copie)',
+            'notes' => $session->notes,
+            'session_date' => now(),
+            'is_public' => false, // La copie n'est pas publique
+        ]);
+
+        // Dupliquer les exercices de la séance
+        $session->load(['sessionExercises.sets']);
+
+        foreach ($session->sessionExercises as $sessionExercise) {
+            $newSessionExercise = \App\Models\SessionExercise::create([
+                'session_id' => $newSession->id,
+                'exercise_id' => $sessionExercise->exercise_id,
+                'custom_exercise_name' => $sessionExercise->custom_exercise_name,
+                'repetitions' => $sessionExercise->repetitions,
+                'weight' => $sessionExercise->weight,
+                'rest_time' => $sessionExercise->rest_time,
+                'duration' => $sessionExercise->duration,
+                'use_duration' => $sessionExercise->use_duration ?? false,
+                'use_bodyweight' => $sessionExercise->use_bodyweight ?? false,
+                'additional_description' => $sessionExercise->additional_description,
+                'sets_count' => $sessionExercise->sets_count,
+                'order' => $sessionExercise->order,
+                'block_id' => $sessionExercise->block_id,
+                'block_type' => $sessionExercise->block_type,
+                'position_in_block' => $sessionExercise->position_in_block,
+            ]);
+
+            // Dupliquer les séries
+            foreach ($sessionExercise->sets as $set) {
+                \App\Models\SessionExerciseSet::create([
+                    'session_exercise_id' => $newSessionExercise->id,
+                    'set_number' => $set->set_number,
+                    'repetitions' => $set->repetitions,
+                    'weight' => $set->weight,
+                    'rest_time' => $set->rest_time,
+                    'duration' => $set->duration,
+                    'use_duration' => $set->use_duration ?? false,
+                    'use_bodyweight' => $set->use_bodyweight ?? false,
+                    'order' => $set->order,
+                ]);
+            }
+        }
+
+        // Dupliquer le layout si présent
+        if ($session->layout) {
+            SessionLayout::create([
+                'session_id' => $newSession->id,
+                'layout_data' => $session->layout->layout_data,
+                'canvas_width' => $session->layout->canvas_width,
+                'canvas_height' => $session->layout->canvas_height,
+            ]);
+        }
+
+        return redirect()->route('sessions.index')
+            ->with('success', 'Séance dupliquée avec succès !');
     }
 }

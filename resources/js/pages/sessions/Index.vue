@@ -55,16 +55,17 @@ watch(() => (page.props as any).flash, (flash) => {
     }
 }, { immediate: true });
 
-const breadcrumbs: BreadcrumbItem[] = [
+const breadcrumbs = computed((): BreadcrumbItem[] => [
     {
-        title: 'Mes Séances',
+        title: sourceFilter.value === 'public_sessions' ? 'Séances Publiques' : 'Mes Séances',
         href: '/sessions',
     },
-];
+]);
 
 const searchTerm = ref(props.filters.search || '');
 const sortOrder = ref<'newest' | 'oldest'>(props.filters.sort || 'newest');
 const customerFilter = ref<number | null>(props.filters.customer_id || null);
+const sourceFilter = ref<'my_sessions' | 'public_sessions'>(props.filters.source || 'my_sessions');
 
 const searchInput = ref<HTMLInputElement | null>(null);
 const isDeleteDialogOpen = ref(false);
@@ -111,6 +112,10 @@ watch(() => props.filters.customer_id, (value) => {
     customerFilter.value = value || null;
 });
 
+watch(() => props.filters.source, (value) => {
+    sourceFilter.value = value || 'my_sessions';
+});
+
 const applyFilters = () => {
     const query: Record<string, string | number> = {};
     
@@ -118,12 +123,17 @@ const applyFilters = () => {
         query.search = searchTerm.value.trim();
     }
     
-    if (customerFilter.value !== null) {
+    // Le filtre par client ne s'applique qu'aux séances personnelles
+    if (customerFilter.value !== null && sourceFilter.value === 'my_sessions') {
         query.customer_id = customerFilter.value;
     }
     
     if (sortOrder.value) {
         query.sort = sortOrder.value;
+    }
+    
+    if (sourceFilter.value) {
+        query.source = sourceFilter.value;
     }
     
     router.get('/sessions', query, {
@@ -169,6 +179,16 @@ const handleCustomerFilterChange = (event: Event) => {
     applyFilters();
 };
 
+const handleSourceFilterChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement;
+    sourceFilter.value = target.value as 'my_sessions' | 'public_sessions';
+    // Réinitialiser le filtre client quand on passe aux séances publiques
+    if (sourceFilter.value === 'public_sessions') {
+        customerFilter.value = null;
+    }
+    applyFilters();
+};
+
 const goToPage = (page: number) => {
     if (page < 1 || page > props.sessions.last_page) {
         return;
@@ -182,12 +202,16 @@ const goToPage = (page: number) => {
         query.search = searchTerm.value.trim();
     }
     
-    if (customerFilter.value !== null) {
+    if (customerFilter.value !== null && sourceFilter.value === 'my_sessions') {
         query.customer_id = customerFilter.value;
     }
     
     if (sortOrder.value) {
         query.sort = sortOrder.value;
+    }
+    
+    if (sourceFilter.value) {
+        query.source = sourceFilter.value;
     }
     
     router.get('/sessions', query, {
@@ -248,6 +272,23 @@ const handleSendEmail = (session: Session) => {
     isSendEmailDialogOpen.value = true;
 };
 
+const isDuplicating = ref(false);
+
+const handleDuplicate = (session: Session) => {
+    if (isDuplicating.value) {
+        return;
+    }
+    
+    isDuplicating.value = true;
+    
+    router.post(`/sessions/${session.id}/duplicate`, {}, {
+        preserveScroll: true,
+        onFinish: () => {
+            isDuplicating.value = false;
+        },
+    });
+};
+
 const confirmSendEmail = () => {
     if (!sessionToSend.value || !selectedCustomerId.value || isSendingEmail.value) {
         return;
@@ -306,7 +347,7 @@ watch(isDeleteDialogOpen, (open) => {
 </script>
 
 <template>
-    <Head title="Mes Séances">
+    <Head :title="sourceFilter === 'public_sessions' ? 'Séances Publiques' : 'Mes Séances'">
         <meta name="description" content="Consultez et gérez toutes vos séances d'entraînement enregistrées. Recherchez, filtrez par client et organisez vos programmes d'entraînement." />
     </Head>
 
@@ -316,10 +357,13 @@ watch(isDeleteDialogOpen, (open) => {
             <div class="flex items-start justify-between">
                 <div class="flex flex-col gap-0.5">
                     <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
-                        Mes Séances
+                        {{ sourceFilter === 'public_sessions' ? 'Séances Publiques' : 'Mes Séances' }}
                     </h1>
                     <p class="text-xs text-slate-600 dark:text-slate-400">
-                        Consultez vos séances d'entraînement enregistrées
+                        {{ sourceFilter === 'public_sessions' 
+                            ? 'Découvrez et dupliquez des séances partagées par les coachs' 
+                            : 'Consultez vos séances d\'entraînement enregistrées' 
+                        }}
                     </p>
                 </div>
             
@@ -336,6 +380,21 @@ watch(isDeleteDialogOpen, (open) => {
 
             <!-- Filters -->
             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-3">
+                <!-- Source Filter -->
+                <div class="flex flex-col gap-1.5 lg:w-48">
+                    <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+                        Source
+                    </label>
+                    <select
+                        :value="sourceFilter"
+                        class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                        @change="handleSourceFilterChange"
+                    >
+                        <option value="my_sessions">Mes séances</option>
+                        <option value="public_sessions">Séances publiques</option>
+                    </select>
+                </div>
+
                 <!-- Search Bar -->
                 <div class="flex flex-col gap-1.5 lg:flex-1">
                     <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
@@ -355,8 +414,8 @@ watch(isDeleteDialogOpen, (open) => {
                     </div>
                 </div>
 
-                <!-- Customer Filter -->
-                <div class="flex flex-col gap-1.5 lg:flex-1">
+                <!-- Customer Filter (only for my_sessions) -->
+                <div v-if="sourceFilter === 'my_sessions'" class="flex flex-col gap-1.5 lg:flex-1">
                     <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
                         Client
                     </label>
@@ -396,8 +455,10 @@ watch(isDeleteDialogOpen, (open) => {
             <SessionList
                 :sessions="sessions.data"
                 :has-search="!!props.filters.search"
+                :source="sourceFilter"
                 @delete="handleDelete"
                 @send-email="handleSendEmail"
+                @duplicate="handleDuplicate"
             />
 
             <!-- Pagination -->

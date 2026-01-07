@@ -81,6 +81,10 @@ export interface Session {
     notes?: string;
     exercises_count?: number;
     has_custom_layout?: boolean;
+    is_public?: boolean;
+    user_id?: number;
+    is_owner?: boolean;
+    creator_name?: string;
     layout?: {
         id?: number;
         layout_data?: any[];
@@ -148,6 +152,7 @@ export interface SessionsProps {
         search?: string | null;
         customer_id?: number | null;
         sort?: 'newest' | 'oldest';
+        source?: 'my_sessions' | 'public_sessions';
     };
 }
 

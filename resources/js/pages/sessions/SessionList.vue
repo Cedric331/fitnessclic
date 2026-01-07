@@ -6,6 +6,7 @@ import type { Session } from './types';
 interface Props {
     sessions: Session[];
     hasSearch: boolean;
+    source?: 'my_sessions' | 'public_sessions';
 }
 
 const props = defineProps<Props>();
@@ -13,6 +14,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
     delete: [session: Session];
     sendEmail: [session: Session];
+    duplicate: [session: Session];
 }>();
 
 const handleDelete = (session: Session) => {
@@ -21,6 +23,10 @@ const handleDelete = (session: Session) => {
 
 const handleSendEmail = (session: Session) => {
     emit('sendEmail', session);
+};
+
+const handleDuplicate = (session: Session) => {
+    emit('duplicate', session);
 };
 </script>
 
@@ -34,8 +40,10 @@ const handleSendEmail = (session: Session) => {
             v-for="session in sessions"
             :key="session.id"
             :session="session"
+            :source="props.source"
             @delete="handleDelete"
             @send-email="handleSendEmail"
+            @duplicate="handleDuplicate"
         />
     </div>
 

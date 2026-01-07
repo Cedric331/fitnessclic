@@ -3,12 +3,13 @@ import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Pencil, Trash2, Send, Layout } from 'lucide-vue-next';
+import { Eye, Pencil, Trash2, Send, Layout, Copy } from 'lucide-vue-next';
 import { router } from '@inertiajs/vue3';
 import type { Session } from './types';
 
 interface Props {
     session: Session;
+    source?: 'my_sessions' | 'public_sessions';
 }
 
 const props = defineProps<Props>();
@@ -16,7 +17,14 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
     delete: [session: Session];
     sendEmail: [session: Session];
+    duplicate: [session: Session];
 }>();
+
+// Détermine si l'utilisateur est propriétaire de la séance
+const isOwner = computed(() => props.session.is_owner !== false);
+
+// Détermine si c'est une séance publique (affichée dans les séances publiques)
+const isPublicSession = computed(() => props.source === 'public_sessions');
 
 const formatDate = (dateString?: string | null) => {
     if (!dateString) return '—';
@@ -48,6 +56,10 @@ const handleView = () => {
 
 const handleSendEmail = () => {
     emit('sendEmail', props.session);
+};
+
+const handleDuplicate = () => {
+    emit('duplicate', props.session);
 };
 
 // Obtenir les premières images d'exercices
@@ -100,8 +112,18 @@ const remainingExercises = computed(() => {
                     </div>
                 </div>
 
+                <!-- Créateur pour les séances publiques -->
+                <div v-if="isPublicSession && session.creator_name" class="flex items-center gap-1.5">
+                    <Badge
+                        variant="outline"
+                        class="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-700"
+                    >
+                        Créée par {{ session.creator_name }}
+                    </Badge>
+                </div>
+
                 <!-- Clients -->
-                <div v-if="session.customers && session.customers.length > 0" class="flex flex-wrap gap-1.5">
+                <div v-if="!isPublicSession && session.customers && session.customers.length > 0" class="flex flex-wrap gap-1.5">
                     <Badge
                         v-for="customer in session.customers"
                         :key="customer.id"
@@ -138,6 +160,7 @@ const remainingExercises = computed(() => {
 
                 <!-- Actions -->
                 <div class="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <!-- Voir - toujours disponible -->
                     <Button
                         variant="ghost"
                         size="icon"
@@ -147,7 +170,22 @@ const remainingExercises = computed(() => {
                     >
                         <Eye class="size-3.5 text-slate-600 dark:text-slate-400" />
                     </Button>
+                    
+                    <!-- Dupliquer - disponible pour les séances publiques -->
                     <Button
+                        v-if="isPublicSession"
+                        variant="ghost"
+                        size="icon"
+                        class="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
+                        :title="'Dupliquer vers mes séances'"
+                        @click="handleDuplicate"
+                    >
+                        <Copy class="size-3.5" />
+                    </Button>
+                    
+                    <!-- Envoyer par email - uniquement pour le propriétaire -->
+                    <Button
+                        v-if="isOwner && !isPublicSession"
                         variant="ghost"
                         size="icon"
                         class="h-7 w-7"
@@ -156,7 +194,10 @@ const remainingExercises = computed(() => {
                     >
                         <Send class="size-3.5 text-slate-600 dark:text-slate-400" />
                     </Button>
+                    
+                    <!-- Modifier - uniquement pour le propriétaire -->
                     <Button
+                        v-if="isOwner && !isPublicSession"
                         variant="ghost"
                         size="icon"
                         class="h-7 w-7"
@@ -165,7 +206,10 @@ const remainingExercises = computed(() => {
                     >
                         <Pencil class="size-3.5 text-slate-600 dark:text-slate-400" />
                     </Button>
+                    
+                    <!-- Supprimer - uniquement pour le propriétaire -->
                     <Button
+                        v-if="isOwner && !isPublicSession"
                         variant="ghost"
                         size="icon"
                         class="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"

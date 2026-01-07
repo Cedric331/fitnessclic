@@ -57,6 +57,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/sessions/{session}/pdf-preview', [SessionsController::class, 'showPdfPreview'])->name('sessions.pdf-preview');
     Route::post('/sessions/pdf-preview', [SessionsController::class, 'pdfPreview'])->name('sessions.pdf-preview-post');
     Route::post('/sessions/{session}/send-email', [SessionsController::class, 'sendEmail'])->name('sessions.send-email');
+    Route::post('/sessions/{session}/duplicate', [SessionsController::class, 'duplicate'])->name('sessions.duplicate');
 
     // Session layouts routes
     Route::post('/sessions/{session}/layout', [SessionsController::class, 'saveLayout'])->name('sessions.layout.save');
