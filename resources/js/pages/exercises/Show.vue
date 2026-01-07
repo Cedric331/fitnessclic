@@ -109,12 +109,12 @@ const isDeleteDialogOpen = ref(false);
 const isUpgradeModalOpen = ref(false);
 const canEdit = computed(() => {
     const user = (page.props as any).auth?.user;
-    return user && (user.id === props.exercise.user_id || user.role === 'admin');
+    return user && (user.id === props.exercise.user_id || user.isAdmin);
 });
 const canDelete = computed(() => {
     const user = (page.props as any).auth?.user;
     // Seul le créateur ou un admin peut supprimer
-    return user && (user.id === props.exercise.user_id || user.role === 'admin');
+    return user && (user.id === props.exercise.user_id || user.isAdmin);
 });
 const isPro = computed(() => {
     const user = (page.props as any).auth?.user;

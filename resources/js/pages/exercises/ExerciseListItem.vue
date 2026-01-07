@@ -20,12 +20,13 @@ const emit = defineEmits<{
 const page = usePage();
 const canEdit = computed(() => {
     const user = (page.props as any).auth?.user;
-    return user && (user.id === props.exercise.user_id || user.role === 'admin');
+    return user && (user.id === props.exercise.user_id || user.isAdmin);
 });
 
-const canDelete = computed(() => {
+const canDelete = computed(() => {    
     const user = (page.props as any).auth?.user;
-    return user && (user.id === props.exercise.user_id || user.role === 'admin');
+
+    return user && (user.id === props.exercise.user_id || user.isAdmin);
 });
 
 const formattedDate = computed(() => {
