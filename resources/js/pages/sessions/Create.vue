@@ -423,13 +423,13 @@ const updateMobileDevice = () => {
     }
 };
 
-const addExerciseToSession = (exercise: Exercise, targetBlockId?: number) => {
+const addExerciseToSession = (exercise: Exercise, targetBlockId?: number, isFromClick: boolean = true) => {
     if (!exercise || !exercise.id) {
         return;
     }
     
-    // Si on est sur mobile/tablette et qu'il y a des super sets, afficher la modal
-    if (isMobileDevice.value && availableSuperSets.value.length > 0 && targetBlockId === undefined) {
+    // Si il y a des super sets et que c'est un clic (pas un glisser-déposer), afficher la modal
+    if (isFromClick && availableSuperSets.value.length > 0 && targetBlockId === undefined) {
         pendingExercise.value = exercise;
         showSuperSetModal.value = true;
         return;
@@ -482,7 +482,7 @@ const confirmAddToSuperSet = (blockId: number) => {
 // Ajouter normalement (sans super set)
 const addToSessionNormal = () => {
     if (pendingExercise.value) {
-        addExerciseToSession(pendingExercise.value, undefined);
+        addExerciseToSession(pendingExercise.value, undefined, false);
         showSuperSetModal.value = false;
         pendingExercise.value = null;
         isLibraryOpen.value = false;
@@ -1265,7 +1265,7 @@ const handleDropFromLibrary = (event: DragEvent, targetBlockId?: number) => {
         } else if (isSetMode.value) {
             createNewSetBlock(exercise);
         } else {
-            addExerciseToSession(exercise);
+            addExerciseToSession(exercise, undefined, false);
         }
         // Fermer la bibliothèque après un drop réussi
         isLibraryOpen.value = false;
