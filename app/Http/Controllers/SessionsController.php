@@ -689,7 +689,7 @@ class SessionsController extends Controller
      */
     public function showPdfPreview(Session $session)
     {
-        if ($session->user_id !== Auth::id()) {
+        if ($session->user_id !== Auth::id() && !Auth::user()->isAdmin() && !$session->is_public) {
             abort(403);
         }
 
