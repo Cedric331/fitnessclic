@@ -3585,22 +3585,24 @@ const setupDragAndDrop = () => {
         e.stopPropagation();
         isDraggingExercise.value = false;
 
-        if (!stage) return;
+        if (!stage || !containerRef.value) return;
 
-        const pointerPos = stage.getPointerPosition();
-        if (!pointerPos) return;
+        // Calculer la position relative au conteneur du canvas
+        const rect = containerRef.value.getBoundingClientRect();
+        const dropX = e.clientX - rect.left;
+        const dropY = e.clientY - rect.top;
 
         try {
             const exerciseData = e.dataTransfer?.getData('application/json');
             if (exerciseData) {
                 const exercise: Exercise = JSON.parse(exerciseData);
-                await handleExerciseDrop(exercise, pointerPos.x, pointerPos.y);
+                await handleExerciseDrop(exercise, dropX, dropY);
             } else {
                 const exerciseId = e.dataTransfer?.getData('text/plain');
                 if (exerciseId) {
                     const exercise = allExercises.value.find(ex => ex.id === parseInt(exerciseId));
                     if (exercise) {
-                        await handleExerciseDrop(exercise, pointerPos.x, pointerPos.y);
+                        await handleExerciseDrop(exercise, dropX, dropY);
                     }
                 }
             }
