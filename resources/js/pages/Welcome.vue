@@ -22,11 +22,12 @@ withDefaults(
 
 // Configuration SEO
 const siteName = 'FitnessClic';
+const defaultSiteUrl = 'https://fitnessclic.com';
 const siteUrl = computed(() => {
     if (typeof window !== 'undefined') {
         return window.location.origin;
     }
-    return 'https://fitnessclic.com';
+    return defaultSiteUrl;
 });
 const currentUrl = computed(() => {
     if (typeof window !== 'undefined') {
@@ -37,7 +38,15 @@ const currentUrl = computed(() => {
 const title = 'FitnessClic - Créez vos séances d\'entraînement en quelques clics';
 const description = 'L\'outil professionnel pour les coachs sportifs et particuliers. Créez, organisez et partagez vos programmes d\'entraînement facilement. Bibliothèque d\'exercices, gestion de clients, export PDF. Compte gratuit disponible.';
 const keywords = 'coach sportif, séance d\'entraînement, programme fitness, création séance, gestion clients, bibliothèque exercices, fitness, sport, entraînement personnalisé';
-const imageUrl = computed(() => `${siteUrl.value}/assets/logo_fitnessclic.png`);
+// URL absolue de l'image pour Open Graph (Facebook nécessite une URL absolue)
+const imageUrl = computed(() => {
+    const baseUrl = siteUrl.value;
+    // S'assurer que l'URL est absolue
+    if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
+        return `${baseUrl}/assets/logo_fitnessclic.png`;
+    }
+    return `${defaultSiteUrl}/assets/logo_fitnessclic.png`;
+});
 const twitterHandle = '@FitnessClic';
 
 const structuredData = computed(() => ({
@@ -123,6 +132,8 @@ onUnmounted(() => {
         <meta property="og:title" :content="title" />
         <meta property="og:description" :content="description" />
         <meta property="og:image" :content="imageUrl" />
+        <meta property="og:image:secure_url" :content="imageUrl" />
+        <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" :content="`${siteName} - ${description}`" />
