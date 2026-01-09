@@ -38,6 +38,64 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        @php
+            // Détecter si c'est la page d'accueil (Welcome)
+            $isWelcomePage = false;
+            if (isset($page['component']) && $page['component'] === 'Welcome') {
+                $isWelcomePage = true;
+            } elseif (request()->route() && request()->route()->getName() === 'home') {
+                $isWelcomePage = true;
+            } elseif (request()->is('/')) {
+                $isWelcomePage = true;
+            }
+            
+            $siteName = 'FitnessClic';
+            $siteUrl = 'https://fitnessclic.com';
+            $currentUrl = request()->url();
+            // S'assurer que l'URL utilise HTTPS
+            $currentUrl = str_replace('http://', 'https://', $currentUrl);
+            $title = 'FitnessClic - Créez vos séances d\'entraînement en quelques clics';
+            $description = 'L\'outil professionnel pour les coachs sportifs et particuliers. Créez, organisez et partagez vos programmes d\'entraînement facilement. Bibliothèque d\'exercices, gestion de clients, export PDF. Compte gratuit disponible.';
+            $keywords = 'coach sportif, séance d\'entraînement, programme fitness, création séance, gestion clients, bibliothèque exercices, fitness, sport, entraînement personnalisé';
+            $imageUrl = $siteUrl . '/assets/logo_fitnessclic.png';
+            $twitterHandle = '@FitnessClic';
+        @endphp
+
+        @if($isWelcomePage)
+            {{-- Meta Tags de base pour SEO --}}
+            <meta name="description" content="{{ $description }}" />
+            <meta name="keywords" content="{{ $keywords }}" />
+            <meta name="author" content="{{ $siteName }}" />
+            <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+            <meta name="language" content="French" />
+            <meta name="revisit-after" content="7 days" />
+            <link rel="canonical" href="{{ $currentUrl }}" />
+
+            {{-- Open Graph / Facebook --}}
+            <meta property="og:type" content="website" />
+            <meta property="og:url" content="{{ $currentUrl }}" />
+            <meta property="og:title" content="{{ $title }}" />
+            <meta property="og:description" content="{{ $description }}" />
+            <meta property="og:image" content="{{ $imageUrl }}" />
+            <meta property="og:image:secure_url" content="{{ $imageUrl }}" />
+            <meta property="og:image:type" content="image/png" />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+            <meta property="og:image:alt" content="{{ $siteName }} - {{ $description }}" />
+            <meta property="og:site_name" content="{{ $siteName }}" />
+            <meta property="og:locale" content="fr_FR" />
+
+            {{-- Twitter Card --}}
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:url" content="{{ $currentUrl }}" />
+            <meta name="twitter:title" content="{{ $title }}" />
+            <meta name="twitter:description" content="{{ $description }}" />
+            <meta name="twitter:image" content="{{ $imageUrl }}" />
+            <meta name="twitter:image:alt" content="{{ $siteName }} - {{ $description }}" />
+            <meta name="twitter:creator" content="{{ $twitterHandle }}" />
+            <meta name="twitter:site" content="{{ $twitterHandle }}" />
+        @endif
+
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
