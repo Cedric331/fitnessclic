@@ -471,7 +471,7 @@ const exerciseToRemoveName = computed(() => {
                                                     repetitions: exercise.repetitions ?? 10,
                                                     weight: exercise.weight ?? 20,
                                                     rest_time: exercise.rest_time ?? '30',
-                                                    duration: value || '30s',
+                                                    duration: value || '30',
                                                     order: 0
                                                 };
                                                 updates.sets = [defaultSet];
@@ -495,7 +495,7 @@ const exerciseToRemoveName = computed(() => {
                                                     repetitions: exercise.repetitions ?? 10,
                                                     weight: exercise.weight ?? 20,
                                                     rest_time: exercise.rest_time ?? '30',
-                                                    duration: value || '30s',
+                                                    duration: value || '30',
                                                     order: 0
                                                 };
                                                 updates.sets = [defaultSet];
@@ -507,7 +507,7 @@ const exerciseToRemoveName = computed(() => {
                                     }"
                                     @mousedown.stop
                                     @click.stop
-                                    placeholder="30s"
+                                    placeholder="30"
                                     class="h-8 text-sm dark:text-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md"
                                 />
                             </div>

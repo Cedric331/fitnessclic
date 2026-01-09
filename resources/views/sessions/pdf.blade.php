@@ -521,7 +521,7 @@
                     }
                   }
 
-                  $setsCount    = $sets->count() > 0 ? $sets->count() : ($sessionExercise->sets_count ?? 1);
+                  $setsCount    = $sessionExercise->sets_count ?? ($sets->count() > 0 ? $sets->count() : 1);
                   // Récupérer use_duration et use_bodyweight - gérer différents formats (bool, int, string)
                   $useDurationRaw = $sessionExercise->use_duration ?? false;
                   $useBodyweightRaw = $sessionExercise->use_bodyweight ?? false;
@@ -639,9 +639,13 @@
                             $chargeText = $chargeLabel . ' : ' . $setCharge;
                           }
                         @endphp
+                        @php
+                          // Si une seule série dans le tableau, afficher le nombre total (setsCount)
+                          $displaySetsNumber = $sets->count() == 1 ? $setsCount : $setNumber;
+                        @endphp
                         <table class="series-table">
                           <tr>
-                            <td><strong>{{ $setNumber }}</strong> série{{ $setNumber > 1 ? 's' : '' }}</td>
+                            <td><strong>{{ $displaySetsNumber }}</strong> série{{ $displaySetsNumber > 1 ? 's' : '' }}</td>
                             <td>
                               @if($setUseDuration)
                                 Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}
@@ -747,7 +751,7 @@
                       }
                     }
 
-                    $setsCount    = $sets->count() > 0 ? $sets->count() : ($sessionExercise->sets_count ?? 1);
+                    $setsCount    = $sessionExercise->sets_count ?? ($sets->count() > 0 ? $sets->count() : 1);
                     // Récupérer use_duration et use_bodyweight - gérer différents formats (bool, int, string)
                     $useDurationRaw = $sessionExercise->use_duration ?? false;
                     $useBodyweightRaw = $sessionExercise->use_bodyweight ?? false;
@@ -856,10 +860,12 @@
                                   } else {
                                     $chargeText = $chargeLabel . ' : ' . $setCharge;
                                   }
+                                  // Si une seule série dans le tableau, afficher le nombre total (setsCount)
+                                  $displaySetsNumber = $sets->count() == 1 ? $setsCount : $setNumber;
                                 @endphp
                                 <table class="series-table">
                                   <tr>
-                                    <td><strong>{{ $setNumber }}</strong> série{{ $setNumber > 1 ? 's' : '' }}</td>
+                                    <td><strong>{{ $displaySetsNumber }}</strong> série{{ $displaySetsNumber > 1 ? 's' : '' }}</td>
                                     <td>
                                       @if($setUseDuration)
                                         Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}

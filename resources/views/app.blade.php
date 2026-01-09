@@ -54,7 +54,7 @@
             $currentUrl = request()->url();
             // S'assurer que l'URL utilise HTTPS
             $currentUrl = str_replace('http://', 'https://', $currentUrl);
-            $title = 'FitnessClic - Créez vos séances d\'entraînement en quelques clics';
+            $title = 'FitnessClic - Logiciel pour coachs sportifs, créer vos programmes rapidement';
             $description = 'L\'outil professionnel pour les coachs sportifs et particuliers. Créez, organisez et partagez vos programmes d\'entraînement facilement. Bibliothèque d\'exercices, gestion de clients, export PDF. Compte gratuit disponible.';
             $keywords = 'coach sportif, séance d\'entraînement, programme fitness, création séance, gestion clients, bibliothèque exercices, fitness, sport, entraînement personnalisé';
             $imageUrl = $siteUrl . '/assets/logo_fitnessclic.png';

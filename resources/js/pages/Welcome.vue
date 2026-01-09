@@ -40,7 +40,7 @@ const currentUrl = computed(() => {
     }
     return defaultSiteUrl;
 });
-const title = 'FitnessClic - Créez vos séances d\'entraînement en quelques clics';
+const title = 'FitnessClic - Logiciel pour coachs sportifs, créer vos programmes rapidement';
 const description = 'L\'outil professionnel pour les coachs sportifs et particuliers. Créez, organisez et partagez vos programmes d\'entraînement facilement. Bibliothèque d\'exercices, gestion de clients, export PDF. Compte gratuit disponible.';
 const keywords = 'coach sportif, séance d\'entraînement, programme fitness, création séance, gestion clients, bibliothèque exercices, fitness, sport, entraînement personnalisé';
 // URL absolue de l'image pour Open Graph (Facebook nécessite une URL absolue en HTTPS)

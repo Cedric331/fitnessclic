@@ -38,9 +38,9 @@ import { Star } from 'lucide-vue-next';
 
                 <!-- Titre principal avec animation -->
                 <h1 class="mb-8 text-5xl font-extrabold tracking-tight text-gray-900 sm:text-6xl md:text-7xl dark:text-white">
-                    <span class="block">Créez vos séances</span>
+                    <span class="block">Logiciel pour coachs sportifs</span>
                     <span class="block bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent animate-gradient dark:from-purple-400 dark:via-pink-400 dark:to-blue-400">
-                        en quelques clics
+                        créer vos programmes rapidement
                     </span>
                 </h1>
 

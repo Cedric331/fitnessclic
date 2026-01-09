@@ -66,7 +66,7 @@ onMounted(() => {
             <Link :href="dashboard.url()" class="flex items-center gap-3 transition-opacity hover:opacity-80" aria-label="FitnessClic - Accueil">
                 <img 
                     src="/assets/logo_fitnessclic.png" 
-                    alt="FitnessClic - Créez vos séances d'entraînement en quelques clics" 
+                    alt="FitnessClic - Logiciel pour coachs sportifs, créer vos programmes rapidement" 
                     width="40"
                     height="40"
                     class="h-10 w-auto"

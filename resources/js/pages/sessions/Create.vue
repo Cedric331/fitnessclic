@@ -595,51 +595,17 @@ const groupExercisesIntoBlocks = () => {
 };
 
 const handleRemoveExercise = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }) => {
-    console.log('=== handleRemoveExercise START ===');
-    console.log('Item reçu:', {
-        type: item?.type,
-        exerciseId: item?.exercise?.id,
-        exerciseOrder: item?.exercise?.order,
-        exerciseTitle: item?.exercise?.exercise?.title
-    });
-    console.log('État sessionExercises AVANT recherche:', 
-        sessionExercises.value.map((e, i) => ({
-            index: i,
-            id: e.id,
-            order: e.order,
-            title: e.exercise?.title
-        }))
-    );
-    
     if (!item?.exercise?.id) {
-        console.log('Pas d\'ID exercice, retour');
         return;
     }
     const index = sessionExercises.value.findIndex((e: SessionExercise) => e?.id === item.exercise!.id);
-    console.log('Index trouvé:', index, 'pour ID:', item.exercise!.id);
-    
     if (index !== -1) {
         removeExerciseFromSession(index);
     }
-    console.log('=== handleRemoveExercise END ===');
 };
 
 const handleRemoveExerciseFromBlock = (item: { type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock }, exerciseId: number) => {
-    console.log('Create - handleRemoveExerciseFromBlock:', {
-        exerciseId,
-        item,
-        blockId: item?.block?.id,
-        allSessionExercises: sessionExercises.value.map((e, i) => ({ 
-            index: i, 
-            id: e.id, 
-            block_id: e.block_id, 
-            position_in_block: e.position_in_block,
-            title: e.exercise?.title 
-        }))
-    });
-    
     if (!exerciseId) {
-        console.log('Create - handleRemoveExerciseFromBlock: No exerciseId provided');
         return;
     }
     
@@ -664,12 +630,6 @@ const handleRemoveExerciseFromBlock = (item: { type: 'standard' | 'set', exercis
     }
         
     if (exerciseIndex !== -1) {
-        const exerciseToRemove = sessionExercises.value[exerciseIndex];
-        console.log('Create - handleRemoveExerciseFromBlock: Removing exercise:', {
-            index: exerciseIndex,
-            id: exerciseToRemove.id,
-            title: exerciseToRemove.exercise?.title
-        });
         removeExerciseFromSession(exerciseIndex);
     }
 };
@@ -691,44 +651,18 @@ const handleRemoveBlock = (item: { type: 'standard' | 'set', exercise?: SessionE
 
 // Supprimer un exercice de la séance
 const removeExerciseFromSession = (index: number) => {
-    console.log('=== removeExerciseFromSession START ===');
-    console.log('Index à supprimer:', index);
-    console.log('État AVANT suppression:', 
-        sessionExercises.value.map((e, i) => ({
-            index: i,
-            id: e.id,
-            order: e.order,
-            title: e.exercise?.title
-        }))
-    );
-    
     if (index < 0 || index >= sessionExercises.value.length) {
-        console.log('Index invalide, retour');
         return;
     }
     const exercise = sessionExercises.value[index];
     if (!exercise) {
-        console.log('Exercice non trouvé, retour');
         return;
     }
     
     // Sauvegarder l'ordre de l'exercice supprimé avant la suppression
     const removedOrder = exercise.order;
-    console.log('Exercice à supprimer:', {
-        id: exercise.id,
-        order: removedOrder,
-        title: exercise.exercise?.title
-    });
     
     sessionExercises.value.splice(index, 1);
-    console.log('État APRÈS splice:', 
-        sessionExercises.value.map((e, i) => ({
-            index: i,
-            id: e.id,
-            order: e.order,
-            title: e.exercise?.title
-        }))
-    );
     
     if (exercise?.block_id && exercise?.block_type === 'set') {
         const blockExercises = sessionExercises.value.filter(
@@ -740,23 +674,11 @@ const removeExerciseFromSession = (index: number) => {
     }
     
     // Préserver l'ordre relatif : décrémenter seulement les ordres supérieurs à celui supprimé
-    console.log('Décrémentation des ordres > ', removedOrder);
     sessionExercises.value.forEach((ex) => {
         if (ex.order > removedOrder) {
-            console.log(`  - ${ex.exercise?.title}: order ${ex.order} -> ${ex.order - 1}`);
             ex.order--;
         }
     });
-    
-    console.log('État FINAL:', 
-        sessionExercises.value.map((e, i) => ({
-            index: i,
-            id: e.id,
-            order: e.order,
-            title: e.exercise?.title
-        }))
-    );
-    console.log('=== removeExerciseFromSession END ===');
     
     form.exercises = [...sessionExercises.value];
     saveExercisesToStorage();
@@ -865,6 +787,42 @@ const updateSessionExercise = (index: number, updates: Partial<SessionExercise>)
         for (const key in updates) {
             (exercise as any)[key] = (updates as any)[key];
         }
+        
+        // Si sets_count change, synchroniser le tableau sets pour les Super Sets
+        if (updates.sets_count !== undefined && exercise.block_id && exercise.block_type === 'set') {
+            const newSetsCount = updates.sets_count || 1;
+            const currentSets = exercise.sets || [];
+            const currentSetsCount = currentSets.length;
+            
+            if (newSetsCount !== currentSetsCount) {
+                // Obtenir les valeurs de la première série comme modèle
+                const templateSet = currentSets[0] || {
+                    set_number: 1,
+                    repetitions: exercise.repetitions ?? 10,
+                    weight: exercise.weight ?? 10,
+                    rest_time: exercise.rest_time ?? '30',
+                    duration: exercise.duration ?? '30',
+                    order: 0
+                };
+                
+                // Créer le nouveau tableau de séries
+                const newSets: ExerciseSet[] = [];
+                for (let i = 0; i < newSetsCount; i++) {
+                    newSets.push({
+                        set_number: i + 1,
+                        repetitions: templateSet.repetitions,
+                        weight: templateSet.weight,
+                        rest_time: templateSet.rest_time,
+                        duration: templateSet.duration,
+                        use_duration: exercise.use_duration ?? false,
+                        use_bodyweight: exercise.use_bodyweight ?? false,
+                        order: i
+                    });
+                }
+                exercise.sets = newSets;
+            }
+        }
+        
         // Forcer la réactivité en créant une nouvelle référence du tableau
         sessionExercises.value = [...sessionExercises.value];
     }
@@ -986,20 +944,8 @@ const reorderItems = (fromItem: { type: 'standard' | 'set', exercise?: SessionEx
 };
 
 // Réorganiser les exercices après un drag (appelé par l'événement @end de VueDraggable)
-const onDragEnd = (event: any) => {
-    console.log('=== onDragEnd START ===');
-    
+const onDragEnd = () => {
     // draggableItems a déjà été mis à jour par VueDraggable via v-model
-    console.log('draggableItems après drag:', 
-        draggableItems.value.map((item, i) => ({
-            index: i,
-            type: item.type,
-            key: item.key,
-            exerciseTitle: item.exercise?.exercise?.title,
-            blockId: item.block?.id
-        }))
-    );
-    
     // Mettre à jour les ordres dans sessionExercises basé sur draggableItems
     draggableItems.value.forEach((item, newOrder) => {
         if (item.type === 'standard' && item.exercise) {
@@ -1022,23 +968,12 @@ const onDragEnd = (event: any) => {
         }
     });
     
-    console.log('État sessionExercises APRÈS mise à jour des ordres:', 
-        sessionExercises.value.map((e, i) => ({
-            index: i,
-            id: e.id,
-            order: e.order,
-            title: e.exercise?.title
-        }))
-    );
-    
     // Forcer la réactivité en créant une nouvelle référence
     sessionExercises.value = [...sessionExercises.value];
     
     // Réinitialiser le flag de drag APRÈS la mise à jour
     // Cela permettra au watcher de resynchroniser draggableItems si nécessaire
     isDragging.value = false;
-    
-    console.log('=== onDragEnd END ===');
     
     form.exercises = [...sessionExercises.value];
     saveExercisesToStorage();
@@ -1519,25 +1454,26 @@ const generatePDF = () => {
 
 const executeGeneratePDF = (customerId: number | null = null) => {
     // Formater les exercices pour l'envoi au backend
+    // On envoie les séries telles quelles + sets_count pour le nombre total
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
         custom_exercise_name: ex.custom_exercise_name ?? null,
         sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
-            set_number: set.set_number || idx + 1,
-            repetitions: set.repetitions ?? null,
-            weight: set.weight ?? null,
-            rest_time: set.rest_time ?? null,
-            duration: set.duration ?? null,
-            use_duration: set.use_duration !== undefined ? set.use_duration : (ex.use_duration ?? false),
-            use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (ex.use_bodyweight ?? false),
-            order: set.order ?? idx
+            set_number: set.set_number ?? idx + 1,
+            repetitions: set.repetitions ?? ex.repetitions ?? null,
+            weight: set.weight ?? ex.weight ?? null,
+            rest_time: set.rest_time ?? ex.rest_time ?? null,
+            duration: set.duration ?? ex.duration ?? null,
+            use_duration: set.use_duration ?? ex.use_duration ?? false,
+            use_bodyweight: set.use_bodyweight ?? ex.use_bodyweight ?? false,
+            order: idx
         })) : undefined,
         repetitions: ex.repetitions ?? null,
         weight: ex.weight ?? null,
         rest_time: ex.rest_time ?? null,
         duration: ex.duration ?? null,
         description: ex.description ?? null,
-        sets_count: ex.sets_count ?? null,
+        sets_count: ex.sets_count ?? 1, // Nombre total de séries
         order: ex.order,
         use_duration: ex.use_duration ?? false,
         use_bodyweight: ex.use_bodyweight ?? false,
@@ -1650,29 +1586,29 @@ const printPDF = () => {
 
 const executePrintPDF = (customerId: number | null = null) => {
     // Formater les exercices pour l'envoi au backend
+    // On envoie les séries telles quelles + sets_count pour le nombre total
     const exercisesData = sessionExercises.value.map(ex => ({
         exercise_id: ex.exercise_id,
         custom_exercise_name: ex.custom_exercise_name ?? null,
-        sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set: any, idx) => ({
-            set_number: set.set_number || idx + 1,
-            repetitions: set.repetitions ?? null,
-            weight: set.weight ?? null,
-            use_duration: set.use_duration !== undefined ? set.use_duration : (ex.use_duration ?? false),
-            use_bodyweight: set.use_bodyweight !== undefined ? set.use_bodyweight : (ex.use_bodyweight ?? false),
-            rest_time: set.rest_time ?? null,
-            duration: set.duration ?? null,
-            order: set.order ?? idx
-        } as ExerciseSet)) : undefined,
+        sets: ex.sets && ex.sets.length > 0 ? ex.sets.map((set, idx) => ({
+            set_number: set.set_number ?? idx + 1,
+            repetitions: set.repetitions ?? ex.repetitions ?? null,
+            weight: set.weight ?? ex.weight ?? null,
+            rest_time: set.rest_time ?? ex.rest_time ?? null,
+            duration: set.duration ?? ex.duration ?? null,
+            use_duration: set.use_duration ?? ex.use_duration ?? false,
+            use_bodyweight: set.use_bodyweight ?? ex.use_bodyweight ?? false,
+            order: idx
+        })) : undefined,
         repetitions: ex.repetitions ?? null,
         weight: ex.weight ?? null,
         rest_time: ex.rest_time ?? null,
         duration: ex.duration ?? null,
         description: ex.description ?? null,
-        sets_count: ex.sets_count ?? null,
+        sets_count: ex.sets_count ?? 1, // Nombre total de séries
         order: ex.order,
         use_duration: ex.use_duration ?? false,
         use_bodyweight: ex.use_bodyweight ?? false,
-        // Champs Super Set
         block_id: ex.block_id ?? null,
         block_type: ex.block_type ?? null,
         position_in_block: ex.position_in_block ?? null,

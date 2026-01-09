@@ -27,9 +27,6 @@ import { Zap, BookOpen, Users } from 'lucide-vue-next';
                     <p class="relative text-gray-600 leading-relaxed dark:text-gray-300">
                         Composez vos séances en quelques clics grâce à notre interface intuitive par glisser-déposer. Aucune compétence technique requise.
                     </p>
-                    <div class="relative mt-6 text-sm font-semibold text-blue-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:text-blue-400">
-                        En savoir plus →
-                    </div>
                 </div>
 
                 <!-- Carte 2: Bibliothèque Personnalisée -->
@@ -39,14 +36,11 @@ import { Zap, BookOpen, Users } from 'lucide-vue-next';
                         <BookOpen class="h-7 w-7 text-white" />
                     </div>
                     <h3 class="relative mb-4 text-2xl font-bold text-gray-900 dark:text-white">
-                        Bibliothèque Personnalisée
+                        Bibliothèque Personnalisée + de 1500 illustrations
                     </h3>
                     <p class="relative text-gray-600 leading-relaxed dark:text-gray-300">
                         Créez et gérez votre propre bibliothèque d'exercices avec images, descriptions détaillées et vidéos explicatives.
                     </p>
-                    <div class="relative mt-6 text-sm font-semibold text-purple-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:text-purple-400">
-                        En savoir plus →
-                    </div>
                 </div>
 
                 <!-- Carte 3: Gestion Clients -->
@@ -61,9 +55,6 @@ import { Zap, BookOpen, Users } from 'lucide-vue-next';
                     <p class="relative text-gray-600 leading-relaxed dark:text-gray-300">
                         Organisez les séances par client et suivez leur progression facilement avec des statistiques détaillées.
                     </p>
-                    <div class="relative mt-6 text-sm font-semibold text-pink-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:text-pink-400">
-                        En savoir plus →
-                    </div>
                 </div>
             </div>
         </div>
