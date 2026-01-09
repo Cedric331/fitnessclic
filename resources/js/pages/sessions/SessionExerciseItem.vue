@@ -489,9 +489,9 @@ const confirmRemove = () => {
                                     />
                                     <Input
                                         v-else
-                                        type="text"
+                                        type="number"
                                         :model-value="set.duration"
-                                        @update:model-value="(value: string) => updateSet(setIndex, 'duration', value || null)"
+                                        @update:model-value="(value: string | number) => updateSet(setIndex, 'duration', value || null)"
                                         @mousedown.stop
                                         @dragstart.stop
                                         placeholder="30"

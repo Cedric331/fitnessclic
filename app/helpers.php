@@ -12,6 +12,8 @@ if (! function_exists('formatDuration')) {
         if (empty($duration) || $duration === '-') {
             return '-';
         }
+        // Convertir en string pour les comparaisons
+        $duration = (string) $duration;
         if (strpos($duration, 'minute') !== false || strpos($duration, 'seconde') !== false) {
             return $duration;
         }
@@ -59,6 +61,8 @@ if (! function_exists('formatRestTime')) {
         if (empty($restTime) || $restTime === '-') {
             return '-';
         }
+        // Convertir en string pour les comparaisons
+        $restTime = (string) $restTime;
         if (strpos($restTime, 'seconde') !== false || strpos($restTime, 'minute') !== false) {
             return $restTime;
         }
@@ -84,6 +88,8 @@ if (! function_exists('extractRestSeconds')) {
         if (empty($restTime) || $restTime === '-') {
             return '-';
         }
+        // Convertir en string pour les comparaisons
+        $restTime = (string) $restTime;
         // Extraire le nombre de secondes depuis le format "X seconde(s)" ou "X secondes"
         if (preg_match('/(\d+)\s*seconde/i', $restTime, $m)) {
             return intval($m[1]);
@@ -117,6 +123,8 @@ if (! function_exists('extractDurationSeconds')) {
         if (empty($duration) || $duration === '-') {
             return '-';
         }
+        // Convertir en string pour les comparaisons
+        $duration = (string) $duration;
         // Si c'est déjà au format "X seconde(s)" ou "X secondes", extraire le nombre
         if (preg_match('/(\d+)\s*seconde/i', $duration, $m)) {
             return intval($m[1]);

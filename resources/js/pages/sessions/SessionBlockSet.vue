@@ -450,7 +450,7 @@ const exerciseToRemoveName = computed(() => {
                                 />
                                 <Input
                                     v-else
-                                    type="text"
+                                    type="number"
                                     :model-value="editingDurationValues[exercise.id || index] ?? (exercise.sets?.[0]?.duration ?? exercise.duration ?? '')"
                                     @update:model-value="(value: string | number) => {
                                         const exerciseId = exercise.id || index;
