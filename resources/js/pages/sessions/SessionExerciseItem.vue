@@ -459,7 +459,7 @@ const confirmRemove = () => {
                                 <div class="row-start-1 col-start-3 sm:row-start-1 sm:col-start-3">
                                     <div class="flex items-center justify-between mb-1">
                                         <Label class="text-xs text-neutral-500">
-                                            {{ (set.use_duration !== undefined ? set.use_duration : (props.sessionExercise.use_duration ?? false)) ? 'Durée (seconde)' : 'Rep' }}
+                                            {{ (set.use_duration !== undefined ? set.use_duration : (props.sessionExercise.use_duration ?? false)) ? 'Durée (s)' : 'Rep' }}
                                         </Label>
                                         <button
                                             type="button"
@@ -494,7 +494,7 @@ const confirmRemove = () => {
                                         @update:model-value="(value: string) => updateSet(setIndex, 'duration', value || null)"
                                         @mousedown.stop
                                         @dragstart.stop
-                                        placeholder="30s"
+                                        placeholder="30"
                                         class="h-8 text-sm"
                                     />
                                 </div>

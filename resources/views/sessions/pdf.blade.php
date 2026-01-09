@@ -664,7 +664,7 @@
                       @php
                         if ($useDuration) {
                           $durationSeconds = extractDurationSeconds($durationOrReps);
-                          $repsLabel = 'Durée (secondes)';
+                          $repsLabel = 'Durée (sec)';
                           $repsValue = $durationSeconds;
                           $repsDisplayLabel = 'seconde';
                         } else {
@@ -882,7 +882,7 @@
                               @php
                                 if ($useDuration) {
                                   $durationSeconds = extractDurationSeconds($durationOrReps);
-                                  $repsLabel = 'Durée (secondes)';
+                                  $repsLabel = 'Durée (sec)';
                                   $repsValue = $durationSeconds;
                                   $repsDisplayLabel = 'seconde';
                                 } else {

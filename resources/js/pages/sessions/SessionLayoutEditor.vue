@@ -4539,8 +4539,8 @@ const setupDragAndDrop = () => {
 
         <!-- Exercise Image Modal -->
         <div v-if="showExerciseImageModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <Card class="w-full max-w-md">
-                <CardContent class="p-6 space-y-4">
+            <Card class="w-full max-w-lg max-h-[75vh] flex flex-col">
+                <CardContent class="p-6 space-y-4 flex-1 overflow-hidden flex flex-col">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-semibold">Éditer l'exercice</h3>
                         <Button variant="ghost" size="sm" @click="showExerciseImageModal = false">
@@ -4548,7 +4548,7 @@ const setupDragAndDrop = () => {
                         </Button>
                     </div>
 
-                    <div class="space-y-4">
+    <div class="flex-1 overflow-y-auto space-y-4 pr-2">
                         <!-- Nom de l'exercice -->
                         <div class="space-y-2">
                             <Label>Nom de l'exercice</Label>
@@ -4841,7 +4841,7 @@ const setupDragAndDrop = () => {
                         </div>
                     </div>
 
-                    <div class="flex justify-end gap-2 pt-4 border-t">
+    <div class="flex justify-end gap-2 pt-4 border-t mt-4">
                         <Button variant="outline" @click="showExerciseImageModal = false">
                             Annuler
                         </Button>

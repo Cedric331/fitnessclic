@@ -373,7 +373,7 @@ const exerciseToRemoveName = computed(() => {
                             <div>
                                 <div class="flex items-center justify-between mb-0.5">
                                     <Label class="text-xs text-neutral-500">
-                                        {{ (exercise.use_duration ?? false) ? 'Durée (seconde)' : 'Rep' }}
+                                        {{ (exercise.use_duration ?? false) ? 'Durée (s)' : 'Rep' }}
                                     </Label>
                                     <button
                                         type="button"
