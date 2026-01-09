@@ -718,6 +718,16 @@ const orderedItems = computed(() => {
     return items;
 });
 
+// Ref pour VueDraggable - synchronisé avec orderedItems mais indépendant pour éviter les conflits
+const draggableItems = ref<Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number, exerciseIndexInSession?: number }>>([]);
+const isDragging = ref(false);
+
+// Synchroniser draggableItems avec orderedItems quand on ne drag pas
+watch(orderedItems, (newItems) => {
+    if (!isDragging.value) {
+        draggableItems.value = [...newItems];
+    }
+}, { immediate: true, deep: true });
 
 const convertExerciseToSet = (exercise: SessionExercise) => {
     const index = sessionExercises.value.findIndex(e => e.id === exercise.id);
@@ -996,6 +1006,9 @@ const removeExerciseFromSession = (index: number) => {
         return;
     }
     
+    // Sauvegarder l'ordre de l'exercice supprimé avant la suppression
+    const removedOrder = exercise.order;
+    
     sessionExercises.value.splice(index, 1);
     
     if (exercise?.block_id && exercise?.block_type === 'set') {
@@ -1007,8 +1020,11 @@ const removeExerciseFromSession = (index: number) => {
         });
     }
     
-    sessionExercises.value.forEach((ex, idx) => {
-        ex.order = idx;
+    // Préserver l'ordre relatif : décrémenter seulement les ordres supérieurs à celui supprimé
+    sessionExercises.value.forEach((ex) => {
+        if (ex.order > removedOrder) {
+            ex.order--;
+        }
     });
     
     form.exercises = [...sessionExercises.value];
@@ -1088,64 +1104,37 @@ const reorderExercises = (fromIndex: number, toIndex: number) => {
     form.exercises = [...sessionExercises.value];
 };
 
-const onDragUpdate = (newItems: Array<{ type: 'standard' | 'set', exercise?: SessionExercise, block?: SessionBlock, key: string, order: number, displayIndex: number, exerciseIndexInSession?: number }>) => {
-    const keysSeen = new Set<string>();
-    const duplicates: string[] = [];
-    newItems.forEach((item, idx) => {
-        if (keysSeen.has(item.key)) {
-            duplicates.push(`Index ${idx}: ${item.key}`);
-        } else {
-            keysSeen.add(item.key);
-        }
-    });
-    if (duplicates.length > 0) {
-        return;
-    }
+// Réorganiser les exercices après un drag (appelé par l'événement @end de VueDraggable)
+const onDragEnd = (event: any) => {
+    // draggableItems a déjà été mis à jour par VueDraggable via v-model
     
-    const processedExerciseIndices = new Set<number>();
-    const processedBlockIds = new Set<number>();
-    
-    newItems.forEach((item, newIndex) => {
+    // Mettre à jour les ordres dans sessionExercises basé sur draggableItems
+    draggableItems.value.forEach((item, newOrder) => {
         if (item.type === 'standard' && item.exercise) {
-            let index = item.exerciseIndexInSession;
-            if (index === undefined || index < 0) {
-                const keyMatch = item.key.match(/standard-.*-idx(\d+)/);
-                if (keyMatch) {
-                    index = parseInt(keyMatch[1], 10);
-                } else {
-                    index = sessionExercises.value.findIndex(e => e === item.exercise);
-                }
+            // Trouver l'exercice dans sessionExercises et mettre à jour son ordre
+            const exerciseIndex = sessionExercises.value.findIndex(e => e.id === item.exercise!.id);
+            if (exerciseIndex !== -1) {
+                sessionExercises.value[exerciseIndex].order = newOrder;
             }
-            
-            if (index >= 0 && index < sessionExercises.value.length) {
-                if (processedExerciseIndices.has(index)) {
-                    return;
-                }
-                
-                sessionExercises.value[index].order = newIndex;
-                processedExerciseIndices.add(index);
-            }
-        } else if (item.type === 'set' && item.block && item.block.id !== undefined) {
-            if (processedBlockIds.has(item.block.id)) {
-                return;
-            }
-            
+        } else if (item.type === 'set' && item.block) {
+            // Mettre à jour l'ordre de tous les exercices du bloc
             const blockExercises = sessionExercises.value.filter(
-                (ex: SessionExercise) => ex.block_id === item.block!.id && ex.block_type === 'set'
+                ex => ex.block_id === item.block!.id && ex.block_type === 'set'
             );
             blockExercises.forEach(ex => {
-                const index = sessionExercises.value.findIndex(e => e === ex);
-                if (index >= 0 && index < sessionExercises.value.length) {
-                    if (processedExerciseIndices.has(index)) {
-                        return;
-                    }
-                    sessionExercises.value[index].order = newIndex;
-                    processedExerciseIndices.add(index);
+                const idx = sessionExercises.value.findIndex(e => e.id === ex.id);
+                if (idx !== -1) {
+                    sessionExercises.value[idx].order = newOrder;
                 }
             });
-            processedBlockIds.add(item.block.id);
         }
     });
+    
+    // Forcer la réactivité en créant une nouvelle référence
+    sessionExercises.value = [...sessionExercises.value];
+    
+    // Réinitialiser le flag de drag APRÈS la mise à jour
+    isDragging.value = false;
     
     form.exercises = [...sessionExercises.value];
 };
@@ -1947,8 +1936,9 @@ const handleLayoutSaved = async (sessionId: number) => {
                                     <div v-else>
                                         <!-- Afficher les exercices standard et les blocs Super Set mélangés avec drag and drop -->
                                         <VueDraggable
-                                            :model-value="orderedItems"
-                                            @update:model-value="onDragUpdate"
+                                            v-model="draggableItems"
+                                            @start="isDragging = true"
+                                            @end="onDragEnd"
                                             :animation="150"
                                             handle=".handle"
                                             class="flex flex-col gap-4"
@@ -1957,7 +1947,7 @@ const handleLayoutSaved = async (sessionId: number) => {
                                             chosen-class="fc-chosen"
                                             :item-key="(item: any) => item.key"
                                         >
-                                            <template v-for="(item, itemIndex) in orderedItems" :key="item.key">
+                                            <template v-for="(item, itemIndex) in draggableItems" :key="item.key">
                                             <!-- Bloc Super Set -->
                                             <SessionBlockSet
                                                 v-if="item.type === 'set'"
