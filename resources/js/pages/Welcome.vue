@@ -22,31 +22,30 @@ withDefaults(
 
 // Configuration SEO
 const siteName = 'FitnessClic';
+// URL de base en HTTPS (Facebook nécessite HTTPS pour og:image:secure_url)
 const defaultSiteUrl = 'https://fitnessclic.com';
 const siteUrl = computed(() => {
     if (typeof window !== 'undefined') {
-        return window.location.origin;
+        // Utiliser HTTPS même si la page est en HTTP
+        const origin = window.location.origin;
+        return origin.replace('http://', 'https://');
     }
     return defaultSiteUrl;
 });
 const currentUrl = computed(() => {
     if (typeof window !== 'undefined') {
-        return window.location.href;
+        // Utiliser HTTPS même si la page est en HTTP
+        const href = window.location.href;
+        return href.replace('http://', 'https://');
     }
-    return siteUrl.value;
+    return defaultSiteUrl;
 });
 const title = 'FitnessClic - Créez vos séances d\'entraînement en quelques clics';
 const description = 'L\'outil professionnel pour les coachs sportifs et particuliers. Créez, organisez et partagez vos programmes d\'entraînement facilement. Bibliothèque d\'exercices, gestion de clients, export PDF. Compte gratuit disponible.';
 const keywords = 'coach sportif, séance d\'entraînement, programme fitness, création séance, gestion clients, bibliothèque exercices, fitness, sport, entraînement personnalisé';
-// URL absolue de l'image pour Open Graph (Facebook nécessite une URL absolue)
-const imageUrl = computed(() => {
-    const baseUrl = siteUrl.value;
-    // S'assurer que l'URL est absolue
-    if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
-        return `${baseUrl}/assets/logo_fitnessclic.png`;
-    }
-    return `${defaultSiteUrl}/assets/logo_fitnessclic.png`;
-});
+// URL absolue de l'image pour Open Graph (Facebook nécessite une URL absolue en HTTPS)
+// Valeur statique pour garantir l'accessibilité lors du scraping par Facebook
+const imageUrl = `${defaultSiteUrl}/assets/logo_fitnessclic.png`;
 const twitterHandle = '@FitnessClic';
 
 const structuredData = computed(() => ({
@@ -67,7 +66,7 @@ const structuredData = computed(() => ({
     },
     description: description,
     url: siteUrl.value,
-    image: imageUrl.value,
+    image: imageUrl,
     author: {
         '@type': 'Organization',
         name: siteName,
@@ -79,7 +78,7 @@ const organizationData = computed(() => ({
     '@type': 'Organization',
     name: siteName,
     url: siteUrl.value,
-    logo: imageUrl.value,
+    logo: imageUrl,
     sameAs: [
         // 'https://www.facebook.com/fitnessclic',
         // 'https://twitter.com/fitnessclic',
