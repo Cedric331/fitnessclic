@@ -23,7 +23,6 @@ class GenerateAiImageRequest extends FormRequest
     {
         return [
             'exercise_name' => ['required', 'string', 'max:255'],
-            'gender' => ['required', 'string', 'in:homme,femme'],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -38,8 +37,7 @@ class GenerateAiImageRequest extends FormRequest
         return [
             'exercise_name.required' => 'Le nom de l\'exercice est requis.',
             'exercise_name.max' => 'Le nom de l\'exercice ne doit pas dépasser 255 caractères.',
-            'gender.required' => 'Le sexe du personnage est requis.',
-            'gender.in' => 'Le sexe doit être "homme" ou "femme".',
+            'description.max' => 'La description ne doit pas dépasser 1000 caractères.',
         ];
     }
 }

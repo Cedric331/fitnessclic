@@ -53,7 +53,6 @@ const isAdmin = ref(false);
 const isLoadingCredits = ref(false);
 const isGenerating = ref(false);
 const aiExerciseName = ref('');
-const aiGender = ref<string>('');
 const aiDescription = ref('');
 const generatedImageBase64 = ref<string | null>(null);
 const aiError = ref<string | null>(null);
@@ -109,8 +108,8 @@ const loadAiCredits = async () => {
 
 // Generate AI image
 const generateAiImage = async () => {
-    if (!aiExerciseName.value || !aiGender.value) {
-        notifyError('Veuillez remplir le nom de l\'exercice et sélectionner le sexe du personnage.');
+    if (!aiExerciseName.value) {
+        notifyError('Veuillez remplir le nom de l\'exercice.');
         return;
     }
 
@@ -120,7 +119,6 @@ const generateAiImage = async () => {
     try {
         const response = await axios.post('/exercises/ai/generate', {
             exercise_name: aiExerciseName.value,
-            gender: aiGender.value,
             description: aiDescription.value || null,
         });
 
@@ -188,7 +186,6 @@ watch(isOpen, (open) => {
             imageFile.value = null;
             generatedImageBase64.value = null;
             aiExerciseName.value = '';
-            aiGender.value = '';
             aiDescription.value = '';
             aiError.value = null;
         }
@@ -198,7 +195,6 @@ watch(isOpen, (open) => {
         imageFile.value = null;
         generatedImageBase64.value = null;
         aiExerciseName.value = '';
-        aiGender.value = '';
         aiDescription.value = '';
         aiError.value = null;
         isAiMode.value = false;
@@ -249,7 +245,6 @@ const handleSubmit = async () => {
                 imagePreview.value = null;
                 generatedImageBase64.value = null;
                 aiExerciseName.value = '';
-                aiGender.value = '';
                 aiDescription.value = '';
                 notifySuccess(response.data.message || 'Exercice créé avec succès !');
                 emit('saved');
@@ -418,21 +413,6 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
                             />
                         </div>
 
-                        <!-- Gender Selection -->
-                        <div class="space-y-2">
-                            <Label class="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                Sexe du personnage <span class="text-red-500">*</span>
-                            </Label>
-                            <select
-                                v-model="aiGender"
-                                class="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition duration-150 ease-in-out focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-white"
-                            >
-                                <option value="" disabled>Sélectionnez...</option>
-                                <option value="homme">Homme</option>
-                                <option value="femme">Femme</option>
-                            </select>
-                        </div>
-
                         <!-- Description for AI (optional) -->
                         <div class="space-y-2">
                             <Label class="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -465,7 +445,7 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
                         <Button
                             type="button"
                             @click="generateAiImage"
-                            :disabled="isGenerating || !aiExerciseName || !aiGender || (!hasUnlimitedCredits && aiCredits !== null && aiCredits <= 0)"
+                            :disabled="isGenerating || !aiExerciseName || (!hasUnlimitedCredits && aiCredits !== null && aiCredits <= 0)"
                             class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
                         >
                             <Loader2 v-if="isGenerating" class="h-4 w-4 mr-2 animate-spin" />

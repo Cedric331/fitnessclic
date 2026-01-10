@@ -335,14 +335,12 @@ class ExercisesController extends Controller
 
         $metadata = [
             'exercise_name' => $validated['exercise_name'],
-            'gender' => $validated['gender'],
             'description' => $validated['description'] ?? null,
         ];
 
         try {
             $result = $imageGenerator->generate(
                 $validated['exercise_name'],
-                $validated['gender'],
                 $validated['description'] ?? null
             );
 
@@ -360,11 +358,10 @@ class ExercisesController extends Controller
         } catch (\Exception $e) {
             // Log the failed attempt without deducting credits
             $user->logFailedAiGeneration($e->getMessage(), $metadata);
-
+dd($e);
             Log::error('AI image generation failed', [
                 'user_id' => $user->id,
                 'exercise_name' => $validated['exercise_name'],
-                'gender' => $validated['gender'],
                 'error' => $e->getMessage(),
             ]);
 
