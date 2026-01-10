@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnnouncementsController;
 use App\Http\Controllers\ArtisanCommandController;
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\ExercisesController;
@@ -76,6 +77,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/subscription/checkout', [\App\Http\Controllers\SubscriptionController::class, 'checkout'])->name('subscription.checkout');
     Route::get('/subscription/portal', [\App\Http\Controllers\SubscriptionController::class, 'portal'])->name('subscription.portal');
     Route::get('/subscription/success', [\App\Http\Controllers\SubscriptionController::class, 'success'])->name('subscription.success');
+
+    // Announcements routes
+    Route::get('/announcements/current', [AnnouncementsController::class, 'current'])->name('announcements.current');
+    Route::post('/announcements/{announcement}/seen', [AnnouncementsController::class, 'markAsSeen'])->name('announcements.seen');
 });
 
 // Stripe

@@ -8,6 +8,7 @@ use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -308,6 +309,16 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
             'metadata' => $metadata,
             'balance_after' => $newBalance,
         ]);
+    }
+
+    /**
+     * Relation with seen announcements
+     */
+    public function seenAnnouncements(): BelongsToMany
+    {
+        return $this->belongsToMany(Announcement::class, 'announcement_user')
+            ->withPivot('seen_at')
+            ->withTimestamps();
     }
 
     /**

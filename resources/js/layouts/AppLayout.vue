@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import NotificationTemplate from '@/components/NotificationTemplate.vue';
+import AnnouncementModal from '@/components/AnnouncementModal.vue';
 import type { BreadcrumbItemType } from '@/types';
 
 interface Props {
@@ -16,6 +17,8 @@ withDefaults(defineProps<Props>(), {
     <AppLayout :breadcrumbs="breadcrumbs">
         <slot />
     </AppLayout>
+    <!-- Modal d'annonces pour les mises à jour -->
+    <AnnouncementModal />
     <!-- Composant de notifications global avec template personnalisé -->
     <notifications position="top right" :width="400">
         <template #body="props">
