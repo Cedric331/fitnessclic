@@ -358,7 +358,7 @@ class ExercisesController extends Controller
         } catch (\Exception $e) {
             // Log the failed attempt without deducting credits
             $user->logFailedAiGeneration($e->getMessage(), $metadata);
-dd($e);
+
             Log::error('AI image generation failed', [
                 'user_id' => $user->id,
                 'exercise_name' => $validated['exercise_name'],
