@@ -10,6 +10,9 @@ use App\Policies\CategoryPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\ExercisePolicy;
 use App\Policies\SessionPolicy;
+use App\Services\ExerciseImageGeneratorService;
+use OpenAI\Factory;
+use OpenAI\Client;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,7 +32,16 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void {}
+    public function register(): void
+    {
+        $this->app->singleton(Client::class, function () {
+            return \OpenAI::client(config('services.openai.key'));
+        });
+
+        $this->app->singleton(ExerciseImageGeneratorService::class, function ($app) {
+            return new ExerciseImageGeneratorService($app->make(Client::class));
+        });
+    }
 
     /**
      * Bootstrap any application services.

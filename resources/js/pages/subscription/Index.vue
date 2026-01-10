@@ -4,7 +4,7 @@ import { Head, router, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Star, Zap, CreditCard, FileText, Users, Library, Tag, Mail, Settings, X } from 'lucide-vue-next';
+import { Check, Star, Zap, CreditCard, FileText, Users, Library, Tag, Mail, Settings, X, Sparkles, Coins } from 'lucide-vue-next';
 import { computed, ref, watch, nextTick } from 'vue';
 import type { BreadcrumbItem } from '@/types';
 import { useNotifications } from '@/composables/useNotifications';
@@ -18,6 +18,8 @@ interface Props {
     isCancelling: boolean;
     cancelsAt: string | null;
     daysUntilCancellation: number;
+    aiCredits: number;
+    aiCreditLimit: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -29,6 +31,8 @@ const props = withDefaults(defineProps<Props>(), {
     isCancelling: false,
     cancelsAt: null,
     daysUntilCancellation: 0,
+    aiCredits: 0,
+    aiCreditLimit: 20,
 });
 
 const page = usePage();
@@ -109,8 +113,14 @@ const proFeatures = [
     { text: 'Sauvegardes illimitées de toutes vos séances', icon: Check },
     { text: 'Import d\'exercices illimités dans la bibliothèque', icon: Check },
     { text: 'Création de nouvelles catégories d\'exercices illimités', icon: Check },
+    { text: `${props.aiCreditLimit} crédits IA par mois pour générer des images d'exercices`, icon: Sparkles },
     { text: 'Support email prioritaire', icon: Check },
 ];
+
+const aiCreditsPercentage = computed(() => {
+    if (props.aiCreditLimit === 0) return 0;
+    return Math.round((props.aiCredits / props.aiCreditLimit) * 100);
+});
 </script>
 
 <template>
@@ -231,6 +241,59 @@ const proFeatures = [
                                 <Settings class="mr-2 h-5 w-5" />
                                 Gérer mon abonnement
                             </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- AI Credits Card (only for Pro users) -->
+                <Card v-if="hasActiveSubscription" class="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30">
+                    <CardHeader class="pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-blue-500 shadow-lg">
+                                <Sparkles class="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                                <CardTitle class="text-lg font-bold">Crédits IA</CardTitle>
+                                <p class="text-sm text-muted-foreground">
+                                    Génération d'images d'exercices
+                                </p>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent class="space-y-4">
+                        <!-- Credits Display -->
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <Coins class="h-5 w-5 text-amber-500" />
+                                <span class="text-2xl font-bold text-purple-700 dark:text-purple-300">{{ aiCredits }}</span>
+                                <span class="text-sm text-muted-foreground">/ {{ aiCreditLimit }} crédits</span>
+                            </div>
+                            <Badge 
+                                :variant="aiCredits > 0 ? 'default' : 'destructive'"
+                                class="px-3 py-1"
+                            >
+                                {{ aiCredits > 0 ? 'Disponible' : 'Épuisé' }}
+                            </Badge>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="space-y-2">
+                            <div class="h-3 w-full rounded-full bg-purple-100 dark:bg-purple-900/50 overflow-hidden">
+                                <div 
+                                    class="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500"
+                                    :style="{ width: `${aiCreditsPercentage}%` }"
+                                />
+                            </div>
+                            <p class="text-xs text-center text-muted-foreground">
+                                {{ aiCreditsPercentage }}% de vos crédits utilisés
+                            </p>
+                        </div>
+
+                        <!-- Info -->
+                        <div class="rounded-lg border border-purple-200 dark:border-purple-800 bg-white/50 dark:bg-slate-900/50 p-3">
+                            <p class="text-sm text-slate-600 dark:text-slate-400">
+                                <strong>💡 Astuce :</strong> Vos crédits sont rechargés automatiquement à {{ aiCreditLimit }} lors du renouvellement mensuel de votre abonnement. Les crédits non utilisés ne sont pas reportés.
+                            </p>
                         </div>
                     </CardContent>
                 </Card>

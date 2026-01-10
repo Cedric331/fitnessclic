@@ -647,6 +647,7 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
             v-model:open="isExerciseDialogOpen"
             :exercise="editingExercise"
             :categories="props.categories"
+            :is-pro="isPro"
             @updated="() => {
                 // Recharger les exercices avec les filtres actuels après modification
                 applyFilters(true);

@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'openai' => [
+        'key' => env('OPENAI_API_KEY'),
+        'credit_limit' => env('OPENAI_CREDIT_LIMIT'),
+    ],
+
 ];

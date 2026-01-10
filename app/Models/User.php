@@ -236,4 +236,123 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
 
         return 'Gratuit';
     }
+
+    /**
+     * Relation with user credits
+     */
+    public function credits(): HasMany
+    {
+        return $this->hasMany(UserCredit::class);
+    }
+
+    /**
+     * Get the current AI credits balance
+     */
+    public function getAiCreditsBalance(): int
+    {
+        $lastTransaction = $this->credits()
+            ->whereNotNull('balance_after')
+            ->latest()
+            ->first();
+
+        return $lastTransaction?->balance_after ?? 0;
+    }
+
+    /**
+     * Check if user has enough AI credits
+     */
+    public function hasAiCredits(int $amount = 1): bool
+    {
+        return $this->getAiCreditsBalance() >= $amount;
+    }
+
+    /**
+     * Check if user can generate AI images
+     */
+    public function canGenerateAiImages(): bool
+    {
+        return $this->isPro() && $this->hasAiCredits();
+    }
+
+    /**
+     * Add AI credits to user account
+     */
+    public function addAiCredits(int $amount, string $reason, ?array $metadata = null): UserCredit
+    {
+        $currentBalance = $this->getAiCreditsBalance();
+        $newBalance = $currentBalance + $amount;
+
+        return $this->credits()->create([
+            'type' => UserCredit::TYPE_CREDIT,
+            'amount' => $amount,
+            'reason' => $reason,
+            'status' => UserCredit::STATUS_SUCCESS,
+            'metadata' => $metadata,
+            'balance_after' => $newBalance,
+        ]);
+    }
+
+    /**
+     * Deduct AI credits from user account
+     */
+    public function deductAiCredits(int $amount, string $reason, ?array $metadata = null): UserCredit
+    {
+        $currentBalance = $this->getAiCreditsBalance();
+        $newBalance = max(0, $currentBalance - $amount);
+
+        return $this->credits()->create([
+            'type' => UserCredit::TYPE_DEBIT,
+            'amount' => $amount,
+            'reason' => $reason,
+            'status' => UserCredit::STATUS_SUCCESS,
+            'metadata' => $metadata,
+            'balance_after' => $newBalance,
+        ]);
+    }
+
+    /**
+     * Log a failed AI generation attempt (without deducting credits)
+     */
+    public function logFailedAiGeneration(string $errorMessage, ?array $metadata = null): UserCredit
+    {
+        $currentBalance = $this->getAiCreditsBalance();
+
+        return $this->credits()->create([
+            'type' => UserCredit::TYPE_DEBIT,
+            'amount' => 0,
+            'reason' => UserCredit::REASON_IMAGE_GENERATION,
+            'status' => UserCredit::STATUS_ERROR,
+            'error_log' => $errorMessage,
+            'metadata' => $metadata,
+            'balance_after' => $currentBalance,
+        ]);
+    }
+
+    /**
+     * Reset AI credits to the monthly limit (for subscription renewal)
+     */
+    public function resetAiCredits(): UserCredit
+    {
+        $creditLimit = (int) config('services.openai.credit_limit', 20);
+
+        return $this->addAiCredits(
+            $creditLimit,
+            UserCredit::REASON_SUBSCRIPTION_RENEWAL,
+            ['reset_to' => $creditLimit]
+        );
+    }
+
+    /**
+     * Initialize AI credits for new subscription
+     */
+    public function initializeAiCredits(): UserCredit
+    {
+        $creditLimit = (int) config('services.openai.credit_limit', 20);
+
+        return $this->addAiCredits(
+            $creditLimit,
+            UserCredit::REASON_SUBSCRIPTION_INITIAL,
+            ['initial_credits' => $creditLimit]
+        );
+    }
 }

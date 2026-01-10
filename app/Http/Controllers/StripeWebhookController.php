@@ -88,4 +88,83 @@ class StripeWebhookController extends CashierController
 
         return parent::handleCustomerSubscriptionDeleted($payload);
     }
+
+    /**
+     * Handle invoice payment succeeded.
+     * This is called when a subscription payment is successful (initial or renewal).
+     *
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    protected function handleInvoicePaymentSucceeded(array $payload)
+    {
+        $invoice = $payload['data']['object'];
+        $stripeCustomerId = $invoice['customer'];
+
+        // Only process subscription invoices
+        if (empty($invoice['subscription'])) {
+            return $this->successMethod();
+        }
+
+        $user = User::where('stripe_id', $stripeCustomerId)->first();
+
+        if ($user) {
+            // Check if this is the first invoice for this subscription (initial payment)
+            // or a renewal (billing_reason: 'subscription_cycle')
+            $billingReason = $invoice['billing_reason'] ?? null;
+
+            // subscription_create = first payment, subscription_cycle = renewal
+            if ($billingReason === 'subscription_create') {
+                // First subscription - initialize credits
+                $user->initializeAiCredits();
+
+                Log::info('Crédits IA initialisés pour nouvel abonné', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'credits' => config('services.openai.credit_limit', 20),
+                ]);
+            } elseif ($billingReason === 'subscription_cycle') {
+                // Subscription renewal - reset credits
+                $user->resetAiCredits();
+
+                Log::info('Crédits IA rechargés pour renouvellement', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'credits' => config('services.openai.credit_limit', 20),
+                ]);
+            }
+        }
+
+        return $this->successMethod();
+    }
+
+    /**
+     * Handle customer subscription created.
+     * Fallback for initial credit assignment if invoice.payment_succeeded doesn't trigger.
+     *
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    protected function handleCustomerSubscriptionCreated(array $payload)
+    {
+        $subscription = $payload['data']['object'];
+        $stripeCustomerId = $subscription['customer'];
+
+        $user = User::where('stripe_id', $stripeCustomerId)->first();
+
+        if ($user) {
+            // Check if user already has credits (to avoid double-crediting)
+            $currentBalance = $user->getAiCreditsBalance();
+
+            if ($currentBalance === 0) {
+                $user->initializeAiCredits();
+
+                Log::info('Crédits IA initialisés lors de la création d\'abonnement', [
+                    'user_id' => $user->id,
+                    'user_email' => $user->email,
+                    'credits' => config('services.openai.credit_limit', 20),
+                ]);
+            }
+        }
+
+        return $this->successMethod();
+    }
 }

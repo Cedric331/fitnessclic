@@ -471,6 +471,7 @@ const handlePrint = (session: Session) => {
                 created_at: exercise.created_at,
             }"
             :categories="categories_list"
+            :is-pro="isPro"
         />
 
         <ExerciseDeleteDialog

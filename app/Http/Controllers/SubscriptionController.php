@@ -37,6 +37,10 @@ class SubscriptionController extends Controller
             }
         }
 
+        // Get AI credits info
+        $aiCredits = $user->getAiCreditsBalance();
+        $aiCreditLimit = (int) config('services.openai.credit_limit', 20);
+
         return Inertia::render('subscription/Index', [
             'hasActiveSubscription' => $hasActiveSubscription,
             'onTrial' => $onTrial,
@@ -46,6 +50,8 @@ class SubscriptionController extends Controller
             'isCancelling' => $isCancelling,
             'cancelsAt' => $cancelsAt?->toDateTimeString(),
             'daysUntilCancellation' => max(0, $daysUntilCancellation),
+            'aiCredits' => $aiCredits,
+            'aiCreditLimit' => $aiCreditLimit,
         ]);
     }
 

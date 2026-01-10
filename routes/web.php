@@ -39,6 +39,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/exercises/{exercise}', [ExercisesController::class, 'update'])->name('exercises.update');
     Route::delete('/exercises/{exercise}', [ExercisesController::class, 'destroy'])->name('exercises.destroy');
 
+    // AI Image Generation routes
+    Route::get('/exercises/ai/credits', [ExercisesController::class, 'getAiCredits'])->name('exercises.ai.credits');
+    Route::post('/exercises/ai/generate', [ExercisesController::class, 'generateImage'])->name('exercises.ai.generate');
+    Route::post('/exercises/ai/store', [ExercisesController::class, 'storeFromAi'])->name('exercises.ai.store');
+
     // Categories routes
     Route::get('/categories', [CategoriesController::class, 'index'])->name('categories.index');
     Route::post('/categories', [CategoriesController::class, 'store'])->name('categories.store');

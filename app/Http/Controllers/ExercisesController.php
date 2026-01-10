@@ -2,15 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Exercises\GenerateAiImageRequest;
 use App\Http\Requests\Exercises\IndexExerciseRequest;
+use App\Http\Requests\Exercises\StoreAiExerciseRequest;
 use App\Http\Requests\Exercises\StoreExerciseRequest;
 use App\Http\Requests\Exercises\UpdateExerciseRequest;
 use App\Http\Requests\Exercises\UploadFilesExerciseRequest;
 use App\Models\Category;
 use App\Models\Exercise;
+use App\Models\UserCredit;
+use App\Services\ExerciseImageGeneratorService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -274,6 +280,177 @@ class ExercisesController extends Controller
 
         return redirect()->route('exercises.index')
             ->with('error', $errorMessage);
+    }
+
+    /**
+     * Get the current AI credits balance for the authenticated user.
+     */
+    public function getAiCredits(): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return response()->json(['error' => 'Non authentifié'], 401);
+        }
+
+        $isAdmin = $user->isAdmin();
+
+        return response()->json([
+            'credits' => $isAdmin ? -1 : $user->getAiCreditsBalance(), // -1 indicates unlimited
+            'can_generate' => $isAdmin || $user->canGenerateAiImages(),
+            'is_pro' => $user->isPro(),
+            'is_admin' => $isAdmin,
+        ]);
+    }
+
+    /**
+     * Generate an exercise image using AI.
+     */
+    public function generateImage(
+        GenerateAiImageRequest $request,
+        ExerciseImageGeneratorService $imageGenerator
+    ): JsonResponse {
+        $user = Auth::user();
+        $validated = $request->validated();
+
+        // Check if user has an active subscription
+        if (! $user->isPro()) {
+            return response()->json([
+                'error' => 'La génération d\'images IA est réservée aux abonnés Pro.',
+                'code' => 'subscription_required',
+            ], 403);
+        }
+
+        // Admins have unlimited credits
+        $isAdmin = $user->isAdmin();
+
+        // Check if user has enough credits (skip for admins)
+        if (! $isAdmin && ! $user->hasAiCredits()) {
+            return response()->json([
+                'error' => 'Vous n\'avez plus de crédits IA disponibles. Vos crédits seront rechargés lors du prochain renouvellement de votre abonnement.',
+                'code' => 'no_credits',
+                'credits' => 0,
+            ], 403);
+        }
+
+        $metadata = [
+            'exercise_name' => $validated['exercise_name'],
+            'gender' => $validated['gender'],
+            'description' => $validated['description'] ?? null,
+        ];
+
+        try {
+            $result = $imageGenerator->generate(
+                $validated['exercise_name'],
+                $validated['gender'],
+                $validated['description'] ?? null
+            );
+
+            // Deduct credit after successful generation (skip for admins - unlimited credits)
+            if (! $isAdmin) {
+                $user->deductAiCredits(1, UserCredit::REASON_IMAGE_GENERATION, $metadata);
+            }
+
+            return response()->json([
+                'success' => true,
+                'image_base64' => $result['base64'],
+                'credits' => $isAdmin ? -1 : $user->getAiCreditsBalance(), // -1 indicates unlimited
+                'is_admin' => $isAdmin,
+            ]);
+        } catch (\Exception $e) {
+            // Log the failed attempt without deducting credits
+            $user->logFailedAiGeneration($e->getMessage(), $metadata);
+
+            Log::error('AI image generation failed', [
+                'user_id' => $user->id,
+                'exercise_name' => $validated['exercise_name'],
+                'gender' => $validated['gender'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'Une erreur est survenue lors de la génération de l\'image. Vous pouvez réessayer, aucun crédit n\'a été déduit.',
+                'code' => 'generation_failed',
+                'credits' => $isAdmin ? -1 : $user->getAiCreditsBalance(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Store an exercise created with AI-generated image.
+     */
+    public function storeFromAi(StoreAiExerciseRequest $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        if (! $user->can('create', Exercise::class)) {
+            return response()->json([
+                'error' => 'La création d\'exercices est réservée aux abonnés Pro.',
+            ], 403);
+        }
+
+        $validated = $request->validated();
+
+        // Decode the base64 image and save to temp file
+        $imageData = base64_decode($validated['image_base64']);
+        $tempPath = tempnam(sys_get_temp_dir(), 'ai_exercise_');
+        file_put_contents($tempPath, $imageData);
+
+        try {
+            $exercise = Exercise::create([
+                'user_id' => Auth::id(),
+                'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
+                'suggested_duration' => $validated['suggested_duration'] ?? null,
+                'is_shared' => true,
+            ]);
+
+            $exercise->categories()->attach($validated['category_ids']);
+
+            // Create an UploadedFile from the temp path for optimization
+            $uploadedFile = new UploadedFile(
+                $tempPath,
+                $validated['title'] . '.png',
+                'image/png',
+                null,
+                true
+            );
+
+            $optimizedFile = $this->optimizeImage($uploadedFile);
+
+            $exercise->addMedia($optimizedFile->getRealPath())
+                ->usingName($validated['title'])
+                ->toMediaCollection(Exercise::MEDIA_IMAGE, Exercise::MEDIA_DISK);
+
+            // Clean up temp files
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Exercice créé avec succès.',
+                'exercise' => [
+                    'id' => $exercise->id,
+                    'name' => $exercise->title,
+                    'image_url' => $exercise->image_url,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            // Clean up temp file on error
+            if (file_exists($tempPath)) {
+                @unlink($tempPath);
+            }
+
+            Log::error('Failed to create exercise from AI image', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'Une erreur est survenue lors de la création de l\'exercice.',
+            ], 500);
+        }
     }
 
     /**
