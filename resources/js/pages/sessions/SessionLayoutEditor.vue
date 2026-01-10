@@ -343,7 +343,23 @@ let currentDrawingHandlers: {
 
 const libraryViewMode = ref<'grid-2' | 'grid-4' | 'grid-6'>('grid-6');
 
+// Gestion de la taille de fenêtre pour forcer le mode 2 colonnes en dessous de 1500px
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1920);
+const isSmallScreen = computed(() => windowWidth.value < 1500);
+
+const handleWindowResize = () => {
+    windowWidth.value = window.innerWidth;
+};
+
+// Watcher pour forcer le mode grid-2 en dessous de 1500px
+watch(isSmallScreen, (small) => {
+    if (small && libraryViewMode.value !== 'grid-2') {
+        libraryViewMode.value = 'grid-2';
+    }
+}, { immediate: true });
+
 onMounted(() => {
+    window.addEventListener('resize', handleWindowResize);
     if (!containerRef.value) return;
 
     if (props.initialLayout && props.initialLayout.layout_data) {
@@ -459,6 +475,7 @@ watch([canvasWidth, canvasHeight], () => {
 }, { immediate: false });
 
 onUnmounted(() => {
+    window.removeEventListener('resize', handleWindowResize);
     if (stage) {
         stage.destroy();
     }
@@ -3877,7 +3894,7 @@ const setupDragAndDrop = () => {
             <!-- Exercise Library Sidebar -->
             <div 
                 v-if="showExerciseLibrary"
-                class="w-96 border-l bg-white dark:bg-neutral-900 flex flex-col overflow-hidden min-h-0"
+                class="w-76 2xl:w-96 border-l bg-white dark:bg-neutral-900 flex flex-col overflow-hidden min-h-0"
             >
                 <div class="p-4 border-b space-y-3">
                     <h3 class="font-semibold flex items-center gap-2">
@@ -3908,8 +3925,8 @@ const setupDragAndDrop = () => {
                             </option>
                         </select>
                     </div>
-                    <!-- View mode selector -->
-                    <div class="flex items-center gap-2">
+                    <!-- View mode selector - masqué en dessous de 1500px car forcé à 2 colonnes -->
+                    <div v-if="!isSmallScreen" class="flex items-center gap-2">
                         <span class="text-xs text-neutral-500">Affichage:</span>
                         <div class="flex gap-1">
                             <Button
