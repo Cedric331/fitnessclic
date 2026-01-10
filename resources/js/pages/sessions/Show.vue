@@ -918,6 +918,26 @@ const loadPdfPreview = async (options: { silent?: boolean } = {}) => {
     }
 };
 
+const isPro = computed(() => {
+    return (page.props as any).auth?.user?.isPro ?? false;
+});
+
+const canDownloadPdf = computed(() => {
+    return isPro.value || (page.props as any).auth?.user?.isAdmin;
+});
+
+const canPrint = computed(() => {
+    return isPro.value || (page.props as any).auth?.user?.isAdmin;
+});
+
+const canEdit = computed(() => {
+    return isPro.value && props.session.user_id === (page.props as any).auth?.user?.id || (page.props as any).auth?.user?.isAdmin;
+});
+
+const canDelete = computed(() => {
+    return isPro.value && props.session.user_id === (page.props as any).auth?.user?.id || (page.props as any).auth?.user?.isAdmin;
+});
+
 onMounted(() => {
     if (props.session.has_custom_layout) {
         loadLayout();
@@ -1190,6 +1210,7 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                         <span>Retour</span>
                     </Button>
                     <Button
+                        v-if="canDownloadPdf"
                         variant="outline"
                         size="sm"
                         class="inline-flex items-center gap-2 w-full sm:w-auto"
@@ -1199,6 +1220,7 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                         <span>PDF</span>
                     </Button>
                     <Button
+                        v-if="canPrint"
                         variant="outline"
                         size="sm"
                         class="inline-flex items-center gap-2 w-full sm:w-auto"
@@ -1218,7 +1240,7 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                         <span>Éditer mise en page</span>
                     </Button>
                     <Button
-                        v-if="!session.has_custom_layout"
+                        v-if="!session.has_custom_layout && canEdit"
                         variant="outline"
                         size="sm"
                         class="inline-flex items-center gap-2 w-full sm:w-auto"
@@ -1228,6 +1250,7 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                         <span>Modifier</span>
                     </Button>
                     <Button
+                        v-if="canDelete"
                         variant="outline"
                         size="sm"
                         class="inline-flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 w-full sm:w-auto"

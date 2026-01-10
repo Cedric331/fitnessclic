@@ -288,7 +288,7 @@
       background-color: #e0f4fc;
       color: #212121;
       font-size: 12px;
-      padding: 4px 6px;
+      padding: 2px 3px;
       text-align: center;
       border-right: 1px solid #d1d5db;
     }
@@ -315,7 +315,7 @@
     }
 
     .sub-exercise-image-cell {
-      width: 80px;
+      width: 60px;
       vertical-align: top;
       text-align: center;
     }
@@ -648,9 +648,9 @@
                             <td><strong>{{ $displaySetsNumber }}</strong> série{{ $displaySetsNumber > 1 ? 's' : '' }}</td>
                             <td>
                               @if($setUseDuration)
-                                Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}
+                                Durée : <strong>{{ $repsValue }} s</strong>
                               @else
-                                <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
+                                <strong>{{ $repsValue }} s</strong>
                               @endif
                             </td>
                             <td>
@@ -660,7 +660,7 @@
                                 charge : <strong>{{ $setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-' }}</strong>
                               @endif
                             </td>
-                            <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
+                            <td>repos inter-séries <strong>{{ $restSeconds !== '-' ? $restSeconds . ' s' : '-' }}</strong></td>
                           </tr>
                         </table>
                       @endforeach
@@ -670,7 +670,7 @@
                           $durationSeconds = extractDurationSeconds($durationOrReps);
                           $repsLabel = 'Durée (sec)';
                           $repsValue = $durationSeconds;
-                          $repsDisplayLabel = 'seconde';
+                          $repsDisplayLabel = 's';
                         } else {
                           $repsLabel = 'Repets';
                           $repsValue = $durationOrReps;
@@ -699,7 +699,7 @@
                           <td><strong>{{ $setsCount }}</strong> série{{ $setsCount > 1 ? 's' : '' }}</td>
                           <td>
                             @if($useDuration)
-                              Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}
+                              Durée : <strong>{{ $repsValue }} s</strong>
                             @else
                               <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
                             @endif
@@ -711,7 +711,7 @@
                               charge : <strong>{{ $chargeValue !== '-' && $chargeValue !== null && $chargeValue !== 'poids de corps' ? $chargeValue . 'kg' : '-' }}</strong>
                             @endif
                           </td>
-                          <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
+                          <td>repos inter-séries <strong>{{ $restSeconds !== '-' ? $restSeconds . ' s' : '-' }}</strong></td>
                         </tr>
                       </table>
                     @endif
@@ -868,7 +868,7 @@
                                     <td><strong>{{ $displaySetsNumber }}</strong> série{{ $displaySetsNumber > 1 ? 's' : '' }}</td>
                                     <td>
                                       @if($setUseDuration)
-                                        Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}
+                                        Durée : <strong>{{ $repsValue }} s</strong>
                                       @else
                                         <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
                                       @endif
@@ -880,7 +880,7 @@
                                         charge : <strong>{{ $setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-' }}</strong>
                                       @endif
                                     </td>
-                                    <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
+                                    <td>repos inter-séries <strong>{{ $restSeconds !== '-' ? $restSeconds . ' s' : '-' }}</strong></td>
                                   </tr>
                                 </table>
                               @endforeach
@@ -919,7 +919,7 @@
                                   <td><strong>{{ $setsCount }}</strong> série{{ $setsCount > 1 ? 's' : '' }}</td>
                                   <td>
                                     @if($useDuration)
-                                      Durée : <strong>{{ $repsValue }}</strong> {{ 'seconde' . ($repsValue > 1 ? 's' : '') }}
+                                      Durée : <strong>{{ $repsValue }} s</strong>
                                     @else
                                       <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
                                     @endif
@@ -931,7 +931,7 @@
                                       charge : <strong>{{ $chargeValue !== '-' && $chargeValue !== null && $chargeValue !== 'poids de corps' ? $chargeValue . 'kg' : '-' }}</strong>
                                     @endif
                                   </td>
-                                  <td>repos inter-séries : <strong>{{ $restSeconds !== '-' ? $restSeconds . ' seconde' . ($restSeconds > 1 ? 's' : '') : '-' }}</strong></td>
+                                  <td>repos inter-séries <strong>{{ $restSeconds !== '-' ? $restSeconds . ' s' : '-' }}</strong></td>
                                 </tr>
                               </table>
                             @endif
