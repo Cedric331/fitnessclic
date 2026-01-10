@@ -29,11 +29,18 @@ class ExerciseImageGeneratorService
         );
 
         $response = $this->client->images()->create([
-            'model' => 'gpt-image-1',
-            'prompt' => $prompt,
-            'size' => '1024x1024',
-            'quality' => 'auto',
-            'n' => 1,
+            // 'model' => 'gpt-image-1',
+            // 'prompt' => $prompt,
+            // 'size' => '1024x1024',
+            // 'quality' => 'auto',
+            // 'n' => 1,
+
+            'model' => 'dall-e-3',
+            'prompt' => $prompt, 
+            'size' => '1024x1024', 
+            'quality' => 'standard', 
+            'n' => 1, 
+            'response_format' => 'b64_json',
         ]);
 
         // The response data property name varies by version - try both

@@ -102,7 +102,7 @@ class StripeWebhookController extends CashierController
 
         // Only process subscription invoices
         if (empty($invoice['subscription'])) {
-            return $this->successMethod();
+            return parent::handleInvoicePaymentSucceeded($payload);
         }
 
         $user = User::where('stripe_id', $stripeCustomerId)->first();
@@ -134,7 +134,8 @@ class StripeWebhookController extends CashierController
             }
         }
 
-        return $this->successMethod();
+        // Important: appeler le parent pour que Cashier synchronise l'abonnement
+        return parent::handleInvoicePaymentSucceeded($payload);
     }
 
     /**
@@ -165,6 +166,7 @@ class StripeWebhookController extends CashierController
             }
         }
 
-        return $this->successMethod();
+        // Important: appeler le parent pour que Cashier crée l'abonnement en base
+        return parent::handleCustomerSubscriptionCreated($payload);
     }
 }
