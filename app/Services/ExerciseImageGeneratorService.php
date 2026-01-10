@@ -38,7 +38,7 @@ class ExerciseImageGeneratorService
             'model' => 'dall-e-3',
             'prompt' => $prompt, 
             'size' => '1024x1024', 
-            'quality' => 'standard', 
+            'quality' => 'hd', 
             'n' => 1, 
             'response_format' => 'b64_json',
         ]);
@@ -79,16 +79,41 @@ class ExerciseImageGeneratorService
      */
     protected function buildPrompt(string $exercise, ?string $description = null): string
     {
-        $descriptionText = $description ? " Exercise details: {$description}." : '';
+        $descriptionText = $description ? " Description de l'exercice: {$description}." : '';
 
         return sprintf(
-            "Minimalist flat illustration of a fitness model performing the following exercise: %s.%s
-Clean vector style, soft neutral color palette (beige, off-white, light gray),
-smooth shapes, subtle shadows, clean background without unnecessary elements, bright and minimalist interior,
-simple walls and floor, modern wellness aesthetic.
-The model is fully dressed in understated sportswear without a hat, a distinctive sign and without any other clothing.
-Clear posture, correct execution of the exercise, profile view.
-Very consistent style, calm and professional fitness illustration, without text, logo, realism, or photorealistic rendering.",
+            "Illustration plate minimaliste et pédagogique d’un mannequin  générique réalisant l’exercice suivant : %s.%s
+
+            Mannequin humain neutre, stylisé, sans traits distinctifs, sans identité culturelle, sans expression faciale marquée.
+            Aucun accessoire : pas de chapeau, pas de couvre-chef, pas de bijoux, pas de montre, pas de bandeau, pas de cheveux visibles.
+            Tenue de sport simple et moderne (débardeur ou t-shirt uni + short), couleurs neutres.
+
+            Style graphique strictement vectoriel et plat (flat design),
+            formes simples et géométriques, contours nets,
+            ombres très légères ou absentes,
+            aucun effet peinture, aucun effet bande dessinée, aucun trait illustratif.
+
+            Palette de couleurs douces et neutres (beige, blanc cassé, gris clair),
+            fond uni clair ou très légèrement texturé,
+            aucun décor narratif, aucun objet, aucun élément superflu.
+
+            STYLE (obligatoire):
+                - Flat vector / formes simples / aplats de couleur / contours nets.
+                - Pas de style BD, pas de croquis, pas de texture, pas de rendu peinture.
+                - Ombre: une ombre douce unique au sol.
+
+            PERSONNAGE (obligatoire):
+                - Mannequin neutre et anonyme, visage très simple ou sans visage (faceless).
+                - Tête nue: aucun chapeau, aucun couvre-chef, aucun bandeau, aucun foulard, aucun casque.
+                - Pas de cheveux détaillés, pas de barbe.
+                - Tenue simple: t-shirt ou débardeur uni + short uni + baskets simples. Aucune marque.
+
+            Posture anatomiquement correcte, exécution précise de l’exercice,
+            vue de profil ou trois-quarts selon la lisibilité du mouvement.
+
+            Illustration professionnelle destinée à une application de création de séances de sport.
+            Aucun texte, aucun logo, aucun réalisme, aucun rendu photoréaliste.
+            ",
             $exercise,
             $descriptionText
         );

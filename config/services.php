@@ -40,4 +40,8 @@ return [
         'credit_limit' => env('OPENAI_CREDIT_LIMIT'),
     ],
 
+    'stability' => [
+        'key' => env('STABILITY_API_KEY'),
+    ],
+
 ];

@@ -396,7 +396,7 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
                             <Sparkles class="h-8 w-8 text-purple-500 mx-auto mb-2" />
                             <h3 class="font-medium text-purple-700 dark:text-purple-300">Générer une image avec l'IA</h3>
                             <p class="text-xs text-purple-600/70 dark:text-purple-400/70 mt-1">
-                                Décrivez l'exercice et choisissez le sexe du personnage
+                                Décrivez l'exercice
                             </p>
                         </div>
 
