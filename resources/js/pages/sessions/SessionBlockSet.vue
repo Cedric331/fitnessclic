@@ -377,7 +377,15 @@ const exerciseToRemoveName = computed(() => {
                                     </Label>
                                     <button
                                         type="button"
-                                        @click.stop.prevent="updateExercise(index, { use_duration: !(exercise.use_duration ?? false) })"
+                                        @click.stop.prevent="() => {
+                                            const newValue = !(exercise.use_duration ?? false);
+                                            const updates: Partial<SessionExercise> = { use_duration: newValue };
+                                            // Synchroniser aussi les sets
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                updates.sets = exercise.sets.map(set => ({ ...set, use_duration: newValue }));
+                                            }
+                                            updateExercise(index, updates);
+                                        }"
                                         @mousedown.stop
                                         class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
                                         title="Basculer entre Rep et Durée"
@@ -519,7 +527,15 @@ const exerciseToRemoveName = computed(() => {
                                     </Label>
                                     <button
                                         type="button"
-                                        @click.stop.prevent="updateExercise(index, { use_bodyweight: !(exercise.use_bodyweight ?? false) })"
+                                        @click.stop.prevent="() => {
+                                            const newValue = !(exercise.use_bodyweight ?? false);
+                                            const updates: Partial<SessionExercise> = { use_bodyweight: newValue };
+                                            // Synchroniser aussi les sets
+                                            if (exercise.sets && exercise.sets.length > 0) {
+                                                updates.sets = exercise.sets.map(set => ({ ...set, use_bodyweight: newValue }));
+                                            }
+                                            updateExercise(index, updates);
+                                        }"
                                         @mousedown.stop
                                         class="p-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded transition-colors"
                                         title="Basculer entre Charge et Poids de corps"

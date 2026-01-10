@@ -817,11 +817,10 @@
                                 @php
                                   $setNumber = $set->set_number ?? $loop->iteration;
                                   
-                                  // Utiliser use_duration et use_bodyweight du set, sinon ceux de l'exercice
-                                  $setUseDurationRaw = $set->use_duration ?? $sessionExercise->use_duration ?? false;
-                                  $setUseBodyweightRaw = $set->use_bodyweight ?? $sessionExercise->use_bodyweight ?? false;
-                                  $setUseDuration = $setUseDurationRaw === true || $setUseDurationRaw === 1 || $setUseDurationRaw === '1' || $setUseDurationRaw === 'true';
-                                  $setUseBodyweight = $setUseBodyweightRaw === true || $setUseBodyweightRaw === 1 || $setUseBodyweightRaw === '1' || $setUseBodyweightRaw === 'true';
+                                  // Pour les super sets, utiliser les valeurs de l'exercice (seule interface modifiable)
+                                  // Les sets héritent de l'exercice dans ce contexte
+                                  $setUseDuration = $useDuration;
+                                  $setUseBodyweight = $useBodyweight;
                                   
                                   $setDurationOrReps = '-';
                                   if ($setUseDuration) {
