@@ -54,6 +54,7 @@ const isLoadingCredits = ref(false);
 const isGenerating = ref(false);
 const aiExerciseName = ref('');
 const aiDescription = ref('');
+const aiGender = ref<'homme' | 'femme'>('homme');
 const generatedImageBase64 = ref<string | null>(null);
 const aiError = ref<string | null>(null);
 
@@ -120,6 +121,7 @@ const generateAiImage = async () => {
         const response = await axios.post('/exercises/ai/generate', {
             exercise_name: aiExerciseName.value,
             description: aiDescription.value || null,
+            gender: aiGender.value,
         });
 
         if (response.data.success) {
@@ -187,6 +189,7 @@ watch(isOpen, (open) => {
             generatedImageBase64.value = null;
             aiExerciseName.value = '';
             aiDescription.value = '';
+            aiGender.value = 'homme';
             aiError.value = null;
         }
     } else {
@@ -427,6 +430,33 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
                             <p class="text-xs text-slate-500 dark:text-slate-400">
                                 💡 Plus votre description est précise, meilleur sera le résultat.
                             </p>
+                        </div>
+
+                        <!-- Gender Selection -->
+                        <div class="space-y-2">
+                            <Label class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Genre de la personne <span class="text-slate-400 text-xs font-normal">(optionnel)</span>
+                            </Label>
+                            <div class="flex gap-3">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        v-model="aiGender"
+                                        value="homme"
+                                        class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-slate-300 dark:border-slate-600"
+                                    />
+                                    <span class="text-sm text-slate-700 dark:text-slate-300">Homme</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        v-model="aiGender"
+                                        value="femme"
+                                        class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-slate-300 dark:border-slate-600"
+                                    />
+                                    <span class="text-sm text-slate-700 dark:text-slate-300">Femme</span>
+                                </label>
+                            </div>
                         </div>
 
                         <!-- Error Message -->

@@ -114,7 +114,7 @@ const updateSet = (setIndex: number, field: keyof ExerciseSet, value: any) => {
                 repetitions: null,
                 weight: null,
                 rest_time: null,
-                duration: null,
+                duration: '30',
                 use_duration: props.sessionExercise.use_duration ?? false,
                 use_bodyweight: props.sessionExercise.use_bodyweight ?? false,
                 order: currentSets.length
@@ -137,7 +137,7 @@ const addSet = () => {
             repetitions: null,
             weight: null,
             rest_time: null,
-            duration: null,
+            duration: '30',
             use_duration: props.sessionExercise.use_duration ?? false,
             use_bodyweight: props.sessionExercise.use_bodyweight ?? false,
             order: currentSets.length
@@ -150,7 +150,7 @@ const addSet = () => {
             repetitions: props.sessionExercise.repetitions ?? null,
             weight: props.sessionExercise.weight ?? null,
             rest_time: props.sessionExercise.rest_time ?? null,
-            duration: props.sessionExercise.duration ?? null,
+            duration: props.sessionExercise.duration ?? '30',
             use_duration: props.sessionExercise.use_duration ?? false,
             use_bodyweight: props.sessionExercise.use_bodyweight ?? false,
             order: 0
@@ -490,8 +490,11 @@ const confirmRemove = () => {
                                     <Input
                                         v-else
                                         type="number"
-                                        :model-value="set.duration"
-                                        @update:model-value="(value: string | number) => updateSet(setIndex, 'duration', value || null)"
+                                        :model-value="set.duration ?? 30"
+                                        @update:model-value="(value: string | number) => {
+                                            const strValue = value === '' || value === null || value === undefined ? '30' : String(value);
+                                            updateSet(setIndex, 'duration', strValue);
+                                        }"
                                         @mousedown.stop
                                         @dragstart.stop
                                         placeholder="30"

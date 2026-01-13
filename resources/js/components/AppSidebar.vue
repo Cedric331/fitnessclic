@@ -29,6 +29,7 @@ import {
     Layout,
 } from 'lucide-vue-next';
 import { useInitials } from '@/composables/useInitials';
+import { useNotifications } from '@/composables/useNotifications';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { dashboard } from '@/routes';
@@ -36,6 +37,7 @@ import { dashboard } from '@/routes';
 const page = usePage();
 const user = computed(() => page.props.auth.user as User | null);
 const { getInitials } = useInitials();
+const { info: notifyInfo } = useNotifications();
 
 // Vérifier si l'utilisateur a un abonnement actif
 const hasActiveSubscription = computed(() => {
@@ -171,6 +173,7 @@ const switchMode = (mode: 'standard' | 'libre') => {
     if (mode === 'libre' && !isDesktopWidth()) {
         setStoredMode('standard');
         currentEditMode.value = 'standard';
+        notifyInfo('Désolé, vous n\'avez pas accès au mode libre avec ce format d\'écran');
         return;
     }
 

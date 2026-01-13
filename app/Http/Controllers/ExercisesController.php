@@ -336,12 +336,14 @@ class ExercisesController extends Controller
         $metadata = [
             'exercise_name' => $validated['exercise_name'],
             'description' => $validated['description'] ?? null,
+            'gender' => $validated['gender'] ?? 'homme',
         ];
 
         try {
             $result = $imageGenerator->generate(
                 $validated['exercise_name'],
-                $validated['description'] ?? null
+                $validated['description'] ?? null,
+                $validated['gender'] ?? 'homme'
             );
 
             // Deduct credit after successful generation (skip for admins - unlimited credits)

@@ -270,13 +270,13 @@ const exerciseData = ref<ExerciseData>({
     showTitle: true,
     titlePosition: 'above',
     instructions: '',
-    rows: [{ series: 1, reps: 20, recovery: 30, load: 10, useDuration: false, useBodyweight: false }]
+    rows: [{ series: 1, reps: 20, duration: 30, recovery: 30, load: 10, useDuration: false, useBodyweight: false }]
 });
 
 const showTableModal = ref(false);
 const editingTableElement = ref<LayoutElement | null>(null);
 const tableData = ref<TableData>({
-    rows: [{ series: 1, reps: 20, recovery: 30, load: 10, useDuration: false, useBodyweight: false }]
+    rows: [{ series: 1, reps: 20, duration: 30, recovery: 30, load: 10, useDuration: false, useBodyweight: false }]
 });
 
 const showExerciseImageModal = ref(false);
@@ -2984,6 +2984,10 @@ const removeTableRow = (index: number) => {
 const openExerciseImageModal = (element: LayoutElement) => {
     editingExerciseImageElement.value = element;
     if (element.exerciseData) {
+        const hasShadow = element.exerciseData.imageShadow || false;
+        // Si l'ombre est activée, activer automatiquement le cadre
+        const shouldHaveFrame = hasShadow || element.exerciseData.imageFrame || false;
+        
         exerciseImageData.value = {
             title: element.exerciseData.title || '',
             showTitle: element.exerciseData.showTitle !== undefined ? element.exerciseData.showTitle : true,
@@ -2994,10 +2998,10 @@ const openExerciseImageModal = (element: LayoutElement) => {
             backgroundColor: element.exerciseData.titleStyle?.backgroundColor,
             stroke: element.exerciseData.titleStyle?.stroke,
             strokeWidth: element.exerciseData.titleStyle?.strokeWidth || 0,
-            imageFrame: element.exerciseData.imageFrame || false,
+            imageFrame: shouldHaveFrame,
             imageFrameColor: element.exerciseData.imageFrameColor || '#000000',
             imageFrameWidth: element.exerciseData.imageFrameWidth || 2,
-            imageShadow: element.exerciseData.imageShadow || false,
+            imageShadow: hasShadow,
             imageShadowColor: element.exerciseData.imageShadowColor || '#000000',
             imageShadowBlur: element.exerciseData.imageShadowBlur || 10,
             imageShadowOffsetX: element.exerciseData.imageShadowOffsetX || 5,
@@ -3069,8 +3073,16 @@ const saveExerciseImageData = () => {
     editingExerciseImageElement.value.exerciseData.imageShadowOffsetY = exerciseImageData.value.imageShadowOffsetY;
     editingExerciseImageElement.value.exerciseData.imageShadowOpacity = exerciseImageData.value.imageShadowOpacity;
     
+    // Si l'ombre est activée, activer automatiquement le cadre
+    if (exerciseImageData.value.imageShadow && !editingExerciseImageElement.value.exerciseData.imageFrame) {
+        editingExerciseImageElement.value.exerciseData.imageFrame = true;
+        editingExerciseImageElement.value.exerciseData.imageFrameColor = exerciseImageData.value.imageFrameColor;
+        editingExerciseImageElement.value.exerciseData.imageFrameWidth = exerciseImageData.value.imageFrameWidth;
+    }
+    
     createExerciseTitle(editingExerciseImageElement.value);
     
+    // Créer le cadre avant d'appliquer l'ombre (l'ombre sera sur le cadre)
     createImageFrame(editingExerciseImageElement.value);
     applyImageShadow(editingExerciseImageElement.value);
     
@@ -3354,12 +3366,15 @@ const createImageFrame = (element: LayoutElement) => {
     const frameColor = element.exerciseData.imageFrameColor || '#000000';
     const frameWidth = element.exerciseData.imageFrameWidth || 2;
     
+    // Si l'ombre est activée, ajouter un fond blanc pour simuler une image JPEG
+    const hasShadow = element.exerciseData.imageShadow || false;
+    
     const imageFrame = new Konva.Rect({
         x: 0,
         y: 0,
         width: imageWidth,
         height: imageHeight,
-        fill: undefined,
+        fill: hasShadow ? '#FFFFFF' : undefined, // Fond blanc si ombre activée
         stroke: frameColor,
         strokeWidth: frameWidth,
         cornerRadius: 0,
@@ -3398,6 +3413,8 @@ const applyImageShadow = (element: LayoutElement) => {
     
     if (!imageShape) return;
     
+    // Si l'ombre est activée, on l'applique sur le cadre plutôt que sur l'image
+    // Cela permet de simuler une image JPEG avec fond blanc
     if (element.exerciseData.imageShadow) {
         const shadowColor = element.exerciseData.imageShadowColor || '#000000';
         const shadowBlur = element.exerciseData.imageShadowBlur || 10;
@@ -3405,12 +3422,37 @@ const applyImageShadow = (element: LayoutElement) => {
         const shadowOffsetY = element.exerciseData.imageShadowOffsetY || 5;
         const shadowOpacity = element.exerciseData.imageShadowOpacity !== undefined ? element.exerciseData.imageShadowOpacity : 0.5;
         
-        imageShape.shadowColor(shadowColor);
-        imageShape.shadowBlur(shadowBlur);
-        imageShape.shadowOffsetX(shadowOffsetX);
-        imageShape.shadowOffsetY(shadowOffsetY);
-        imageShape.shadowOpacity(shadowOpacity);
+        // Appliquer l'ombre sur le cadre si il existe, sinon sur l'image
+        if (element.imageFrameNode) {
+            element.imageFrameNode.shadowColor(shadowColor);
+            element.imageFrameNode.shadowBlur(shadowBlur);
+            element.imageFrameNode.shadowOffsetX(shadowOffsetX);
+            element.imageFrameNode.shadowOffsetY(shadowOffsetY);
+            element.imageFrameNode.shadowOpacity(shadowOpacity);
+        } else {
+            // Fallback sur l'image si le cadre n'existe pas encore
+            imageShape.shadowColor(shadowColor);
+            imageShape.shadowBlur(shadowBlur);
+            imageShape.shadowOffsetX(shadowOffsetX);
+            imageShape.shadowOffsetY(shadowOffsetY);
+            imageShape.shadowOpacity(shadowOpacity);
+        }
+        
+        // S'assurer que l'image elle-même n'a pas d'ombre
+        imageShape.shadowColor(null);
+        imageShape.shadowBlur(0);
+        imageShape.shadowOffsetX(0);
+        imageShape.shadowOffsetY(0);
+        imageShape.shadowOpacity(1);
     } else {
+        // Retirer l'ombre du cadre et de l'image
+        if (element.imageFrameNode) {
+            element.imageFrameNode.shadowColor(null);
+            element.imageFrameNode.shadowBlur(0);
+            element.imageFrameNode.shadowOffsetX(0);
+            element.imageFrameNode.shadowOffsetY(0);
+            element.imageFrameNode.shadowOpacity(1);
+        }
         imageShape.shadowColor(null);
         imageShape.shadowBlur(0);
         imageShape.shadowOffsetX(0);
@@ -4787,6 +4829,10 @@ const setupDragAndDrop = () => {
                                     @change="(e: Event) => {
                                         const target = e.target as HTMLInputElement;
                                         exerciseImageData.imageShadow = target.checked;
+                                        // Activer automatiquement le cadre si l'ombre est activée
+                                        if (target.checked && !exerciseImageData.imageFrame) {
+                                            exerciseImageData.imageFrame = true;
+                                        }
                                     }"
                                     class="rounded"
                                     id="imageShadow"
