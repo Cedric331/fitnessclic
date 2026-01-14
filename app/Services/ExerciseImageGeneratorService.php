@@ -83,18 +83,59 @@ class ExerciseImageGeneratorService
      */
     protected function buildPrompt(string $exercise, ?string $description = null, string $gender = 'homme'): string
     {
-        $genderText = $gender === 'femme' ? 'a woman' : 'a man';
-        $descriptionText = $description ? " Description of the exercise: {$description}." : '';
+        $genderText = $gender === 'femme' ? 'Femme' : 'Homme';
+        $descriptionText = $description ? $description : '';
     
         return sprintf(
-            "Minimalist flat illustration of %s performing %s.%s
-            Clean vector style, soft neutral color palette (beige, off-white, light gray),
-            smooth shapes, subtle shadows.
-            The person is athletic, wearing a white tank top, black shorts, and white sneakers.
-            Clear posture, correct exercise form, side view.
-            Subject isolated on transparent background.
-            High consistency style, calm and professional fitness illustration,
-            no text, no logos, no realism, no photo style.",
+            "Illustration vectorielle semi-flat, propre et nette, style application de fitness moderne.
+            Personnage unique, proportions réalistes, anatomie correcte.
+            Vue de profil (côté), plan large, corps entier visible.
+            Contours fins mais bien définis, aplats de couleur avec ombrage doux (cell shading léger).
+            Style pédagogique, clair et lisible, pas de texture, pas de grain.
+
+            Tenue standardisée :
+            - T-shirt de sport bleu foncé
+            - Pantalon de sport noir ajusté
+            - Baskets noires avec semelle blanche
+
+            Personnage placé sur un tapis de yoga bleu clair.
+            Ombre douce sous le tapis et le corps.
+            Fond blanc uni, sans décor.
+
+            Aucun texte, aucun logo, aucun watermark.
+            Composition centrée avec marges blanches régulières
+
+
+            Sexe du personnage : %s
+
+            Caractéristiques physiques selon le sexe :
+            - Homme : silhouette masculine athlétique standard, épaules légèrement plus larges.
+            - Femme : silhouette féminine athlétique standard, taille légèrement marquée, hanches naturelles.
+            Toujours une musculature réaliste et non exagérée.
+
+            Exercice : %s
+
+            Description précise de la posture :
+            %s
+
+            Contraintes :
+            - Montrer clairement la posture finale
+            - Articulations plausibles
+            - Position stable et équilibrée
+            - Alignement correct du dos, des jambes et des bras
+
+
+            ---------------------------------------
+
+            NÉGATIF (fortement recommandé)
+            photoréaliste, rendu 3D, style cinéma, style manga, cartoon exagéré,
+            muscles hypertrophiés, proportions irréalistes,
+            croquis, peinture, aquarelle, bruit, grain,
+            texte, logo, watermark,
+            arrière-plan détaillé, décor de salle de sport,
+            plusieurs personnages, gros plan, membres coupés
+
+            ---------------------------------------",
             $genderText,
             $exercise,
             $descriptionText
