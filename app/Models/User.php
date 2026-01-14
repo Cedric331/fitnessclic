@@ -344,7 +344,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
      */
     public function resetAiCredits(): UserCredit
     {
-        $creditLimit = (int) config('services.openai.credit_limit', 20);
+        $creditLimit = (int) config('services.openai.credit_limit', 10);
 
         return $this->addAiCredits(
             $creditLimit,
@@ -358,7 +358,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
      */
     public function initializeAiCredits(): UserCredit
     {
-        $creditLimit = (int) config('services.openai.credit_limit', 20);
+        $creditLimit = (int) config('services.openai.credit_limit', 10);
 
         return $this->addAiCredits(
             $creditLimit,

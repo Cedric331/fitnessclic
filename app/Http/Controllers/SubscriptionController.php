@@ -39,7 +39,7 @@ class SubscriptionController extends Controller
 
         // Get AI credits info
         $aiCredits = $user->getAiCreditsBalance();
-        $aiCreditLimit = (int) config('services.openai.credit_limit', 20);
+        $aiCreditLimit = (int) config('services.openai.credit_limit', 10);
 
         return Inertia::render('subscription/Index', [
             'hasActiveSubscription' => $hasActiveSubscription,

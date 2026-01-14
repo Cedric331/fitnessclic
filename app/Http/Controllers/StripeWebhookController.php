@@ -120,7 +120,7 @@ class StripeWebhookController extends CashierController
                 Log::info('Crédits IA initialisés pour nouvel abonné', [
                     'user_id' => $user->id,
                     'user_email' => $user->email,
-                    'credits' => config('services.openai.credit_limit', 20),
+                    'credits' => config('services.openai.credit_limit', 10),
                 ]);
             } elseif ($billingReason === 'subscription_cycle') {
                 // Subscription renewal - reset credits
@@ -129,7 +129,7 @@ class StripeWebhookController extends CashierController
                 Log::info('Crédits IA rechargés pour renouvellement', [
                     'user_id' => $user->id,
                     'user_email' => $user->email,
-                    'credits' => config('services.openai.credit_limit', 20),
+                    'credits' => config('services.openai.credit_limit', 10),
                 ]);
             }
         }
@@ -161,7 +161,7 @@ class StripeWebhookController extends CashierController
                 Log::info('Crédits IA initialisés lors de la création d\'abonnement', [
                     'user_id' => $user->id,
                     'user_email' => $user->email,
-                    'credits' => config('services.openai.credit_limit', 20),
+                    'credits' => config('services.openai.credit_limit', 10),
                 ]);
             }
         }

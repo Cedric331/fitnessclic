@@ -384,7 +384,7 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
                                 <span class="font-semibold text-green-600 dark:text-green-400">∞ Illimité</span>
                             </template>
                             <template v-else>
-                                <span class="font-semibold text-amber-600 dark:text-amber-400">{{ isAdmin ? '∞' : (aiCredits ?? 0) }}</span> crédits
+                                <span class="font-semibold text-amber-600 dark:text-amber-400">{{ isAdmin ? '∞' : 'Il vous reste ' + (aiCredits ?? 0) }}</span> crédits
                             </template>
                         </span>
                     </div>
