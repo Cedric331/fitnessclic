@@ -36,6 +36,8 @@ class ExerciseImageGeneratorService
             'size' => '1024x1024',
             'quality' => 'auto',
             'n' => 1,
+            'background' => 'transparent',
+
 
             // 'model' => 'dall-e-3',
             // 'prompt' => $prompt, 
@@ -81,16 +83,22 @@ class ExerciseImageGeneratorService
      */
     protected function buildPrompt(string $exercise, ?string $description = null, string $gender = 'homme'): string
     {
-        $descriptionText = $description ? " Description de l'exercice: {$description}." : '';
-
+        $genderText = $gender === 'femme' ? 'a woman' : 'a man';
+        $descriptionText = $description ? " Description of the exercise: {$description}." : '';
+    
         return sprintf(
-            "Illustration plate minimaliste d'une %s effectuant l'exercice %s.%s Style vectoriel épuré, palette de couleurs neutres et douces (beige, blanc cassé, gris clair), 
-            formes lisses, ombres subtiles, arrière-plan épuré sans éléments superflus, intérieur lumineux et minimaliste, murs et sol simples, 
-            esthétique bien-être moderne. La personne est athlétique, porte un débardeur blanc, un short noir et des baskets blanches. 
-            Posture claire, exécution correcte de l'exercice, vue de profil. Style très cohérent, illustration fitness calme et professionnelle, sans texte, sans logo, sans réalisme, sans rendu photo.",
-            $gender,
+            "Minimalist flat illustration of %s performing %s.%s
+            Clean vector style, soft neutral color palette (beige, off-white, light gray),
+            smooth shapes, subtle shadows.
+            The person is athletic, wearing a white tank top, black shorts, and white sneakers.
+            Clear posture, correct exercise form, side view.
+            Subject isolated on transparent background.
+            High consistency style, calm and professional fitness illustration,
+            no text, no logos, no realism, no photo style.",
+            $genderText,
             $exercise,
             $descriptionText
-        );
+        );        
     }
+    
 }

@@ -521,7 +521,16 @@
                     }
                   }
 
-                  $setsCount    = $sessionExercise->sets_count ?? ($sets->count() > 0 ? $sets->count() : 1);
+                  // Calculer le nombre de séries à afficher
+                  // 1) Priorité à sets_count s'il est renseigné
+                  // 2) Sinon, on prend le max des numéros de série (set_number) si présents
+                  // 3) Sinon, le nombre de lignes de sets, ou 1 par défaut
+                  $explicitSetsCount = $sessionExercise->sets_count ?? null;
+                  $maxSetNumber = null;
+                  if ($sets->count() > 0) {
+                    $maxSetNumber = $sets->max('set_number') ?? $sets->count();
+                  }
+                  $setsCount = $explicitSetsCount ?? $maxSetNumber ?? ($sets->count() > 0 ? $sets->count() : 1);
                   // Récupérer use_duration et use_bodyweight - gérer différents formats (bool, int, string)
                   $useDurationRaw = $sessionExercise->use_duration ?? false;
                   $useBodyweightRaw = $sessionExercise->use_bodyweight ?? false;
@@ -640,8 +649,7 @@
                           }
                         @endphp
                         @php
-                          // Si une seule série dans le tableau, afficher le nombre total (setsCount)
-                          $displaySetsNumber = $sets->count() == 1 ? $setsCount : $setNumber;
+                          $displaySetsNumber = $setNumber;
                         @endphp
                         <table class="series-table">
                           <tr>
@@ -650,7 +658,7 @@
                               @if($setUseDuration)
                                 Durée : <strong>{{ $repsValue }} s</strong>
                               @else
-                                <strong>{{ $repsValue }} s</strong>
+                                <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
                               @endif
                             </td>
                             <td>
@@ -751,7 +759,17 @@
                       }
                     }
 
-                    $setsCount    = $sessionExercise->sets_count ?? ($sets->count() > 0 ? $sets->count() : 1);
+                    // Calculer le nombre de séries à afficher pour un super set
+                    // 1) Priorité à sets_count s'il est renseigné
+                    // 2) Sinon, on prend le max des numéros de série (set_number) si présents
+                    // 3) Sinon, le nombre de lignes de sets, ou 1 par défaut
+                    $explicitSetsCount = $sessionExercise->sets_count ?? null;
+                    $maxSetNumber = null;
+                    if ($sets->count() > 0) {
+                      $maxSetNumber = $sets->max('set_number') ?? $sets->count();
+                    }
+                    $setsCount = $explicitSetsCount ?? $maxSetNumber ?? 1;
+
                     // Récupérer use_duration et use_bodyweight - gérer différents formats (bool, int, string)
                     $useDurationRaw = $sessionExercise->use_duration ?? false;
                     $useBodyweightRaw = $sessionExercise->use_bodyweight ?? false;
@@ -813,76 +831,56 @@
                           <div class="exercise-title-small">{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}</div>
                           <div style="margin-top: 3px;">
                             @if($sets->count() > 0)
-                              @foreach($sets as $set)
-                                @php
-                                  $setNumber = $set->set_number ?? $loop->iteration;
-                                  
-                                  // Pour les super sets, utiliser les valeurs de l'exercice (seule interface modifiable)
-                                  // Les sets héritent de l'exercice dans ce contexte
-                                  $setUseDuration = $useDuration;
-                                  $setUseBodyweight = $useBodyweight;
-                                  
-                                  $setDurationOrReps = '-';
-                                  if ($setUseDuration) {
-                                    $rawDuration = $set->duration ?? $sessionExercise->duration ?? '-';
-                                    $durationSeconds = extractDurationSeconds($rawDuration);
-                                    $repsLabel = 'Durée (secondes)';
-                                    $repsValue = $durationSeconds;
-                                    $repsDisplayLabel = 'seconde';
-                                  } else {
-                                    $setDurationOrReps = $set->repetitions ?? $sessionExercise->repetitions ?? '-';
-                                    $repsLabel = 'Repets';
-                                    $repsValue = $setDurationOrReps;
-                                    $repsDisplayLabel = 'répétition';
-                                  }
+                              @php
+                                // Pour un super set, on affiche une seule ligne en utilisant la première série
+                                // et le nombre total de séries (setsCount) dans la colonne "séries".
+                                // Utiliser directement $useDuration et $useBodyweight définis à partir de $sessionExercise
+                                $firstSet = $sets->first();
 
-                                  $setCharge = '-';
-                                  $chargeLabel = 'Charges';
-                                  if ($setUseBodyweight) {
-                                    $setCharge = 'poids de corps';
-                                    $chargeLabel = 'Poids de corps';
-                                  } else {
-                                    $setCharge = !empty($set->weight) ? $set->weight : ($sessionExercise->weight ?? '-');
-                                    if ($setCharge !== '-' && $setCharge !== null) {
-                                      $setCharge = is_numeric($setCharge) ? number_format((float)$setCharge, 0, '.', '') : $setCharge;
-                                    }
-                                  }
+                                if ($useDuration) {
+                                  $rawDuration = $firstSet->duration ?? $sessionExercise->duration ?? '-';
+                                  $repsValue = extractDurationSeconds($rawDuration);
+                                  $repsDisplayLabel = 'seconde';
+                                } else {
+                                  $repsValue = $firstSet->repetitions ?? $sessionExercise->repetitions ?? '-';
+                                  $repsDisplayLabel = 'répétition';
+                                }
 
-                                  $setRest = '-';
-                                  $rawRest = $set->rest_time ?? $sessionExercise->rest_time ?? '-';
-                                  $restSeconds = extractRestSeconds($rawRest);
-                                  
-                                  // Construire le texte de la charge
-                                  $chargeText = '';
-                                  if ($setUseBodyweight) {
-                                    $chargeText = 'Poids de corps';
-                                  } else {
-                                    $chargeText = $chargeLabel . ' : ' . $setCharge;
+                                $setCharge = '-';
+                                if ($useBodyweight) {
+                                  $setCharge = 'poids de corps';
+                                } else {
+                                  $setCharge = !empty($firstSet->weight) ? $firstSet->weight : ($sessionExercise->weight ?? '-');
+                                  if ($setCharge !== '-' && $setCharge !== null) {
+                                    $setCharge = is_numeric($setCharge) ? number_format((float)$setCharge, 0, '.', '') : $setCharge;
                                   }
-                                  // Si une seule série dans le tableau, afficher le nombre total (setsCount)
-                                  $displaySetsNumber = $sets->count() == 1 ? $setsCount : $setNumber;
-                                @endphp
-                                <table class="series-table">
-                                  <tr>
-                                    <td><strong>{{ $displaySetsNumber }}</strong> série{{ $displaySetsNumber > 1 ? 's' : '' }}</td>
-                                    <td>
-                                      @if($setUseDuration)
-                                        Durée : <strong>{{ $repsValue }} s</strong>
-                                      @else
-                                        <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
-                                      @endif
-                                    </td>
-                                    <td>
-                                      @if($setUseBodyweight)
-                                        <strong>Poids de corps</strong>
-                                      @else
-                                        charge : <strong>{{ $setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-' }}</strong>
-                                      @endif
-                                    </td>
-                                    <td>repos inter-séries <strong>{{ $restSeconds !== '-' ? $restSeconds . ' s' : '-' }}</strong></td>
-                                  </tr>
-                                </table>
-                              @endforeach
+                                }
+
+                                $rawRest = $firstSet->rest_time ?? $sessionExercise->rest_time ?? '-';
+                                $restSeconds = extractRestSeconds($rawRest);
+
+                                $displaySetsNumber = $setsCount;
+                              @endphp
+                              <table class="series-table">
+                                <tr>
+                                  <td><strong>{{ $displaySetsNumber }}</strong> série{{ $displaySetsNumber > 1 ? 's' : '' }}</td>
+                                  <td>
+                                    @if($useDuration)
+                                      Durée : <strong>{{ $repsValue }} s</strong>
+                                    @else
+                                      <strong>{{ $repsValue }}</strong> {{ $repsDisplayLabel . ($repsValue > 1 ? 's' : '') }}
+                                    @endif
+                                  </td>
+                                  <td>
+                                    @if($useBodyweight)
+                                      <strong>Poids de corps</strong>
+                                    @else
+                                      charge : <strong>{{ $setCharge !== '-' && $setCharge !== null ? $setCharge . 'kg' : '-' }}</strong>
+                                    @endif
+                                  </td>
+                                  <td>repos inter-séries <strong>{{ $restSeconds !== '-' ? $restSeconds . ' s' : '-' }}</strong></td>
+                                </tr>
+                              </table>
                             @else
                               @php
                                 if ($useDuration) {
