@@ -61,6 +61,7 @@
                             Créé par
                             <a
                                 href="https://web-discovery.fr"
+                                target="_blank"
                                 class="font-medium text-blue-500 hover:text-gray-300"
                                 rel="noopener noreferrer"
                             >
