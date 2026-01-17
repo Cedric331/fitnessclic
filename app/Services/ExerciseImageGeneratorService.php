@@ -37,7 +37,8 @@ class ExerciseImageGeneratorService
             'quality' => 'auto',
             'n' => 1,
             'background' => 'transparent',
-
+            'output_format' => 'webp',
+            'output_compression' => 60,
 
             // 'model' => 'dall-e-3',
             // 'prompt' => $prompt, 
