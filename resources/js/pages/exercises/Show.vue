@@ -467,7 +467,7 @@ const handlePrint = (session: Session) => {
                 description: exercise.description,
                 suggested_duration: exercise.suggested_duration,
                 image_url: exercise.image_url,
-                category_id: categories.length > 0 ? categories[0].id : null,
+                category_ids: categories.map((cat: { id: number }) => cat.id),
                 created_at: exercise.created_at,
             }"
             :categories="categories_list"

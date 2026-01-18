@@ -343,13 +343,14 @@ const isSetMode = ref(false);
 
 const loadSessionExercises = () => {
     const exercisesData = props.session?.sessionExercises || props.session?.exercises || [];
-    
+
     if (exercisesData.length > 0) {
         sessionExercises.value = exercisesData.map((se: any, index: number) => {
+
             if (se.pivot) {
                 const exercise = props.exercises.find(e => e.id === se.id);
                 if (!exercise) return null;
-                
+            
                 return {
                     id: se.id || --sessionExerciseIdCounter, // Utiliser l'ID existant ou générer un nouveau
                     exercise_id: se.id,
@@ -438,8 +439,7 @@ const loadSessionExercises = () => {
                 use_duration: se.use_duration !== null && se.use_duration !== undefined ? Boolean(se.use_duration) : false,
                 use_bodyweight: se.use_bodyweight !== null && se.use_bodyweight !== undefined ? Boolean(se.use_bodyweight) : false,
             };
-            
-            
+            console.log(loadedExercise);
             return loadedExercise;
         }).filter((ex: SessionExercise | null) => ex !== null) as SessionExercise[];
         
@@ -467,8 +467,6 @@ const loadSessionExercises = () => {
 };
 
 onMounted(async () => {
-    loadSessionExercises();
-    
     const urlParams = new URLSearchParams(window.location.search);
     const shouldOpenEditor = urlParams.get('editor') === 'true';
     if (shouldOpenEditor || props.session.has_custom_layout) {
@@ -478,17 +476,8 @@ onMounted(async () => {
     }
 });
 
-watch(() => props.session?.sessionExercises, () => {
-    if (!sessionExercises.value || !Array.isArray(sessionExercises.value)) {
-        sessionExercises.value = [];
-    }
-    loadSessionExercises();
-}, { deep: true, immediate: true });
-
 watch(() => props.session, () => {
-    nextTick(() => {
-        loadSessionExercises();
-    });
+    loadSessionExercises();
 }, { deep: true, immediate: true });
 
 // Détecter si on est sur mobile/tablette (même logique que le reste du codebase)

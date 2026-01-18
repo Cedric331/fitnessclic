@@ -31,7 +31,7 @@ class ExerciseImageGeneratorService
         );
 
         $response = $this->client->images()->create([
-            'model' => 'gpt-image-1-mini',
+            'model' => 'gpt-image-1',
             'prompt' => $prompt,
             'size' => '1024x1024',
             'quality' => 'auto',
