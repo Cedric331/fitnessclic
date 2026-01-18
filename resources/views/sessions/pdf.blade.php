@@ -591,7 +591,7 @@
                         @endif
                       </td>
                       <td class="exercise-details-cell">
-                        <div class="exercise-title">{{ $sessionExercise->custom_exercise_name ?? $exercise->title }}</div>
+                        <div class="exercise-title">{{ strlen($sessionExercise->custom_exercise_name ?? $exercise->title) > 40 ? substr($sessionExercise->custom_exercise_name ?? $exercise->title, 0, 40) . '...' : ($sessionExercise->custom_exercise_name ?? $exercise->title) }}</div>
                         @if($sessionExercise->additional_description ?? $exercise->description ?? null)
                           <div class="exercise-description">{{ $sessionExercise->additional_description ?? $exercise->description }}</div>
                         @endif
