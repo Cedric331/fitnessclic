@@ -45,6 +45,7 @@ const loadedExercises = ref<Exercise[]>([]);
 const isLoadingExercises = ref(false);
 const hasMoreExercises = ref(true);
 const currentExercisePage = ref(1);
+const totalExercises = ref(0);
 const exerciseSearchTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 
 // Valeur locale de recherche pour une mise à jour immédiate de l'input
@@ -135,6 +136,7 @@ const loadExercises = async (page: number = 1, reset: boolean = false) => {
         
         hasMoreExercises.value = data.has_more;
         currentExercisePage.value = data.current_page;
+        totalExercises.value = data.total || 0;
     } catch (error) {
         console.error('Erreur lors du chargement des exercices:', error);
         notifyError('Erreur lors du chargement des exercices');
@@ -244,7 +246,7 @@ const handleDragEnd = () => {
             <CardHeader class="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b pb-4 space-y-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <CardTitle class="text-xl font-semibold">Bibliothèque ({{ loadedExercises.length }})</CardTitle>
+                        <CardTitle class="text-xl font-semibold">Bibliothèque ({{ totalExercises }})</CardTitle>
                     </div>
                     <!-- Mode d'affichage - visible sur tous les écrans, aligné à droite -->
                     <div class="flex items-center gap-1 border rounded-md p-0.5 relative z-20">
