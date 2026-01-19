@@ -337,6 +337,7 @@ const exerciseToRemoveName = computed(() => {
                                     }"
                                     @mousedown.stop
                                     @click.stop
+                                    maxlength="60"
                                     placeholder="Nom de l'exercice"
                                     class="text-sm font-semibold h-8 flex-1"
                                     autofocus

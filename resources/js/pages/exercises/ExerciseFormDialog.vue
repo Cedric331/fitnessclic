@@ -560,13 +560,14 @@ const formId = `exercise-form-${Math.random().toString(36).substr(2, 9)}`;
                     <!-- Titre -->
                     <div class="space-y-2">
                         <Label :for="`title_${formId}`" class="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Titre <span class="text-red-500">*</span>
+                            Titre <span class="text-red-500">*</span> ({{ exerciseForm.title.length }}/60)
                         </Label>
                         <Input
                             :id="`title_${formId}`"
                             v-model="exerciseForm.title"
                             type="text"
                             placeholder="Ex: Pompes"
+                            maxlength="60"
                             required
                             class="h-10"
                             :class="{ 'border-red-500 focus-visible:ring-red-500': exerciseForm.errors.title }"

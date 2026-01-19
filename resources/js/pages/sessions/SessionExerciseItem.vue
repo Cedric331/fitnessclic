@@ -335,6 +335,7 @@ const confirmRemove = () => {
                                     @dragstart.stop
                                     placeholder="Nom de l'exercice"
                                     class="text-sm font-semibold flex-1"
+                                    maxlength="60"
                                     autofocus
                                 />
                                 <button

@@ -214,7 +214,7 @@ class SessionsController extends Controller
             $sessionExercise = \App\Models\SessionExercise::create([
                 'session_id' => $session->id,
                 'exercise_id' => $exerciseData['exercise_id'],
-                'custom_exercise_name' => $exerciseData['custom_exercise_name'] ?? null,
+                'custom_exercise_name' => Str::limit($exerciseData['custom_exercise_name'] ?? null, 60),
                 'repetitions' => $exerciseData['repetitions'] ?? null,
                 'weight' => $exerciseData['weight'] ?? null,
                 'rest_time' => $exerciseData['rest_time'] ?? null,
@@ -341,7 +341,7 @@ class SessionsController extends Controller
                             'name' => $cat->name,
                         ]),
                     ] : null,
-                    'custom_exercise_name' => $se->custom_exercise_name,
+                    'custom_exercise_name' => Str::limit($se->custom_exercise_name, 60),
                     'repetitions' => $se->repetitions,
                     'weight' => $se->weight,
                     'rest_time' => $se->rest_time,
@@ -433,7 +433,7 @@ class SessionsController extends Controller
 
         $sessionData = [
             'id' => $session->id,
-            'name' => $session->name,
+            'name' => Str::limit($session->name, 60),
             'session_date' => $session->session_date?->format('Y-m-d'),
             'notes' => $session->notes,
             'customers' => $session->customers->map(fn ($customer) => [
@@ -450,7 +450,7 @@ class SessionsController extends Controller
                     'exercise_id' => $se->exercise_id,
                     'exercise' => $se->exercise ? [
                         'id' => $se->exercise->id,
-                        'title' => $se->exercise->title,
+                        'title' => Str::limit($se->exercise->title, 60),
                         'description' => $se->exercise->description,
                         'image_url' => $se->exercise->image_url,
                         'suggested_duration' => $se->exercise->suggested_duration,
@@ -460,7 +460,7 @@ class SessionsController extends Controller
                             'name' => $cat->name,
                         ]),
                     ] : null,
-                    'custom_exercise_name' => $se->custom_exercise_name,
+                    'custom_exercise_name' => Str::limit($se->custom_exercise_name, 60),
                     'repetitions' => $se->repetitions,
                     'weight' => $se->weight,
                     'rest_time' => $se->rest_time,
@@ -527,7 +527,7 @@ class SessionsController extends Controller
             $sessionExercise = \App\Models\SessionExercise::create([
                 'session_id' => $session->id,
                 'exercise_id' => $exerciseData['exercise_id'],
-                'custom_exercise_name' => $exerciseData['custom_exercise_name'] ?? null,
+                'custom_exercise_name' => Str::limit($exerciseData['custom_exercise_name'] ?? null, 60),
                 'repetitions' => $exerciseData['repetitions'] ?? null,
                 'weight' => $exerciseData['weight'] ?? null,
                 'rest_time' => $exerciseData['rest_time'] ?? null,
@@ -780,7 +780,7 @@ class SessionsController extends Controller
 
                     return (object) [
                         'exercise' => $exercise,
-                        'custom_exercise_name' => $exerciseData['custom_exercise_name'] ?? null,
+                        'custom_exercise_name' => Str::limit($exerciseData['custom_exercise_name'] ?? null, 60),
                         'use_duration' => $exerciseData['use_duration'] ?? false,
                         'use_bodyweight' => $exerciseData['use_bodyweight'] ?? false,
                         'sets' => isset($exerciseData['sets']) && is_array($exerciseData['sets'])
@@ -1125,7 +1125,7 @@ class SessionsController extends Controller
         // Créer la nouvelle séance
         $newSession = Session::create([
             'user_id' => Auth::id(),
-            'name' => $session->name.' (copie)',
+            'name' => Str::limit($session->name.' (copie)', 60),
             'notes' => $session->notes,
             'session_date' => now(),
             'is_public' => false, // La copie n'est pas publique
@@ -1138,7 +1138,7 @@ class SessionsController extends Controller
             $newSessionExercise = \App\Models\SessionExercise::create([
                 'session_id' => $newSession->id,
                 'exercise_id' => $sessionExercise->exercise_id,
-                'custom_exercise_name' => $sessionExercise->custom_exercise_name,
+                'custom_exercise_name' => Str::limit($sessionExercise->custom_exercise_name, 60),
                 'repetitions' => $sessionExercise->repetitions,
                 'weight' => $sessionExercise->weight,
                 'rest_time' => $sessionExercise->rest_time,

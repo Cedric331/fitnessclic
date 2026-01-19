@@ -244,7 +244,7 @@ const handleDragEnd = () => {
             <CardHeader class="sticky top-0 z-10 bg-white dark:bg-neutral-900 border-b pb-4 space-y-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <CardTitle class="text-xl font-semibold">Bibliothèque</CardTitle>
+                        <CardTitle class="text-xl font-semibold">Bibliothèque ({{ loadedExercises.length }})</CardTitle>
                     </div>
                     <!-- Mode d'affichage - visible sur tous les écrans, aligné à droite -->
                     <div class="flex items-center gap-1 border rounded-md p-0.5 relative z-20">

@@ -24,9 +24,9 @@ class StoreExerciseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:60'],
             'description' => ['nullable', 'string'],
-            'suggested_duration' => ['nullable', 'string', 'max:255'],
+            'suggested_duration' => ['nullable', 'string', 'max:5'],
             'category_ids' => ['required', 'array', 'min:1'],
             'category_ids.*' => ['required', 'exists:categories,id'],
             'image' => ['required', 'image', 'max:5120'], // 5MB max
