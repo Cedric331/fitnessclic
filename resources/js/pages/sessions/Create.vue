@@ -131,6 +131,53 @@ const form = useForm({
     exercises: [] as SessionExercise[],
 });
 
+const SESSION_META_CACHE_KEY = 'fitnessclic_session_meta';
+
+const loadSessionMetaFromStorage = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        const stored = localStorage.getItem(SESSION_META_CACHE_KEY);
+        if (!stored) return;
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object') {
+            if (typeof parsed.name === 'string') {
+                form.name = parsed.name;
+            }
+            if (typeof parsed.notes === 'string') {
+                form.notes = parsed.notes;
+            }
+            if (Array.isArray(parsed.customer_ids)) {
+                form.customer_ids = parsed.customer_ids.filter((id: any) => Number.isFinite(id));
+            }
+        }
+    } catch {
+        // Ignorer les erreurs de localStorage
+    }
+};
+
+const saveSessionMetaToStorage = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        const payload = {
+            name: form.name ?? '',
+            notes: form.notes ?? '',
+            customer_ids: Array.isArray(form.customer_ids) ? form.customer_ids : [],
+        };
+        localStorage.setItem(SESSION_META_CACHE_KEY, JSON.stringify(payload));
+    } catch {
+        // Ignorer les erreurs de localStorage
+    }
+};
+
+const clearSessionMetaStorage = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        localStorage.removeItem(SESSION_META_CACHE_KEY);
+    } catch {
+        // Ignorer les erreurs de localStorage
+    }
+};
+
 const showCustomerModal = ref(false);
 const tempSelectedCustomerIds = ref<number[]>([]);
 const customerSearchTerm = ref('');
@@ -298,6 +345,7 @@ const getEditMode = (): 'standard' | 'libre' => {
 };
 
 onMounted(() => {
+    loadSessionMetaFromStorage();
     // Mettre à jour la détection mobile
     updateMobileDevice();
     
@@ -427,6 +475,7 @@ const addExerciseToSession = (exercise: Exercise, targetBlockId?: number, isFrom
     if (!exercise || !exercise.id) {
         return;
     }
+    console.log('addExerciseToSession', exercise, targetBlockId, isFromClick);
     
     // Si il y a des super sets et que c'est un clic (pas un glisser-déposer), afficher la modal
     if (isFromClick && availableSuperSets.value.length > 0 && targetBlockId === undefined) {
@@ -455,7 +504,7 @@ const addExerciseToSession = (exercise: Exercise, targetBlockId?: number, isFrom
             weight: 10,
             rest_time: '30',
             duration: '30',
-            description: '',
+            description: exercise.description || '',
             sets_count: 1,
             order: sessionExercises.value.length,
             block_id: null,
@@ -1388,6 +1437,7 @@ const saveSession = () => {
         preserveScroll: false,
         onSuccess: () => {
             localStorage.removeItem(STORAGE_KEY);
+            clearSessionMetaStorage();
             form.reset();
             sessionExercises.value = [];
         },
@@ -1417,6 +1467,7 @@ const confirmClearSession = () => {
     form.session_date = new Date().toISOString().split('T')[0];
     form.exercises = [];
     localStorage.removeItem(STORAGE_KEY);
+    clearSessionMetaStorage();
     isClearDialogOpen.value = false;
 };
 
@@ -1734,6 +1785,14 @@ const hasDuplicateExercises = computed(() => duplicateExercises.value.length > 0
 watch(sessionExercises, () => {
     saveExercisesToStorage();
 }, { deep: true });
+
+watch(
+    () => [form.name, form.notes, form.customer_ids],
+    () => {
+        saveSessionMetaToStorage();
+    },
+    { deep: true }
+);
 </script>
 
 <template>
