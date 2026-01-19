@@ -21,6 +21,7 @@ const FILTERS_CACHE_KEY = 'exercises-filters-cache';
 const VIEW_MODE_CACHE_KEY = 'exercises-view-mode-cache';
 const FILTERS_CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 const VIEW_MODE_CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 1 semaine
+const totalExercises = ref(0);
 
 // Interface pour les filtres en cache (sans le mode d'affichage)
 interface CachedFilters {
@@ -253,6 +254,7 @@ watch(
         const newData = values[0] as Exercise[] | undefined;
         const pageNumber = values[1] as number | undefined;
         const currentPageNum = pageNumber ?? 1;
+        totalExercises.value = props.exercises?.total ?? 0;
         
         // Ignorer si on a déjà traité cette page
         if (currentPageNum <= lastPageLoaded.value && currentPageNum !== 1) {
@@ -536,7 +538,7 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
             <div class="flex flex-col gap-2">
                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div class="flex-1">
-                        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Bibliothèque d'Exercices</h1>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Bibliothèque d'Exercices ({{ totalExercises }})</h1>
                         <p class="text-sm text-slate-600 dark:text-slate-400">
                             Gérez vos exercices personnalisés en un clin d'œil
                         </p>
