@@ -1035,17 +1035,22 @@
 
     <table class="header-info-table">
       <tr>
-        <td style="width: 33%;">
+        <td style="width: 33%; text-align: left;">
           @if(isset($customer) && $customer)
             {{ strtoupper($customer->full_name ?? ($customer->first_name . ' ' . $customer->last_name)) }}
           @endif
         </td>
-        <td style="width: 34%; text-align: center;">
+        <td style="width: 33%; text-align: right; font-weight: bold;">{{ $exerciseCount }} exercice{{ $exerciseCount > 1 ? 's' : '' }}</td>
+      </tr>
+    </table>
+
+    <table class="header-info-table">
+      <tr>
+        <td style="width: 100%; text-align: left;">
           @if($session->notes ?? null)
             <span class="note-label">Note :</span> {{ $session->notes }}
           @endif
         </td>
-        <td style="width: 33%; text-align: right; font-weight: bold;">{{ $exerciseCount }} exercice{{ $exerciseCount > 1 ? 's' : '' }}</td>
       </tr>
     </table>
 
