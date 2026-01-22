@@ -341,7 +341,7 @@ let currentDrawingHandlers: {
     mouseup?: (e: any) => void;
 } = {};
 
-const libraryViewMode = ref<'grid-2' | 'grid-4' | 'grid-6'>('grid-6');
+const libraryViewMode = ref<'grid-2' | 'grid-4' | 'grid-6'>('grid-2');
 
 // Gestion de la taille de fenêtre pour forcer le mode 2 colonnes en dessous de 1500px
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1920);
