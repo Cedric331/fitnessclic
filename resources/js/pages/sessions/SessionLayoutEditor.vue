@@ -187,11 +187,18 @@ const { success: notifySuccess, error: notifyError } = useNotifications();
 const canvasWidth = ref(800);
 const canvasHeight = ref(1140);
 const scale = ref(1);
+const baseScale = ref(1);
+const userZoom = ref(1);
+const minUserZoom = 0.5;
+const maxUserZoom = 2;
+const zoomStep = 0.1;
 
 const containerRef = ref<HTMLDivElement | null>(null);
+const canvasViewportRef = ref<HTMLDivElement | null>(null);
 let stage: Konva.Stage | null = null;
 let layer: Konva.Layer | null = null;
 let transformer: Konva.Transformer | null = null;
+let resizeObserver: ResizeObserver | null = null;
 
 const elements = ref<LayoutElement[]>([]);
 const selectedElementId = ref<string | null>(null);
@@ -349,7 +356,54 @@ const isSmallScreen = computed(() => windowWidth.value < 1500);
 
 const handleWindowResize = () => {
     windowWidth.value = window.innerWidth;
+    updateCanvasScale();
 };
+
+const displayWidth = computed(() => Math.round(canvasWidth.value * scale.value));
+const displayHeight = computed(() => Math.round(canvasHeight.value * scale.value));
+const zoomPercent = computed(() => Math.round(userZoom.value * 100));
+
+const updateCanvasScale = () => {
+    if (!canvasViewportRef.value) return;
+    const viewport = canvasViewportRef.value;
+    const styles = window.getComputedStyle(viewport);
+    const paddingX = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+    const paddingY = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+    const availableWidth = Math.max(0, viewport.clientWidth - paddingX);
+    const availableHeight = Math.max(0, viewport.clientHeight - paddingY);
+    if (!availableWidth || !availableHeight) return;
+
+    const scaleX = availableWidth / canvasWidth.value;
+    const scaleY = availableHeight / canvasHeight.value;
+    baseScale.value = Math.min(1, scaleX, scaleY);
+    const nextScale = baseScale.value * userZoom.value;
+
+    if (Math.abs(nextScale - scale.value) < 0.001) return;
+    scale.value = nextScale;
+
+    if (stage) {
+        stage.scale({ x: scale.value, y: scale.value });
+        stage.width(canvasWidth.value * scale.value);
+        stage.height(canvasHeight.value * scale.value);
+        const stageContent = stage.getContent();
+        if (stageContent) {
+            stageContent.style.width = `${canvasWidth.value * scale.value}px`;
+            stageContent.style.height = `${canvasHeight.value * scale.value}px`;
+        }
+    }
+    layer?.draw();
+};
+
+const setUserZoom = (value: number) => {
+    const nextZoom = Math.min(maxUserZoom, Math.max(minUserZoom, Number(value.toFixed(2))));
+    if (nextZoom === userZoom.value) return;
+    userZoom.value = nextZoom;
+    updateCanvasScale();
+};
+
+const zoomIn = () => setUserZoom(userZoom.value + zoomStep);
+const zoomOut = () => setUserZoom(userZoom.value - zoomStep);
+const resetZoom = () => setUserZoom(1);
 
 // Watcher pour forcer le mode grid-2 en dessous de 1500px
 watch(isSmallScreen, (small) => {
@@ -416,6 +470,14 @@ onMounted(() => {
     });
     layer.add(transformer);
 
+    updateCanvasScale();
+    if (canvasViewportRef.value && 'ResizeObserver' in window) {
+        resizeObserver = new ResizeObserver(() => {
+            updateCanvasScale();
+        });
+        resizeObserver.observe(canvasViewportRef.value);
+    }
+
     loadElementsToCanvas().then(() => {
         if (layer) {
             layer.draw();
@@ -465,10 +527,7 @@ onMounted(() => {
 
 watch([canvasWidth, canvasHeight], () => {
     if (stage && layer) {
-        stage.width(canvasWidth.value * scale.value);
-        stage.height(canvasHeight.value * scale.value);
-        stage.getContent().style.width = `${canvasWidth.value * scale.value}px`;
-        stage.getContent().style.height = `${canvasHeight.value * scale.value}px`;
+        updateCanvasScale();
         recalculateFooterPosition();
         layer.draw();
     }
@@ -476,6 +535,10 @@ watch([canvasWidth, canvasHeight], () => {
 
 onUnmounted(() => {
     window.removeEventListener('resize', handleWindowResize);
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+    }
     if (stage) {
         stage.destroy();
     }
@@ -2041,9 +2104,10 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
         
         const pointerPos = localStage.getPointerPosition();
         if (!pointerPos) return;
-        
+        const scaleValue = scale.value || 1;
+
         isMouseDown.value = true;
-        shapeStartPos.value = { x: pointerPos.x, y: pointerPos.y };
+        shapeStartPos.value = { x: pointerPos.x / scaleValue, y: pointerPos.y / scaleValue };
         e.cancelBubble = true;
     };
     
@@ -2052,9 +2116,12 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
         
         const pointerPos = localStage.getPointerPosition();
         if (!pointerPos) return;
-        
-        const width = pointerPos.x - shapeStartPos.value.x;
-        const height = pointerPos.y - shapeStartPos.value.y;
+        const scaleValue = scale.value || 1;
+        const pointerX = pointerPos.x / scaleValue;
+        const pointerY = pointerPos.y / scaleValue;
+
+        const width = pointerX - shapeStartPos.value.x;
+        const height = pointerY - shapeStartPos.value.y;
         
         if (tempShapeRef.value) {
             tempShapeRef.value.destroy();
@@ -2062,8 +2129,8 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
         
         if (type === 'rect' || type === 'highlight') {
             const tempRect = new Konva.Rect({
-                x: Math.min(shapeStartPos.value.x, pointerPos.x),
-                y: Math.min(shapeStartPos.value.y, pointerPos.y),
+                x: Math.min(shapeStartPos.value.x, pointerX),
+                y: Math.min(shapeStartPos.value.y, pointerY),
                 width: Math.abs(width),
                 height: Math.abs(height),
                 fill: type === 'highlight' ? '#FFFF00' : undefined,
@@ -2089,7 +2156,7 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
             localLayer.add(tempEllipse);
             tempShapeRef.value = tempEllipse;
         } else if (type === 'line' || type === 'arrow') {
-            const points = [shapeStartPos.value.x, shapeStartPos.value.y, pointerPos.x, pointerPos.y];
+            const points = [shapeStartPos.value.x, shapeStartPos.value.y, pointerX, pointerY];
             if (type === 'arrow') {
                 const tempArrow = new Konva.Arrow({
                     points,
@@ -2127,14 +2194,17 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
         isMouseDown.value = false;
         const pointerPos = localStage.getPointerPosition();
         if (!pointerPos) return;
+        const scaleValue = scale.value || 1;
+        const pointerX = pointerPos.x / scaleValue;
+        const pointerY = pointerPos.y / scaleValue;
         
         if (tempShapeRef.value) {
             tempShapeRef.value.destroy();
             tempShapeRef.value = null;
         }
         
-        const width = pointerPos.x - shapeStartPos.value.x;
-        const height = pointerPos.y - shapeStartPos.value.y;
+        const width = pointerX - shapeStartPos.value.x;
+        const height = pointerY - shapeStartPos.value.y;
         
         if (Math.abs(width) < 5 || Math.abs(height) < 5) {
             shapeStartPos.value = null;
@@ -2148,8 +2218,8 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
             element = {
                 id: `${type}-${Date.now()}`,
                 type: type,
-                x: Math.min(shapeStartPos.value.x, pointerPos.x),
-                y: Math.min(shapeStartPos.value.y, pointerPos.y),
+                x: Math.min(shapeStartPos.value.x, pointerX),
+                y: Math.min(shapeStartPos.value.y, pointerY),
                 width: Math.abs(width),
                 height: Math.abs(height),
                 fill: type === 'highlight' ? '#FFFF00' : undefined,
@@ -2175,7 +2245,7 @@ const startDrawingShape = (type: 'rect' | 'ellipse' | 'line' | 'arrow' | 'highli
                 type: type,
                 x: shapeStartPos.value.x,
                 y: shapeStartPos.value.y,
-                points: [shapeStartPos.value.x, shapeStartPos.value.y, pointerPos.x, pointerPos.y],
+                points: [shapeStartPos.value.x, shapeStartPos.value.y, pointerX, pointerY],
                 stroke: shapeStrokeColor.value,
                 strokeWidth: shapeStrokeWidth.value,
                 fill: type === 'arrow' ? shapeStrokeColor.value : undefined,
@@ -2633,8 +2703,10 @@ const generatePDFBlob = async (): Promise<Blob | null> => {
 
         const originalStageWidth = stage.width();
         const originalStageHeight = stage.height();
+        const originalScale = stage.scale();
         stage.width(realCanvasWidth);
         stage.height(realCanvasHeight);
+        stage.scale({ x: 1, y: 1 });
         
         if (layer) {
             layer.draw();
@@ -2648,6 +2720,12 @@ const generatePDFBlob = async (): Promise<Blob | null> => {
         
         stage.width(originalStageWidth);
         stage.height(originalStageHeight);
+        stage.scale(originalScale);
+        const stageContent = stage.getContent();
+        if (stageContent) {
+            stageContent.style.width = `${originalStageWidth}px`;
+            stageContent.style.height = `${originalStageHeight}px`;
+        }
         
         buttonNodes.forEach(buttonNode => {
             if (buttonNode) {
@@ -3648,8 +3726,9 @@ const setupDragAndDrop = () => {
 
         // Calculer la position relative au conteneur du canvas
         const rect = containerRef.value.getBoundingClientRect();
-        const dropX = e.clientX - rect.left;
-        const dropY = e.clientY - rect.top;
+        const scaleValue = scale.value || 1;
+        const dropX = (e.clientX - rect.left) / scaleValue;
+        const dropY = (e.clientY - rect.top) / scaleValue;
 
         try {
             const exerciseData = e.dataTransfer?.getData('application/json');
@@ -3917,17 +3996,34 @@ const setupDragAndDrop = () => {
             </div>
 
             <!-- Canvas Container -->
-            <div class="flex-1 overflow-auto bg-neutral-100 dark:bg-neutral-800 p-4 min-h-0">
-                <div class="flex justify-center">
+            <div ref="canvasViewportRef" class="flex-1 overflow-auto bg-neutral-100 dark:bg-neutral-800 p-4 min-h-0 relative">
+                <div class="flex items-center gap-1 rounded-md border border-input bg-white dark:bg-neutral-900 px-1 py-0.5 w-auto absolute top-5 right-5">
+                    <Button variant="ghost" size="sm" class="h-7 w-7 p-0" @click="zoomOut" title="Zoom -">
+                        <Minus class="h-3.5 w-3.5" />
+                    </Button>
+                    <button
+                        type="button"
+                        class="px-2 text-xs text-neutral-700 dark:text-neutral-200"
+                        @click="resetZoom"
+                        title="Réinitialiser le zoom"
+                    >
+                        {{ zoomPercent }}%
+                    </button>
+                    <Button variant="ghost" size="sm" class="h-7 w-7 p-0" @click="zoomIn" title="Zoom +">
+                        <Plus class="h-3.5 w-3.5" />
+                    </Button>
+                </div>
+                <div class="flex justify-center w-full h-full">
+                    
                     <div 
                         ref="containerRef"
                         class="bg-white shadow-lg"
                         :class="{ 'border-2 border-blue-500 border-dashed': isDraggingExercise }"
                         :style="{ 
-                            width: `${canvasWidth}px`, 
-                            height: `${canvasHeight}px`,
-                            minWidth: `${canvasWidth}px`,
-                            minHeight: `${canvasHeight}px`
+                            width: `${displayWidth}px`, 
+                            height: `${displayHeight}px`,
+                            minWidth: `${displayWidth}px`,
+                            minHeight: `${displayHeight}px`
                         }"
                     ></div>
                 </div>
