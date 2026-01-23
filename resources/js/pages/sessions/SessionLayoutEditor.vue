@@ -3997,7 +3997,7 @@ const setupDragAndDrop = () => {
 
             <!-- Canvas Container -->
             <div ref="canvasViewportRef" class="flex-1 overflow-auto bg-neutral-100 dark:bg-neutral-800 p-4 min-h-0 relative">
-                <div class="flex items-center gap-1 rounded-md border border-input bg-white dark:bg-neutral-900 px-1 py-0.5 w-auto absolute top-5 right-5">
+                <div class="flex items-center gap-1 rounded-md border border-input bg-white dark:bg-neutral-900 px-1 py-0.5 w-auto absolute top-5 right-5 z-10">
                     <Button variant="ghost" size="sm" class="h-7 w-7 p-0" @click="zoomOut" title="Zoom -">
                         <Minus class="h-3.5 w-3.5" />
                     </Button>
