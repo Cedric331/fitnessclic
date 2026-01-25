@@ -44,4 +44,9 @@ return [
         'key' => env('STABILITY_API_KEY'),
     ],
 
+    'stripe' => [
+        'default_promo_code' => env('STRIPE_DEFAULT_PROMO_CODE'),
+    ],
+
+
 ];
