@@ -62,41 +62,27 @@ class SubscriptionController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->subscribed('default')) {
-            return redirect()->route('subscription.index')
-                ->with('error', 'Vous avez déjà un abonnement actif.');
-        }        
-    
         $priceId = config('cashier.price_id');
-    
+
         if (! $priceId) {
             return redirect()->route('subscription.index')
                 ->with('error', 'Configuration Stripe manquante. Veuillez contacter le support.');
         }
-    
-        $promoCode = config('services.stripe.default_promo_code'); // promo_...
-    
-        $options = [
-            'success_url' => route('subscription.success'),
-            'cancel_url' => route('subscription.index'),
-            'mode' => 'subscription',
-        ];
-    
-        if ($promoCode) {
-            $options['discounts'] = [[
-                'promotion_code' => $promoCode,
-            ]];
-        }
-    
+
         try {
-            $checkout = $user->checkout([$priceId], $options);
-    
+            $checkout = $user->checkout([$priceId], [
+                'success_url' => route('subscription.success'),
+                'cancel_url' => route('subscription.index'),
+                'mode' => 'subscription',
+                'allow_promotion_codes' => true,
+            ]);
+
             if ($request->header('X-Inertia')) {
                 return response()->view('subscription.redirect', [
                     'url' => $checkout->url,
                 ])->header('X-Inertia-Location', $checkout->url);
             }
-    
+
             return response()->view('subscription.redirect', [
                 'url' => $checkout->url,
             ]);
@@ -105,7 +91,6 @@ class SubscriptionController extends Controller
                 ->with('error', 'Une erreur est survenue lors de la création de la session de paiement.');
         }
     }
-    
 
     /**
      * Redirect to Stripe Customer Portal for billing management
