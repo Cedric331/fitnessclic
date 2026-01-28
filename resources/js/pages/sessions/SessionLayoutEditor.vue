@@ -198,6 +198,17 @@ const canvasViewportRef = ref<HTMLDivElement | null>(null);
 let stage: Konva.Stage | null = null;
 let layer: Konva.Layer | null = null;
 let transformer: Konva.Transformer | null = null;
+const defaultTransformerAnchors = [
+    'top-left',
+    'top-center',
+    'top-right',
+    'middle-left',
+    'middle-right',
+    'bottom-left',
+    'bottom-center',
+    'bottom-right',
+];
+const imageTransformerAnchors = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
 let resizeObserver: ResizeObserver | null = null;
 
 const elements = ref<LayoutElement[]>([]);
@@ -463,7 +474,7 @@ onMounted(() => {
         anchorSize: 8,
         resizeEnabled: true,
         keepRatio: false,
-        enabledAnchors: ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'],
+        enabledAnchors: defaultTransformerAnchors,
         boundBoxFunc: (oldBox, newBox) => {
             return newBox;
         },
@@ -1816,6 +1827,12 @@ const selectElement = (id: string, node: any) => {
     }
     
     const element = elements.value.find(el => el.id === id);
+    
+    if (element && element.type === 'image') {
+        transformer.enabledAnchors(imageTransformerAnchors);
+    } else {
+        transformer.enabledAnchors(defaultTransformerAnchors);
+    }
     
     if (element && element.type === 'text') {
         // Le texte est désormais dimensionné à sa largeur réelle (ou maxWidth si wrap),
