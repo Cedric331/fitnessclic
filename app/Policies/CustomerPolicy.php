@@ -20,7 +20,7 @@ class CustomerPolicy
      */
     public function view(User $user, Customer $customer): bool
     {
-        return $user->id === $customer->user_id;
+        return $user->id === $customer->user_id || $user->sharesTeamWith($customer->user);
     }
 
     /**

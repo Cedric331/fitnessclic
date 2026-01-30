@@ -20,7 +20,7 @@ class SessionPolicy
      */
     public function view(User $user, Session $session): bool
     {
-        return $user->id === $session->user_id;
+        return $user->id === $session->user_id || $user->sharesTeamWith($session->user);
     }
 
     /**

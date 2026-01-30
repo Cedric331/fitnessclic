@@ -80,7 +80,7 @@ class ExercisesController extends Controller
                 'sort' => in_array($sortOrder, ['newest', 'oldest', 'alphabetical', 'alphabetical-desc'], true) ? $sortOrder : 'newest',
                 'view' => in_array($viewMode, ['grid-2', 'grid-4', 'grid-6', 'grid-8'], true) ? $viewMode : 'grid-6',
             ],
-            'categories' => Category::forUser(Auth::id())->orderBy('name')->get(['id', 'name']),
+            'categories' => Category::forUser(Auth::user())->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -187,7 +187,7 @@ class ExercisesController extends Controller
                 'id' => $category->id,
                 'name' => $category->name,
             ]),
-            'categories_list' => Category::forUser(Auth::id())->orderBy('name')->get(['id', 'name']),
+            'categories_list' => Category::forUser(Auth::user())->orderBy('name')->get(['id', 'name']),
         ];
 
         $isInertiaRequest = $request->header('X-Inertia') !== null;

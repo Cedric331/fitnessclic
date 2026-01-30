@@ -21,9 +21,13 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const page = usePage();
+const hasTeam = computed(() => (page.props.auth as any)?.user?.hasTeam ?? false);
+
 const pageTitle = computed(() => `${props.customer.first_name} ${props.customer.last_name}`);
+const isOwner = computed(() => props.customer.is_owner !== false);
 const breadcrumbs = computed(() => [
-    { title: 'Mes Clients', href: '/customers' },
+    { title: hasTeam.value ? 'Clients d\'équipe' : 'Mes Clients', href: '/customers' },
     { title: pageTitle.value, href: `/customers/${props.customer.id}` },
 ]);
 
@@ -56,7 +60,6 @@ const formatSessionDate = (session: TrainingSessionHistory) => {
     return formatDate(dateValue);
 };
 
-const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
 
 const isSendEmailDialogOpen = ref(false);
@@ -684,6 +687,7 @@ watch(isDeleteDialogOpen, (open) => {
                 </div>
                 <div class="flex items-center gap-2">
                     <Button
+                        v-if="isOwner"
                         variant="outline"
                         size="sm"
                         class="inline-flex items-center gap-2"
@@ -693,6 +697,7 @@ watch(isDeleteDialogOpen, (open) => {
                         <span>Modifier</span>
                     </Button>
                     <Button
+                        v-if="isOwner"
                         variant="outline"
                         size="sm"
                         class="inline-flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -730,6 +735,12 @@ watch(isDeleteDialogOpen, (open) => {
                                 <p class="text-xs uppercase text-slate-500">Téléphone</p>
                                 <p class="text-sm font-medium text-slate-900 dark:text-white">
                                     {{ props.customer.phone || '—' }}
+                                </p>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <p class="text-xs uppercase text-slate-500">Coach responsable</p>
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">
+                                    {{ props.customer.coach_name || '—' }}
                                 </p>
                             </div>
                             <div class="sm:col-span-2">
@@ -799,6 +810,13 @@ watch(isDeleteDialogOpen, (open) => {
                                             {{ session.name || 'Séance sans titre' }}
                                         </p>
                                         <Badge
+                                            v-if="session.coach_name"
+                                            variant="outline"
+                                            class="text-xs text-slate-500"
+                                        >
+                                            Coach : {{ session.coach_name }}
+                                        </Badge>
+                                        <Badge
                                             v-if="session.has_custom_layout"
                                             variant="default"
                                             class="bg-blue-600 text-white text-xs px-2 py-0.5 flex items-center gap-1"
@@ -833,6 +851,7 @@ watch(isDeleteDialogOpen, (open) => {
                                     Consulter
                                 </Button>
                                 <Button
+                                    v-if="session.is_owner !== false"
                                     variant="ghost"
                                     size="sm"
                                     class="h-8 text-xs"
@@ -842,6 +861,7 @@ watch(isDeleteDialogOpen, (open) => {
                                     PDF
                                 </Button>
                                 <Button
+                                    v-if="session.is_owner !== false"
                                     variant="ghost"
                                     size="sm"
                                     class="h-8 text-xs"
@@ -851,6 +871,7 @@ watch(isDeleteDialogOpen, (open) => {
                                     Imprimer
                                 </Button>
                                 <Button
+                                    v-if="session.is_owner !== false"
                                     variant="ghost"
                                     size="sm"
                                     class="h-8 text-xs"

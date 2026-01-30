@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +15,7 @@ interface Props {
 
 const props = defineProps<Props>();
 const { getInitials } = useInitials();
+const isOwner = computed(() => props.customer.is_owner !== false);
 
 const emit = defineEmits<{
     edit: [customer: Customer];
@@ -68,6 +70,9 @@ const handleDelete = () => {
                                 customer.training_sessions_count > 1 ? 's' : ''
                             }}
                         </p>
+                        <p v-if="customer.coach_name" class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Coach responsable : {{ customer.coach_name }}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -90,6 +95,7 @@ const handleDelete = () => {
                     size="icon"
                     class="h-7 w-7"
                     :title="'Modifier'"
+                    v-if="isOwner"
                     @click="handleEdit"
                 >
                     <Pencil class="size-3.5 text-slate-600 dark:text-slate-400" />
@@ -99,6 +105,7 @@ const handleDelete = () => {
                     size="icon"
                     class="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                     :title="'Supprimer'"
+                    v-if="isOwner"
                     @click="handleDelete"
                 >
                     <Trash2 class="size-3.5" />

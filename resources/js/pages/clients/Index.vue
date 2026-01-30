@@ -18,6 +18,7 @@ import { useNotifications } from '@/composables/useNotifications';
 const props = defineProps<CustomersProps>();
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
+const hasTeam = computed(() => (page.props.auth as any)?.user?.hasTeam ?? false);
 
 // Vérifier si l'utilisateur est Pro
 const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
@@ -59,10 +60,17 @@ watch(() => (page.props as any).flash, (flash) => {
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Mes Clients',
+        title: hasTeam.value ? 'Clients d\'équipe' : 'Mes Clients',
         href: '/customers',
     },
 ];
+
+const clientsTitle = computed(() => (hasTeam.value ? 'Clients d\'équipe' : 'Mes Clients'));
+const clientsDescription = computed(() =>
+    hasTeam.value
+        ? 'Consultez les clients partagés avec votre équipe'
+        : 'Gérez vos clients et leurs programmes d\'entraînement'
+);
 
 const searchTerm = ref(props.filters.search || '');
 
@@ -154,7 +162,7 @@ watch(isDeleteDialogOpen, (open) => {
 </script>
 
 <template>
-    <Head title="Mes Clients">
+    <Head :title="clientsTitle">
         <meta name="description" content="Gérez vos clients et leurs programmes d'entraînement. Créez, modifiez et suivez la progression de vos clients avec FitnessClic Pro." />
     </Head>
 
@@ -164,10 +172,10 @@ watch(isDeleteDialogOpen, (open) => {
             <div class="flex items-start justify-between">
                 <div class="flex flex-col gap-0.5">
                     <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
-                        Mes Clients
+                        {{ clientsTitle }}
                     </h1>
                     <p class="text-xs text-slate-600 dark:text-slate-400">
-                        Gérez vos clients et leurs programmes d'entraînement
+                        {{ clientsDescription }}
                     </p>
                 </div>
             

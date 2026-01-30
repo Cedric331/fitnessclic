@@ -9,7 +9,7 @@ import type { Session } from './types';
 
 interface Props {
     session: Session;
-    source?: 'my_sessions' | 'public_sessions';
+    source?: 'my_sessions' | 'public_sessions' | 'team_sessions';
 }
 
 const props = defineProps<Props>();
@@ -25,6 +25,8 @@ const isOwner = computed(() => props.session.is_owner !== false);
 
 // Détermine si c'est une séance publique (affichée dans les séances publiques)
 const isPublicSession = computed(() => props.source === 'public_sessions');
+const isTeamSession = computed(() => props.source === 'team_sessions');
+const coachName = computed(() => props.session.coach_name || props.session.creator_name);
 
 const formatDate = (dateString?: string | null) => {
     if (!dateString) return '—';
@@ -112,13 +114,13 @@ const remainingExercises = computed(() => {
                     </div>
                 </div>
 
-                <!-- Créateur pour les séances publiques -->
-                <div v-if="isPublicSession && session.creator_name" class="flex items-center gap-1.5">
+                <!-- Coach responsable pour les séances partagées -->
+                <div v-if="(isPublicSession || isTeamSession) && coachName" class="flex items-center gap-1.5">
                     <Badge
                         variant="outline"
                         class="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-700"
                     >
-                        Créée par {{ session.creator_name }}
+                        Coach responsable : {{ coachName }}
                     </Badge>
                 </div>
 
@@ -171,9 +173,9 @@ const remainingExercises = computed(() => {
                         <Eye class="size-3.5 text-slate-600 dark:text-slate-400" />
                     </Button>
                     
-                    <!-- Dupliquer - disponible pour les séances publiques -->
+                    <!-- Dupliquer - disponible pour les séances publiques ou d'équipe -->
                     <Button
-                        v-if="isPublicSession"
+                        v-if="isPublicSession || isTeamSession"
                         variant="ghost"
                         size="icon"
                         class="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"

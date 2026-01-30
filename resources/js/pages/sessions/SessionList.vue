@@ -6,7 +6,7 @@ import type { Session } from './types';
 interface Props {
     sessions: Session[];
     hasSearch: boolean;
-    source?: 'my_sessions' | 'public_sessions';
+    source?: 'my_sessions' | 'public_sessions' | 'team_sessions';
 }
 
 const props = defineProps<Props>();
@@ -60,11 +60,15 @@ const handleDuplicate = (session: Session) => {
             {{
                 hasSearch
                     ? 'Aucune séance ne correspond à votre recherche.'
-                    : 'Commencez par créer votre première séance d\'entraînement.'
+                    : source === 'team_sessions'
+                        ? 'Aucune séance d\'équipe n\'est disponible pour le moment.'
+                        : source === 'public_sessions'
+                            ? 'Aucune séance publique n\'est disponible pour le moment.'
+                            : 'Commencez par créer votre première séance d\'entraînement.'
             }}
         </p>
         <a
-            v-if="!hasSearch"
+            v-if="!hasSearch && source === 'my_sessions'"
             href="/sessions/create"
             class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
         >

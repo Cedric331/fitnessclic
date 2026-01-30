@@ -25,7 +25,7 @@ class IndexSessionRequest extends FormRequest
             'search' => ['nullable', 'string', 'max:255'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'sort' => ['nullable', 'string', 'in:newest,oldest'],
-            'source' => ['nullable', 'string', 'in:my_sessions,public_sessions'],
+            'source' => ['nullable', 'string', 'in:my_sessions,public_sessions,team_sessions'],
         ];
     }
 }

@@ -25,7 +25,27 @@ class DatabaseSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
-        
+
+        User::firstOrCreate(
+            ['email' => 'customer1@test.fr'],
+            [
+                'name' => 'Customer 1 User',
+                'password' => Hash::make('password'),
+                'role' => UserRole::CUSTOMER->value,
+                'email_verified_at' => now(),
+            ]
+        );
+
+        User::firstOrCreate(
+            ['email' => 'customer2@test.fr'],
+            [
+                'name' => 'Customer 2 User',
+                'password' => Hash::make('password'),
+                'role' => UserRole::CUSTOMER->value,
+                'email_verified_at' => now(),
+            ]
+        );
+
         // Run other seeders
         $this->call([
             // CustomerSeeder::class,

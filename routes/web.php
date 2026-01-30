@@ -7,6 +7,8 @@ use App\Http\Controllers\ExercisesController;
 use App\Http\Controllers\PublicSessionController;
 use App\Http\Controllers\SessionsController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\TeamInvitationsController;
 use App\Models\Session;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -81,7 +83,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Announcements routes
     Route::get('/announcements/current', [AnnouncementsController::class, 'current'])->name('announcements.current');
     Route::post('/announcements/{announcement}/seen', [AnnouncementsController::class, 'markAsSeen'])->name('announcements.seen');
+
+    // Team routes
+    Route::get('/team', [TeamController::class, 'index'])->name('team.index');
+    Route::post('/team', [TeamController::class, 'store'])->name('team.store');
+    Route::delete('/team/members/{member}', [TeamController::class, 'destroyMember'])->name('team.members.destroy');
+    Route::post('/team/invitations', [TeamInvitationsController::class, 'store'])->name('team.invitations.store');
+    Route::delete('/team/invitations/{invitation}', [TeamInvitationsController::class, 'destroy'])->name('team.invitations.destroy');
+    Route::post('/team/invitations/{token}/accept', [TeamInvitationsController::class, 'accept'])->name('team.invitations.accept');
 });
+
+// Team invitation landing page (public)
+Route::get('/team/invitations/{token}', [TeamInvitationsController::class, 'show'])->name('team.invitations.show');
 
 // Stripe
 Route::post(

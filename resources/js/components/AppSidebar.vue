@@ -20,6 +20,7 @@ import {
     Plus,
     Dumbbell,
     User as UserIcon,
+    Users,
     Library,
     Tag,
     Star,
@@ -60,6 +61,11 @@ const mainNavItems: NavItem[] = [
         title: 'Mes Clients',
         href: '/customers',
         icon: UserIcon,
+    },
+    {
+        title: 'Mon équipe',
+        href: '/team',
+        icon: Users,
     },
     {
         title: 'Bibliothèque',

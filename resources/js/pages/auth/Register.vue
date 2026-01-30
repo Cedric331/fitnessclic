@@ -9,6 +9,20 @@ import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 import { Form, Head } from '@inertiajs/vue3';
+import { ref } from 'vue';
+
+const inviteToken = ref<string | null>(null);
+const inviteEmail = ref<string | null>(null);
+const emailValue = ref('');
+
+if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    inviteToken.value = params.get('invite');
+    inviteEmail.value = params.get('email');
+    if (inviteEmail.value) {
+        emailValue.value = inviteEmail.value;
+    }
+}
 </script>
 
 <template>
@@ -24,6 +38,12 @@ import { Form, Head } from '@inertiajs/vue3';
             v-slot="{ errors, processing }"
             class="flex flex-col gap-6"
         >
+            <input
+                v-if="inviteToken"
+                type="hidden"
+                name="invite_token"
+                :value="inviteToken"
+            />
             <div class="grid gap-6">
                 <div class="grid gap-2">
                     <Label for="name">Nom</Label>
@@ -50,6 +70,7 @@ import { Form, Head } from '@inertiajs/vue3';
                         autocomplete="email"
                         name="email"
                         placeholder="email@exemple.com"
+                        v-model="emailValue"
                     />
                     <InputError :message="errors.email" />
                 </div>

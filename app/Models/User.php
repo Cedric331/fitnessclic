@@ -8,6 +8,7 @@ use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -47,6 +48,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
      * @var list<string>
      */
     protected $fillable = [
+        'team_id',
         'name',
         'email',
         'role',
@@ -319,6 +321,54 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
         return $this->belongsToMany(Announcement::class, 'announcement_user')
             ->withPivot('seen_at')
             ->withTimestamps();
+    }
+
+    /**
+     * Relation with the team.
+     */
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    /**
+     * Check if the user shares a team with another user.
+     */
+    public function sharesTeamWith(?User $other): bool
+    {
+        if (! $other) {
+            return false;
+        }
+
+        return $this->team_id !== null && $this->team_id === $other->team_id;
+    }
+
+    /**
+     * Get the IDs of team members (including the user).
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    public function teamMemberIds()
+    {
+        if (! $this->team_id) {
+            return collect([$this->id]);
+        }
+
+        return static::query()
+            ->where('team_id', $this->team_id)
+            ->pluck('id');
+    }
+
+    /**
+     * Check if the user can view a customer.
+     */
+    public function canViewCustomer(Customer $customer): bool
+    {
+        if ($customer->user_id === $this->id) {
+            return true;
+        }
+
+        return $this->sharesTeamWith($customer->user);
     }
 
     /**

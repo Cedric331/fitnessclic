@@ -51,6 +51,8 @@ const props = defineProps<Props>();
 
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
+const isOwner = computed(() => props.session.is_owner !== false);
+const isAdmin = computed(() => (page.props as any).auth?.user?.isAdmin ?? false);
 
 const shownFlashMessages = ref(new Set<string>());
 
@@ -923,19 +925,19 @@ const isPro = computed(() => {
 });
 
 const canDownloadPdf = computed(() => {
-    return isPro.value || (page.props as any).auth?.user?.isAdmin;
+    return (isOwner.value && isPro.value) || isAdmin.value;
 });
 
 const canPrint = computed(() => {
-    return isPro.value || (page.props as any).auth?.user?.isAdmin;
+    return (isOwner.value && isPro.value) || isAdmin.value;
 });
 
 const canEdit = computed(() => {
-    return isPro.value && props.session.user_id === (page.props as any).auth?.user?.id || (page.props as any).auth?.user?.isAdmin;
+    return (isOwner.value && isPro.value) || isAdmin.value;
 });
 
 const canDelete = computed(() => {
-    return isPro.value && props.session.user_id === (page.props as any).auth?.user?.id || (page.props as any).auth?.user?.isAdmin;
+    return (isOwner.value && isPro.value) || isAdmin.value;
 });
 
 onMounted(() => {
@@ -1230,7 +1232,7 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
                         <span>Imprimer</span>
                     </Button>
                     <Button
-                        v-if="session.has_custom_layout"
+                        v-if="session.has_custom_layout && canEdit"
                         variant="outline"
                         size="sm"
                         class="hidden xl:inline-flex items-center gap-2 w-full sm:w-auto"
@@ -1354,6 +1356,12 @@ const formatSeriesDataFallback = (sessionExercise: any, setsCount: number) => {
 
                             <!-- Métadonnées -->
                             <div class="space-y-4">
+                                <div v-if="session.coach_name">
+                                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">Coach responsable</p>
+                                    <p class="text-sm font-medium text-slate-900 dark:text-white">
+                                        {{ session.coach_name }}
+                                    </p>
+                                </div>
                                 <div>
                                     <p class="text-xs text-slate-500 dark:text-slate-400 mb-1">Date de la séance</p>
                                     <p class="text-sm font-medium text-slate-900 dark:text-white">

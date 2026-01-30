@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 const props = defineProps<SessionsProps>();
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
+const hasTeam = computed(() => (page.props.auth as any)?.user?.hasTeam ?? false);
 
 // Écouter les messages flash et les convertir en notifications
 // Utiliser un Set pour éviter les doublons
@@ -57,7 +58,11 @@ watch(() => (page.props as any).flash, (flash) => {
 
 const breadcrumbs = computed((): BreadcrumbItem[] => [
     {
-        title: sourceFilter.value === 'public_sessions' ? 'Séances Publiques' : 'Mes Séances',
+        title: sourceFilter.value === 'public_sessions'
+            ? 'Séances Publiques'
+            : sourceFilter.value === 'team_sessions'
+                ? 'Séances d\'équipe'
+                : 'Mes Séances',
         href: '/sessions',
     },
 ]);
@@ -65,7 +70,7 @@ const breadcrumbs = computed((): BreadcrumbItem[] => [
 const searchTerm = ref(props.filters.search || '');
 const sortOrder = ref<'newest' | 'oldest'>(props.filters.sort || 'newest');
 const customerFilter = ref<number | null>(props.filters.customer_id || null);
-const sourceFilter = ref<'my_sessions' | 'public_sessions'>(props.filters.source || 'my_sessions');
+const sourceFilter = ref<'my_sessions' | 'public_sessions' | 'team_sessions'>(props.filters.source || 'my_sessions');
 
 const searchInput = ref<HTMLInputElement | null>(null);
 const isDeleteDialogOpen = ref(false);
@@ -181,9 +186,9 @@ const handleCustomerFilterChange = (event: Event) => {
 
 const handleSourceFilterChange = (event: Event) => {
     const target = event.target as HTMLSelectElement;
-    sourceFilter.value = target.value as 'my_sessions' | 'public_sessions';
-    // Réinitialiser le filtre client quand on passe aux séances publiques
-    if (sourceFilter.value === 'public_sessions') {
+    sourceFilter.value = target.value as 'my_sessions' | 'public_sessions' | 'team_sessions';
+    // Réinitialiser le filtre client quand on passe aux séances publiques ou d'équipe
+    if (sourceFilter.value !== 'my_sessions') {
         customerFilter.value = null;
     }
     applyFilters();
@@ -347,7 +352,7 @@ watch(isDeleteDialogOpen, (open) => {
 </script>
 
 <template>
-    <Head :title="sourceFilter === 'public_sessions' ? 'Séances Publiques' : 'Mes Séances'">
+    <Head :title="sourceFilter === 'public_sessions' ? 'Séances Publiques' : sourceFilter === 'team_sessions' ? 'Séances d\'équipe' : 'Mes Séances'">
         <meta name="description" content="Consultez et gérez toutes vos séances d'entraînement enregistrées. Recherchez, filtrez par client et organisez vos programmes d'entraînement." />
     </Head>
 
@@ -357,12 +362,21 @@ watch(isDeleteDialogOpen, (open) => {
             <div class="flex items-start justify-between">
                 <div class="flex flex-col gap-0.5">
                     <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
-                        {{ sourceFilter === 'public_sessions' ? 'Séances Publiques' : 'Mes Séances' }}
+                        {{
+                            sourceFilter === 'public_sessions'
+                                ? 'Séances Publiques'
+                                : sourceFilter === 'team_sessions'
+                                    ? 'Séances d\'équipe'
+                                    : 'Mes Séances'
+                        }}
                     </h1>
                     <p class="text-xs text-slate-600 dark:text-slate-400">
-                        {{ sourceFilter === 'public_sessions' 
-                            ? 'Découvrez et dupliquez des séances partagées par les coachs' 
-                            : 'Consultez vos séances d\'entraînement enregistrées' 
+                        {{
+                            sourceFilter === 'public_sessions'
+                                ? 'Découvrez et dupliquez des séances partagées par les coachs'
+                                : sourceFilter === 'team_sessions'
+                                    ? 'Consultez les séances partagées par votre équipe'
+                                    : 'Consultez vos séances d\'entraînement enregistrées'
                         }}
                     </p>
                 </div>
@@ -391,6 +405,7 @@ watch(isDeleteDialogOpen, (open) => {
                         @change="handleSourceFilterChange"
                     >
                         <option value="my_sessions">Mes séances</option>
+                        <option v-if="hasTeam" value="team_sessions">Séances d'équipe</option>
                         <option value="public_sessions">Séances publiques</option>
                     </select>
                 </div>

@@ -11,6 +11,20 @@ import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 import { Form, Head } from '@inertiajs/vue3';
+import { ref } from 'vue';
+
+const inviteToken = ref<string | null>(null);
+const inviteEmail = ref<string | null>(null);
+const emailValue = ref('');
+
+if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    inviteToken.value = params.get('invite');
+    inviteEmail.value = params.get('email');
+    if (inviteEmail.value) {
+        emailValue.value = inviteEmail.value;
+    }
+}
 
 defineProps<{
     status?: string;
@@ -39,6 +53,12 @@ defineProps<{
             v-slot="{ errors, processing }"
             class="flex flex-col gap-6"
         >
+            <input
+                v-if="inviteToken"
+                type="hidden"
+                name="invite_token"
+                :value="inviteToken"
+            />
             <div class="grid gap-6">
                 <div class="grid gap-2">
                     <Label for="email">Adresse e-mail</Label>
@@ -51,6 +71,7 @@ defineProps<{
                         :tabindex="1"
                         autocomplete="email"
                         placeholder="email@exemple.com"
+                        v-model="emailValue"
                     />
                     <InputError :message="errors.email" />
                 </div>

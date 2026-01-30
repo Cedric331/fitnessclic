@@ -19,9 +19,14 @@ class CustomersController extends Controller
     public function index(IndexCustomerRequest $request): Response
     {
         $validated = $request->validated();
+        /** @var User $user */
+        $user = Auth::user();
+        $teamMemberIds = $user->teamMemberIds();
 
-        $query = Customer::where('user_id', Auth::id())
-            ->withCount('trainingSessions');
+        $query = Customer::query()
+            ->withCount('trainingSessions')
+            ->with('user')
+            ->whereIn('user_id', $teamMemberIds);
 
         if (! empty($validated['search'])) {
             $search = $validated['search'];
@@ -33,6 +38,12 @@ class CustomersController extends Controller
         }
 
         $customers = $query->latest()->paginate(12);
+        $customers->getCollection()->transform(function (Customer $customer) use ($user) {
+            $customer->coach_name = $customer->user?->name;
+            $customer->is_owner = $customer->user_id === $user->id;
+
+            return $customer;
+        });
 
         return Inertia::render('clients/Index', [
             'customers' => $customers,
@@ -73,25 +84,32 @@ class CustomersController extends Controller
         /** @var User|null $user */
         $user = Auth::user();
 
-        if (! $user || ! $user->hasCustomer($customer)) {
+        $customer->load('user');
+
+        if (! $user || ! $user->canViewCustomer($customer)) {
             return redirect()->route('client.customers.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour voir ce client.');
         }
 
+        $teamMemberIds = $user->teamMemberIds();
         $trainingSessions = $customer->trainingSessions()
-            ->where('user_id', $user->id)
+            ->whereIn('user_id', $teamMemberIds)
             ->withCount('exercises')
-            ->with('layout')
+            ->with(['layout', 'user'])
             ->orderByDesc('session_date')
             ->orderByDesc('created_at')
             ->get()
-            ->map(function ($session) {
+            ->map(function ($session) use ($user) {
                 $session->has_custom_layout = $session->layout !== null;
+                $session->coach_name = $session->user?->name;
+                $session->is_owner = $session->user_id === $user->id;
 
                 return $session;
             });
 
         $customer->setAttribute('training_sessions_count', $trainingSessions->count());
+        $customer->setAttribute('coach_name', $customer->user?->name);
+        $customer->setAttribute('is_owner', $customer->user_id === $user->id);
 
         return Inertia::render('clients/Show', [
             'customer' => $customer,

@@ -32,8 +32,14 @@ class SessionsController extends Controller
     public function index(IndexSessionRequest $request): Response
     {
         $validated = $request->validated();
-        $userId = Auth::id();
+        /** @var User $user */
+        $user = Auth::user();
+        $userId = $user->id;
         $source = $validated['source'] ?? 'my_sessions';
+        if ($source === 'team_sessions' && ! $user->team_id) {
+            $source = 'my_sessions';
+        }
+        $teamMemberIds = $user->teamMemberIds();
 
         $query = Session::query()
             ->with(['customers', 'exercises.media', 'layout', 'user'])
@@ -47,6 +53,8 @@ class SessionsController extends Controller
                 ->whereHas('user', function ($q) {
                     $q->where('role', 'admin');
                 });
+        } elseif ($source === 'team_sessions' && $user->team_id) {
+            $query->whereIn('user_id', $teamMemberIds);
         } else {
             // Mes séances uniquement
             $query->where('user_id', $userId);
@@ -92,8 +100,8 @@ class SessionsController extends Controller
             $session->has_custom_layout = $session->layout !== null;
             // Ajouter l'information sur la propriété
             $session->is_owner = $session->user_id === $userId;
-            // Ajouter le nom du créateur pour les séances publiques
-            $session->creator_name = $session->user?->name;
+            // Ajouter le nom du coach
+            $session->coach_name = $session->user?->name;
 
             return $session;
         });
@@ -118,7 +126,12 @@ class SessionsController extends Controller
         return Inertia::render('sessions/Index', [
             'sessions' => $sessions,
             'customers' => $customers,
-            'filters' => $request->only(['search', 'customer_id', 'sort', 'source']),
+            'filters' => [
+                'search' => $validated['search'] ?? null,
+                'customer_id' => $validated['customer_id'] ?? null,
+                'sort' => $validated['sort'] ?? null,
+                'source' => $source,
+            ],
         ]);
     }
 
@@ -127,6 +140,8 @@ class SessionsController extends Controller
      */
     public function create(Request $request): Response
     {
+        /** @var User $user */
+        $user = Auth::user();
         $searchTerm = trim((string) $request->input('search', ''));
         $categoryId = $request->input('category_id');
 
@@ -151,11 +166,12 @@ class SessionsController extends Controller
             ];
         });
 
-        $categories = \App\Models\Category::forUser(Auth::id())
+        $categories = \App\Models\Category::forUser($user)
             ->orderBy('name')
             ->get();
 
-        $customers = Customer::where('user_id', Auth::id())
+        $teamMemberIds = $user->teamMemberIds();
+        $customers = Customer::whereIn('user_id', $teamMemberIds)
             ->where('is_active', true)
             ->orderBy('first_name')
             ->orderBy('last_name')
@@ -255,12 +271,19 @@ class SessionsController extends Controller
      */
     public function show(Session $session): Response
     {
+        /** @var User $user */
         $user = Auth::user();
+        $session->loadMissing('user');
         // Autoriser l'accès si :
         // - L'utilisateur est propriétaire de la séance
         // - L'utilisateur est admin
         // - La séance est publique
-        if ($session->user_id !== Auth::id() && ! $user->isAdmin() && ! $session->is_public) {
+        // - La séance appartient à un membre de la même équipe
+        if ($session->user_id !== $user->id
+            && ! $user->isAdmin()
+            && ! $session->is_public
+            && ! $user->sharesTeamWith($session->user)
+        ) {
             abort(403);
         }
 
@@ -288,7 +311,8 @@ class SessionsController extends Controller
             });
 
         // Charger les clients pour l'éditeur
-        $customers = Customer::where('user_id', Auth::id())
+        $teamMemberIds = $user->teamMemberIds();
+        $customers = Customer::whereIn('user_id', $teamMemberIds)
             ->where('is_active', true)
             ->orderBy('first_name')
             ->orderBy('last_name')
@@ -311,6 +335,8 @@ class SessionsController extends Controller
             'created_at' => $session->created_at,
             'exercises_count' => $session->exercises_count,
             'has_custom_layout' => $session->layout !== null,
+            'is_owner' => $session->user_id === $user->id,
+            'coach_name' => $session->user?->name,
             'layout' => $session->layout ? [
                 'id' => $session->layout->id,
                 'layout_data' => $session->layout->layout_data,
@@ -411,11 +437,14 @@ class SessionsController extends Controller
             ];
         });
 
-        $categories = \App\Models\Category::forUser(Auth::id())
+        $categories = \App\Models\Category::forUser(Auth::user())
             ->orderBy('name')
             ->get();
 
-        $customers = Customer::where('user_id', Auth::id())
+        /** @var User $user */
+        $user = Auth::user();
+        $teamMemberIds = $user->teamMemberIds();
+        $customers = Customer::whereIn('user_id', $teamMemberIds)
             ->where('is_active', true)
             ->orderBy('first_name')
             ->orderBy('last_name')
@@ -689,7 +718,14 @@ class SessionsController extends Controller
      */
     public function showPdfPreview(Session $session)
     {
-        if ($session->user_id !== Auth::id() && !Auth::user()->isAdmin() && !$session->is_public) {
+        /** @var User $user */
+        $user = Auth::user();
+        $session->loadMissing('user');
+        if ($session->user_id !== $user->id
+            && ! $user->isAdmin()
+            && ! $session->is_public
+            && ! $user->sharesTeamWith($session->user)
+        ) {
             abort(403);
         }
 
@@ -995,8 +1031,16 @@ class SessionsController extends Controller
      */
     public function getLayout(Session $session)
     {
-        // Vérifier que l'utilisateur est propriétaire de la session
-        if ($session->user_id !== Auth::id()) {
+        /** @var User $user */
+        $user = Auth::user();
+        $session->loadMissing('user');
+
+        // Vérifier que l'utilisateur peut consulter la séance
+        if ($session->user_id !== $user->id
+            && ! $user->isAdmin()
+            && ! $session->is_public
+            && ! $user->sharesTeamWith($session->user)
+        ) {
             return response()->json(['error' => 'Non autorisé'], 403);
         }
 
@@ -1109,6 +1153,7 @@ class SessionsController extends Controller
     public function duplicate(Session $session): RedirectResponse
     {
         $user = Auth::user();
+        $session->loadMissing('user');
 
         // Vérifier que l'utilisateur peut sauvegarder des séances
         if (! $user->canSaveSessions()) {
@@ -1116,8 +1161,11 @@ class SessionsController extends Controller
                 ->with('error', 'La duplication de séances est réservée aux abonnés Pro. Passez à Pro pour dupliquer des séances.');
         }
 
-        // Vérifier que la séance est publique ou appartient à l'utilisateur
-        if (! $session->is_public && $session->user_id !== Auth::id()) {
+        // Vérifier que la séance est publique, appartient à l'utilisateur ou à son équipe
+        if (! $session->is_public
+            && $session->user_id !== Auth::id()
+            && ! $user->sharesTeamWith($session->user)
+        ) {
             return redirect()->route('sessions.index')
                 ->with('error', 'Vous ne pouvez pas dupliquer cette séance.');
         }

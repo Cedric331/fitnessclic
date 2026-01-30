@@ -22,14 +22,23 @@ class CategoriesController extends Controller
         $searchTerm = trim((string) ($validated['search'] ?? ''));
         $showPrivate = $validated['private'] ?? true;
         $showPublic = $validated['public'] ?? true;
+        $user = Auth::user();
 
         $privateCategories = collect();
-        if ($showPrivate && Auth::id()) {
+        if ($showPrivate && $user) {
+            $teamMemberIds = $user->teamMemberIds();
             $privateCategories = Category::private()
-                ->where('user_id', Auth::id())
+                ->with('user')
+                ->whereIn('user_id', $teamMemberIds)
                 ->when($searchTerm !== '', fn ($query) => $query->where('name', 'like', "%{$searchTerm}%"))
                 ->orderBy('name')
-                ->get();
+                ->get()
+                ->map(function (Category $category) use ($user) {
+                    $category->is_owner = $category->user_id === $user->id;
+                    $category->coach_name = $category->user?->name;
+
+                    return $category;
+                });
         }
 
         $publicCategories = collect();

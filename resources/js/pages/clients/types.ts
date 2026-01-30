@@ -5,6 +5,8 @@ export interface TrainingSessionHistory {
     session_date?: string | null;
     exercises_count: number;
     has_custom_layout?: boolean;
+    coach_name?: string | null;
+    is_owner?: boolean;
     created_at: string;
 }
 
@@ -16,6 +18,8 @@ export interface Customer {
     phone?: string;
     is_active: boolean;
     internal_note?: string;
+    coach_name?: string | null;
+    is_owner?: boolean;
     training_sessions_count?: number;
     training_sessions?: TrainingSessionHistory[];
 }

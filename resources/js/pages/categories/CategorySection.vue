@@ -43,7 +43,7 @@ const emit = defineEmits<{
                         </div>
                         <div class="flex items-center gap-2">
                             <button
-                                v-if="type === 'private'"
+                                v-if="type === 'private' && category.is_owner !== false"
                                 type="button"
                                 class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
                                 aria-label="Modifier la catégorie"
@@ -52,7 +52,7 @@ const emit = defineEmits<{
                                 <Pencil class="size-4" />
                             </button>
                             <button
-                                v-if="type === 'private'"
+                                v-if="type === 'private' && category.is_owner !== false"
                                 type="button"
                                 class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition hover:border-red-300 hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-red-500 dark:border-slate-700 dark:text-slate-200 dark:hover:border-red-500 dark:hover:bg-red-900"
                                 aria-label="Supprimer la catégorie"
@@ -60,6 +60,13 @@ const emit = defineEmits<{
                             >
                                 <Trash2 class="size-4" />
                             </button>
+                            <Badge
+                                v-else-if="type === 'private'"
+                                variant="outline"
+                                class="text-xs uppercase tracking-[0.3em]"
+                            >
+                                Équipe
+                            </Badge>
                             <Badge
                                 v-else
                                 variant="outline"
@@ -69,6 +76,12 @@ const emit = defineEmits<{
                             </Badge>
                         </div>
                     </article>
+                    <p
+                        v-if="category.coach_name && category.is_owner === false"
+                        class="text-xs text-slate-500 dark:text-slate-400"
+                    >
+                        Créée par {{ category.coach_name }}
+                    </p>
                 </template>
                 <p v-else class="text-sm text-slate-500 dark:text-slate-400">
                     <span v-if="type === 'private'">Vous n'avez pas encore de catégories privées.</span>
