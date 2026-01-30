@@ -87,10 +87,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Team routes
     Route::get('/team', [TeamController::class, 'index'])->name('team.index');
     Route::post('/team', [TeamController::class, 'store'])->name('team.store');
+    Route::post('/team/leave', [TeamController::class, 'leave'])->name('team.leave');
+    Route::post('/team/transfer-ownership/{member}', [TeamController::class, 'transferOwnership'])->name('team.transfer-ownership');
+    Route::delete('/team', [TeamController::class, 'destroy'])->name('team.destroy');
     Route::delete('/team/members/{member}', [TeamController::class, 'destroyMember'])->name('team.members.destroy');
     Route::post('/team/invitations', [TeamInvitationsController::class, 'store'])->name('team.invitations.store');
     Route::delete('/team/invitations/{invitation}', [TeamInvitationsController::class, 'destroy'])->name('team.invitations.destroy');
-    Route::post('/team/invitations/{token}/accept', [TeamInvitationsController::class, 'accept'])->name('team.invitations.accept');
+    Route::post('/team/invitations/{invitation}/accept', [TeamInvitationsController::class, 'acceptForUser'])->name('team.invitations.accept-user');
+    Route::post('/team/invitations/{invitation}/decline', [TeamInvitationsController::class, 'declineForUser'])->name('team.invitations.decline-user');
+    Route::post('/team/invitations/{token}/accept', [TeamInvitationsController::class, 'accept'])
+        ->whereUuid('token')
+        ->name('team.invitations.accept');
 });
 
 // Team invitation landing page (public)

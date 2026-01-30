@@ -71,6 +71,7 @@ if (typeof window !== 'undefined') {
                         name="email"
                         placeholder="email@exemple.com"
                         v-model="emailValue"
+                        :readonly="!!inviteToken"
                     />
                     <InputError :message="errors.email" />
                 </div>

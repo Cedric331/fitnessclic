@@ -22,11 +22,22 @@ class CustomersController extends Controller
         /** @var User $user */
         $user = Auth::user();
         $teamMemberIds = $user->teamMemberIds();
+        $ownership = $validated['ownership'] ?? 'all';
 
         $query = Customer::query()
             ->withCount('trainingSessions')
             ->with('user')
             ->whereIn('user_id', $teamMemberIds);
+
+        if (! $user->team_id) {
+            $ownership = 'mine';
+        }
+
+        if ($ownership === 'mine') {
+            $query->where('user_id', $user->id);
+        } elseif ($ownership === 'team') {
+            $query->where('user_id', '!=', $user->id);
+        }
 
         if (! empty($validated['search'])) {
             $search = $validated['search'];
@@ -47,7 +58,10 @@ class CustomersController extends Controller
 
         return Inertia::render('clients/Index', [
             'customers' => $customers,
-            'filters' => $request->only(['search']),
+            'filters' => [
+                'search' => $validated['search'] ?? null,
+                'ownership' => $ownership,
+            ],
         ]);
     }
 
@@ -142,7 +156,7 @@ class CustomersController extends Controller
         /** @var User|null $user */
         $user = Auth::user();
 
-        if (! $user || ! $user->hasCustomer($customer)) {
+        if (! $user || $customer->user_id !== $user->id) {
             return redirect()->route('client.customers.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour supprimer ce client.');
         }

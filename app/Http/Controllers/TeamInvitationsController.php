@@ -51,11 +51,21 @@ class TeamInvitationsController extends Controller
                 ->with('error', 'Ce coach fait déjà partie de l\'équipe.');
         }
 
-        TeamInvitation::query()
+        $existingInvitation = TeamInvitation::query()
             ->where('team_id', $team->id)
             ->where('email', $email)
             ->whereNull('accepted_at')
-            ->delete();
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($existingInvitation && ! $existingInvitation->isExpired()) {
+            return redirect()->route('team.index')
+                ->with('error', 'Une invitation est déjà en attente pour cet email.');
+        }
+
+        if ($existingInvitation) {
+            $existingInvitation->delete();
+        }
 
         $invitation = TeamInvitation::create([
             'team_id' => $team->id,
@@ -74,8 +84,12 @@ class TeamInvitationsController extends Controller
     /**
      * Display the invitation landing page.
      */
-    public function show(string $token): Response
+    public function show(string $token): Response|RedirectResponse
     {
+        if (Auth::check()) {
+            return redirect()->route('dashboard');
+        }
+
         $invitation = TeamInvitation::query()
             ->with(['team', 'inviter'])
             ->where('token', $token)
@@ -93,8 +107,13 @@ class TeamInvitationsController extends Controller
         $user = Auth::user();
         $canAccept = false;
         if ($invitation && $status === 'valid' && $user) {
-            $canAccept = $user->email === $invitation->email
-                && (! $user->team_id || $user->team_id === $invitation->team_id);
+            if ($user->team_id === $invitation->team_id && $user->email === $invitation->email) {
+                $status = 'already_member';
+                $canAccept = false;
+            } else {
+                $canAccept = $user->email === $invitation->email
+                    && (! $user->team_id || $user->team_id === $invitation->team_id);
+            }
         }
 
         return Inertia::render('team/Invitation', [
@@ -155,6 +174,64 @@ class TeamInvitationsController extends Controller
 
         return redirect()->route('team.index')
             ->with('success', 'Bienvenue dans l\'équipe !');
+    }
+
+    /**
+     * Accept an invitation from the team page for an existing user.
+     */
+    public function acceptForUser(TeamInvitation $invitation): RedirectResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if ($invitation->isUsed() || $invitation->isExpired()) {
+            return redirect()->route('team.index')
+                ->with('error', 'Cette invitation n\'est plus valide.');
+        }
+
+        if ($invitation->email !== $user->email) {
+            return redirect()->route('team.index')
+                ->with('error', 'Cette invitation ne correspond pas à votre adresse email.');
+        }
+
+        if ($user->team_id) {
+            return redirect()->route('team.index')
+                ->with('error', 'Vous faites déjà partie d\'une équipe.');
+        }
+
+        $user->update(['team_id' => $invitation->team_id]);
+
+        $invitation->update([
+            'accepted_at' => now(),
+            'invited_user_id' => $user->id,
+        ]);
+
+        return redirect()->route('team.index')
+            ->with('success', 'Invitation acceptée. Bienvenue dans l\'équipe !');
+    }
+
+    /**
+     * Decline an invitation from the team page.
+     */
+    public function declineForUser(TeamInvitation $invitation): RedirectResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if ($invitation->email !== $user->email) {
+            return redirect()->route('team.index')
+                ->with('error', 'Cette invitation ne correspond pas à votre adresse email.');
+        }
+
+        if ($invitation->accepted_at) {
+            return redirect()->route('team.index')
+                ->with('error', 'Cette invitation a déjà été utilisée.');
+        }
+
+        $invitation->delete();
+
+        return redirect()->route('team.index')
+            ->with('success', 'Invitation refusée.');
     }
 
     /**

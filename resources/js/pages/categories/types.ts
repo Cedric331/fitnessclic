@@ -10,5 +10,6 @@ export interface Filters {
     search?: string | null;
     show_private: boolean;
     show_public: boolean;
+    ownership?: 'all' | 'mine' | 'team';
 }
 

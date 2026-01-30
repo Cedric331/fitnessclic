@@ -40,6 +40,12 @@ const emit = defineEmits<{
                     >
                         <div>
                             <p class="text-base font-semibold">{{ category.name }}</p>
+                            <p
+                                v-if="category.coach_name && category.is_owner === false"
+                                class="text-xs text-slate-500 dark:text-slate-400"
+                            >
+                                Créée par {{ category.coach_name }}
+                            </p>
                         </div>
                         <div class="flex items-center gap-2">
                             <button
@@ -76,15 +82,9 @@ const emit = defineEmits<{
                             </Badge>
                         </div>
                     </article>
-                    <p
-                        v-if="category.coach_name && category.is_owner === false"
-                        class="text-xs text-slate-500 dark:text-slate-400"
-                    >
-                        Créée par {{ category.coach_name }}
-                    </p>
                 </template>
                 <p v-else class="text-sm text-slate-500 dark:text-slate-400">
-                    <span v-if="type === 'private'">Vous n'avez pas encore de catégories privées.</span>
+                    <span v-if="type === 'private'">Aucune catégorie privée ou d'équipe ne répond au filtre.</span>
                     <span v-else> Aucune catégorie publique ne répond au filtre.</span>
                 </p>
             </div>

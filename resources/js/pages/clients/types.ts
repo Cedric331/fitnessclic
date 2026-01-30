@@ -34,6 +34,7 @@ export interface CustomersData {
 
 export interface CustomersFilters {
     search?: string;
+    ownership?: 'all' | 'mine' | 'team';
 }
 
 export interface CustomersProps {

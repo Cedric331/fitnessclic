@@ -23,6 +23,7 @@ class IndexCustomerRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:255'],
+            'ownership' => ['nullable', 'string', 'in:all,mine,team'],
         ];
     }
 }
