@@ -56,6 +56,7 @@ export default defineConfig({
         minify: 'esbuild',
         sourcemap: false, // Désactiver en dev pour plus de vitesse
         rollupOptions: {
+            maxParallel: 2,
             output: {
                 manualChunks: undefined, // Laisser Vite gérer automatiquement
             },
