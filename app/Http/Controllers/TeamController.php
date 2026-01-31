@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\TeamDeletedMail;
 use App\Models\Team;
 use App\Models\TeamInvitation;
 use App\Models\User;
-use App\Mail\TeamDeletedMail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

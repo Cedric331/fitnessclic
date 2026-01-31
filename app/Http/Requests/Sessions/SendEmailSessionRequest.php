@@ -60,12 +60,8 @@ class SendEmailSessionRequest extends FormRequest
                 $session->load('customers');
             }
 
-            /** @var \App\Models\User $user */
-            $user = Auth::user();
-            $teamMemberIds = $user ? $user->teamMemberIds() : collect();
-
             $customer = Customer::where('id', $customerId)
-                ->whereIn('user_id', $teamMemberIds)
+                ->where('user_id', Auth::id())
                 ->where('is_active', true)
                 ->first();
 

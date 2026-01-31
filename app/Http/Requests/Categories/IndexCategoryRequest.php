@@ -25,7 +25,6 @@ class IndexCategoryRequest extends FormRequest
             'search' => ['nullable', 'string', 'max:255'],
             'private' => ['nullable', 'boolean'],
             'public' => ['nullable', 'boolean'],
-            'ownership' => ['nullable', 'string', 'in:all,mine,team'],
         ];
     }
 }

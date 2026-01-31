@@ -40,11 +40,12 @@ const props = defineProps<{
     team: TeamData | null;
     members: TeamMember[];
     pendingInvitations: TeamInvitation[];
-    userInvitations: UserInvitation[];
+    userInvitations?: UserInvitation[];
 }>();
 
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
+const userInvitations = computed(() => props.userInvitations ?? []);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Mon équipe', href: '/team' },
@@ -66,6 +67,14 @@ const isCancelInviteDialogOpen = ref(false);
 const invitationToCancel = ref<TeamInvitation | null>(null);
 const cancelInviteForm = useForm({});
 
+const isAcceptInviteDialogOpen = ref(false);
+const invitationToAccept = ref<UserInvitation | null>(null);
+const acceptInviteForm = useForm({});
+
+const isDeclineInviteDialogOpen = ref(false);
+const invitationToDecline = ref<UserInvitation | null>(null);
+const declineInviteForm = useForm({});
+
 const isLeaveDialogOpen = ref(false);
 const leaveForm = useForm({});
 
@@ -75,14 +84,6 @@ const transferForm = useForm({});
 
 const isDeleteTeamDialogOpen = ref(false);
 const deleteTeamForm = useForm({});
-
-const isAcceptInviteDialogOpen = ref(false);
-const invitationToAccept = ref<UserInvitation | null>(null);
-const acceptInviteForm = useForm({});
-
-const isDeclineInviteDialogOpen = ref(false);
-const invitationToDecline = ref<UserInvitation | null>(null);
-const declineInviteForm = useForm({});
 
 const isOwner = computed(() => {
     const userId = (page.props as any).auth?.user?.id;
@@ -113,8 +114,6 @@ const submitCreateTeam = () => {
 const submitInvite = () => {
     inviteForm.post('/team/invitations', {
         preserveScroll: true,
-        preserveState: true,
-        only: ['pendingInvitations', 'flash'],
         onSuccess: () => {
             inviteForm.reset('email');
         },
@@ -132,8 +131,6 @@ const confirmRemoveMember = () => {
     }
     removeForm.delete(`/team/members/${memberToRemove.value.id}`, {
         preserveScroll: true,
-        preserveState: true,
-        only: ['members', 'flash'],
         onSuccess: () => {
             isRemoveDialogOpen.value = false;
             memberToRemove.value = null;
@@ -155,73 +152,12 @@ const confirmCancelInvitation = () => {
     }
     cancelInviteForm.delete(`/team/invitations/${invitationToCancel.value.id}`, {
         preserveScroll: true,
-        preserveState: true,
-        only: ['pendingInvitations', 'flash'],
         onSuccess: () => {
             isCancelInviteDialogOpen.value = false;
             invitationToCancel.value = null;
         },
         onFinish: () => {
             cancelInviteForm.clearErrors();
-        },
-    });
-};
-
-const openLeaveDialog = () => {
-    isLeaveDialogOpen.value = true;
-};
-
-const confirmLeaveTeam = () => {
-    if (leaveForm.processing) {
-        return;
-    }
-    leaveForm.post('/team/leave', {
-        preserveScroll: true,
-        onSuccess: () => {
-            isLeaveDialogOpen.value = false;
-        },
-        onFinish: () => {
-            leaveForm.clearErrors();
-        },
-    });
-};
-
-const openTransferDialog = (member: TeamMember) => {
-    memberToTransfer.value = member;
-    isTransferDialogOpen.value = true;
-};
-
-const confirmTransferOwnership = () => {
-    if (!memberToTransfer.value || transferForm.processing) {
-        return;
-    }
-    transferForm.post(`/team/transfer-ownership/${memberToTransfer.value.id}`, {
-        preserveScroll: true,
-        onSuccess: () => {
-            isTransferDialogOpen.value = false;
-            memberToTransfer.value = null;
-        },
-        onFinish: () => {
-            transferForm.clearErrors();
-        },
-    });
-};
-
-const openDeleteTeamDialog = () => {
-    isDeleteTeamDialogOpen.value = true;
-};
-
-const confirmDeleteTeam = () => {
-    if (deleteTeamForm.processing) {
-        return;
-    }
-    deleteTeamForm.delete('/team', {
-        preserveScroll: true,
-        onSuccess: () => {
-            isDeleteTeamDialogOpen.value = false;
-        },
-        onFinish: () => {
-            deleteTeamForm.clearErrors();
         },
     });
 };
@@ -272,6 +208,71 @@ const confirmDeclineInvitation = () => {
     });
 };
 
+const openLeaveDialog = () => {
+    isLeaveDialogOpen.value = true;
+};
+
+const confirmLeaveTeam = () => {
+    if (leaveForm.processing) {
+        return;
+    }
+    leaveForm.post('/team/leave', {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['team', 'members', 'pendingInvitations', 'userInvitations', 'flash'],
+        onSuccess: () => {
+            isLeaveDialogOpen.value = false;
+        },
+        onFinish: () => {
+            leaveForm.clearErrors();
+        },
+    });
+};
+
+const openTransferDialog = (member: TeamMember) => {
+    memberToTransfer.value = member;
+    isTransferDialogOpen.value = true;
+};
+
+const confirmTransferOwnership = () => {
+    if (!memberToTransfer.value || transferForm.processing) {
+        return;
+    }
+    transferForm.post(`/team/transfer-ownership/${memberToTransfer.value.id}`, {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['team', 'members', 'flash'],
+        onSuccess: () => {
+            isTransferDialogOpen.value = false;
+            memberToTransfer.value = null;
+        },
+        onFinish: () => {
+            transferForm.clearErrors();
+        },
+    });
+};
+
+const openDeleteTeamDialog = () => {
+    isDeleteTeamDialogOpen.value = true;
+};
+
+const confirmDeleteTeam = () => {
+    if (deleteTeamForm.processing) {
+        return;
+    }
+    deleteTeamForm.delete('/team', {
+        preserveScroll: true,
+        preserveState: true,
+        only: ['team', 'members', 'pendingInvitations', 'userInvitations', 'flash'],
+        onSuccess: () => {
+            isDeleteTeamDialogOpen.value = false;
+        },
+        onFinish: () => {
+            deleteTeamForm.clearErrors();
+        },
+    });
+};
+
 // Notifications flash
 const shownFlashMessages = ref(new Set<string>());
 watch(() => (page.props as any).flash, (flash) => {
@@ -306,63 +307,64 @@ watch(() => (page.props as any).flash, (flash) => {
                 </p>
             </div>
 
-            <template v-if="!team">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Créer votre équipe</CardTitle>
-                    </CardHeader>
-                    <CardContent class="space-y-4">
-                        <p class="text-sm text-slate-600 dark:text-slate-400">
-                            Créez une équipe pour inviter d’autres coachs et partager vos séances, clients et catégories.
+            <Card v-if="!team">
+                <CardHeader>
+                    <CardTitle>Créer votre équipe</CardTitle>
+                </CardHeader>
+                <CardContent class="space-y-4">
+                    <p class="text-sm text-slate-600 dark:text-slate-400">
+                        Créez une équipe pour inviter d’autres coachs et partager vos séances, clients et catégories.
+                    </p>
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <Input
+                            v-model="createForm.name"
+                            type="text"
+                            placeholder="Nom de l'équipe"
+                            class="w-full"
+                        />
+                        <Button
+                            :disabled="createForm.processing || !createForm.name.trim()"
+                            @click="submitCreateTeam"
+                        >
+                            Créer l’équipe
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card v-if="!team">
+                <CardHeader>
+                    <CardTitle>Mes invitations</CardTitle>
+                </CardHeader>
+                <CardContent class="space-y-3">
+                    <div
+                        v-for="invitation in userInvitations"
+                        :key="invitation.id"
+                        class="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"
+                    >
+                        <p class="font-medium text-slate-900 dark:text-white">
+                            Équipe : {{ invitation.team_name || '—' }}
                         </p>
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <Input
-                                v-model="createForm.name"
-                                type="text"
-                                placeholder="Nom de l'équipe"
-                                class="w-full"
-                            />
-                            <Button
-                                :disabled="createForm.processing || !createForm.name.trim()"
-                                @click="submitCreateTeam"
-                            >
-                                Créer l’équipe
+                        <p v-if="invitation.invited_by" class="text-xs text-slate-500">
+                            Invitée par {{ invitation.invited_by }}
+                        </p>
+                        <p class="text-xs text-slate-500">
+                            Expire le {{ formatDate(invitation.expires_at) }}
+                        </p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <Button size="sm" @click="openAcceptInviteDialog(invitation)">
+                                Accepter
+                            </Button>
+                            <Button variant="outline" size="sm" @click="openDeclineInviteDialog(invitation)">
+                                Refuser
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
-
-                <Card v-if="userInvitations.length">
-                    <CardHeader>
-                        <CardTitle>Mes invitations</CardTitle>
-                    </CardHeader>
-                    <CardContent class="space-y-3">
-                        <div
-                            v-for="invitation in userInvitations"
-                            :key="invitation.id"
-                            class="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"
-                        >
-                            <p class="font-medium text-slate-900 dark:text-white">
-                                Équipe : {{ invitation.team_name || '—' }}
-                            </p>
-                            <p v-if="invitation.invited_by" class="text-xs text-slate-500">
-                                Invitée par {{ invitation.invited_by }}
-                            </p>
-                            <p class="text-xs text-slate-500">
-                                Expire le {{ formatDate(invitation.expires_at) }}
-                            </p>
-                            <div class="mt-3 flex flex-wrap gap-2">
-                                <Button size="sm" @click="openAcceptInviteDialog(invitation)">
-                                    Accepter
-                                </Button>
-                                <Button variant="outline" size="sm" @click="openDeclineInviteDialog(invitation)">
-                                    Refuser
-                                </Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </template>
+                    </div>
+                    <p v-if="userInvitations.length === 0" class="text-sm text-slate-500">
+                        Aucune invitation en attente.
+                    </p>
+                </CardContent>
+            </Card>
 
             <div v-else class="grid gap-6 lg:grid-cols-3">
                 <Card class="lg:col-span-2">
@@ -526,6 +528,46 @@ watch(() => (page.props as any).flash, (flash) => {
                 </DialogContent>
             </Dialog>
 
+            <Dialog v-model:open="isAcceptInviteDialogOpen">
+                <DialogContent class="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Accepter l’invitation</DialogTitle>
+                        <DialogDescription>
+                            Voulez-vous rejoindre l’équipe
+                            <strong>{{ invitationToAccept?.team_name }}</strong> ?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" @click="isAcceptInviteDialogOpen = false" :disabled="acceptInviteForm.processing">
+                            Annuler
+                        </Button>
+                        <Button @click="confirmAcceptInvitation" :disabled="acceptInviteForm.processing">
+                            Confirmer
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog v-model:open="isDeclineInviteDialogOpen">
+                <DialogContent class="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Refuser l’invitation</DialogTitle>
+                        <DialogDescription>
+                            Voulez-vous refuser l’invitation pour l’équipe
+                            <strong>{{ invitationToDecline?.team_name }}</strong> ?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" @click="isDeclineInviteDialogOpen = false" :disabled="declineInviteForm.processing">
+                            Annuler
+                        </Button>
+                        <Button @click="confirmDeclineInvitation" :disabled="declineInviteForm.processing">
+                            Confirmer
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <Dialog v-model:open="isLeaveDialogOpen">
                 <DialogContent class="max-w-md">
                     <DialogHeader>
@@ -579,46 +621,6 @@ watch(() => (page.props as any).flash, (flash) => {
                             Annuler
                         </Button>
                         <Button @click="confirmDeleteTeam" :disabled="deleteTeamForm.processing">
-                            Confirmer
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog v-model:open="isAcceptInviteDialogOpen">
-                <DialogContent class="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Accepter l’invitation</DialogTitle>
-                        <DialogDescription>
-                            Voulez-vous rejoindre l’équipe
-                            <strong>{{ invitationToAccept?.team_name }}</strong> ?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" @click="isAcceptInviteDialogOpen = false" :disabled="acceptInviteForm.processing">
-                            Annuler
-                        </Button>
-                        <Button @click="confirmAcceptInvitation" :disabled="acceptInviteForm.processing">
-                            Confirmer
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog v-model:open="isDeclineInviteDialogOpen">
-                <DialogContent class="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Refuser l’invitation</DialogTitle>
-                        <DialogDescription>
-                            Voulez-vous refuser l’invitation pour l’équipe
-                            <strong>{{ invitationToDecline?.team_name }}</strong> ?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" @click="isDeclineInviteDialogOpen = false" :disabled="declineInviteForm.processing">
-                            Annuler
-                        </Button>
-                        <Button @click="confirmDeclineInvitation" :disabled="declineInviteForm.processing">
                             Confirmer
                         </Button>
                     </DialogFooter>

@@ -39,13 +39,15 @@ class CreateNewUser implements CreatesNewUsers
                 ->where('token', $input['invite_token'])
                 ->first();
 
-            if (! $invitation
-                || $invitation->isUsed()
-                || $invitation->isExpired()
-                || $invitation->email !== $input['email']
-            ) {
+            if (! $invitation || $invitation->isUsed() || $invitation->isExpired()) {
                 throw ValidationException::withMessages([
                     'invite_token' => 'Invitation invalide ou expirée.',
+                ]);
+            }
+
+            if ($invitation->email !== $input['email']) {
+                throw ValidationException::withMessages([
+                    'email' => 'L\'adresse email ne correspond pas à l\'invitation.',
                 ]);
             }
         }

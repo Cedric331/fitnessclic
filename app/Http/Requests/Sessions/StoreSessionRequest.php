@@ -41,17 +41,14 @@ class StoreSessionRequest extends BaseSessionRequest
             $customerIds = $this->input('customer_ids', []);
 
             if (! empty($customerIds)) {
-                /** @var \App\Models\User $user */
-                $user = Auth::user();
-                $teamMemberIds = $user->teamMemberIds();
                 $customers = Customer::whereIn('id', $customerIds)
-                    ->whereIn('user_id', $teamMemberIds)
+                    ->where('user_id', Auth::id())
                     ->get();
 
                 if ($customers->count() !== count($customerIds)) {
                     $validator->errors()->add(
                         'customer_ids',
-                        'Un ou plusieurs clients ne sont pas accessibles.'
+                        'Un ou plusieurs clients ne vous appartiennent pas.'
                     );
                 }
             }

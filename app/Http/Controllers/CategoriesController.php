@@ -23,7 +23,6 @@ class CategoriesController extends Controller
         $showPrivate = $validated['private'] ?? true;
         $showPublic = $validated['public'] ?? true;
         $user = Auth::user();
-        $ownership = $validated['ownership'] ?? 'all';
 
         $privateCategories = collect();
         if ($showPrivate && $user) {
@@ -42,20 +41,6 @@ class CategoriesController extends Controller
                 });
         }
 
-        if ($user && ! $user->team_id) {
-            $ownership = 'mine';
-        }
-
-        if ($ownership !== 'all' && $privateCategories->isNotEmpty()) {
-            $privateCategories = $privateCategories->filter(function (Category $category) use ($user, $ownership) {
-                if ($ownership === 'mine') {
-                    return $category->user_id === $user->id;
-                }
-
-                return $category->user_id !== $user->id;
-            })->values();
-        }
-
         $publicCategories = collect();
         if ($showPublic) {
             $publicCategories = Category::public()
@@ -71,7 +56,6 @@ class CategoriesController extends Controller
                 'search' => $searchTerm ?: null,
                 'show_private' => $showPrivate,
                 'show_public' => $showPublic,
-                'ownership' => $ownership,
             ],
         ]);
     }

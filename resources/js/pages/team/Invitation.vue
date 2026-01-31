@@ -14,7 +14,7 @@ interface InvitationData {
 }
 
 const props = defineProps<{
-    status: 'valid' | 'expired' | 'used' | 'not_found' | 'already_member';
+    status: 'valid' | 'expired' | 'used' | 'not_found';
     invitation: InvitationData | null;
     canAccept: boolean;
     isAuthenticated: boolean;
@@ -27,8 +27,6 @@ const title = computed(() => {
     switch (props.status) {
         case 'valid':
             return 'Invitation d’équipe';
-        case 'already_member':
-            return 'Déjà membre de l’équipe';
         case 'used':
             return 'Invitation déjà utilisée';
         case 'expired':
@@ -41,9 +39,6 @@ const title = computed(() => {
 const description = computed(() => {
     if (props.status === 'valid' && props.invitation) {
         return `${props.invitation.inviter_name ?? 'Un coach'} vous invite à rejoindre l’équipe ${props.invitation.team_name ?? ''}.`;
-    }
-    if (props.status === 'already_member') {
-        return 'Vous faites déjà partie de cette équipe.';
     }
     if (props.status === 'used') {
         return 'Cette invitation a déjà été utilisée.';
@@ -112,19 +107,6 @@ const acceptInvitation = () => {
                                 </Button>
                             </div>
                         </div>
-                    </div>
-                    <div v-else-if="props.status === 'already_member'" class="flex flex-col gap-3 sm:flex-row">
-                        <Button :as-child="true">
-                            <a href="/team">Aller à mon équipe</a>
-                        </Button>
-                    </div>
-                    <div v-else-if="props.status === 'expired'" class="space-y-3">
-                        <p class="text-sm text-slate-600 dark:text-slate-400">
-                            Le lien a expiré. Demandez à votre collègue de vous renvoyer une invitation.
-                        </p>
-                        <Button variant="outline" :as-child="true">
-                            <a href="/login">Se connecter</a>
-                        </Button>
                     </div>
                 </CardContent>
             </Card>

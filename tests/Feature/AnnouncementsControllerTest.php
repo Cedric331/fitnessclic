@@ -8,7 +8,8 @@ test('unauthenticated user gets null announcement', function () {
 
     $response = $this->getJson(route('announcements.current'));
 
-    $response->assertStatus(401);
+    $response->assertStatus(200);
+    $response->assertJson(['announcement' => null]);
 });
 
 test('authenticated user gets active announcement', function () {

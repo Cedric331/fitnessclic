@@ -72,8 +72,12 @@ if (typeof window !== 'undefined') {
                         placeholder="email@exemple.com"
                         v-model="emailValue"
                         :readonly="!!inviteToken"
+                        :class="inviteToken ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''"
                     />
                     <InputError :message="errors.email" />
+                    <p v-if="inviteToken" class="text-xs text-slate-500">
+                        L’adresse email est verrouillée car l’inscription vient d’une invitation.
+                    </p>
                 </div>
 
                 <div class="grid gap-2">

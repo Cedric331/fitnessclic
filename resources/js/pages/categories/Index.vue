@@ -29,7 +29,6 @@ const breadcrumbs: BreadcrumbItemType[] = [
 
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
-const hasTeam = computed(() => (page.props.auth as any)?.user?.hasTeam ?? false);
 
 // Vérifier si l'utilisateur est Pro
 const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
@@ -70,7 +69,6 @@ watch(() => (page.props as any).flash, (flash) => {
 }, { immediate: true });
 
 const searchTerm = ref(props.filters?.search ?? '');
-const ownershipFilter = ref<'all' | 'mine' | 'team'>(props.filters?.ownership ?? 'all');
 
 const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
@@ -81,10 +79,6 @@ const deletingCategory = ref<Category | null>(null);
 // Synchroniser searchTerm avec les props
 watch(() => props.filters?.search, (value) => {
     searchTerm.value = value ?? '';
-});
-
-watch(() => props.filters?.ownership, (value) => {
-    ownershipFilter.value = (value as 'all' | 'mine' | 'team') ?? 'all';
 });
 
 watch(isEditDialogOpen, (open) => {
@@ -105,9 +99,6 @@ const applyFilters = () => {
 
     if (trimmedSearch.length) {
         query.search = trimmedSearch;
-    }
-    if (hasTeam.value && ownershipFilter.value) {
-        query.ownership = ownershipFilter.value;
     }
 
     router.get('/categories', query, {
@@ -140,12 +131,6 @@ watch(searchTerm, (newValue, oldValue) => {
         applyFilters();
     }, 300); // 300ms de délai
 });
-
-const handleOwnershipChange = (event: Event) => {
-    const target = event.target as HTMLSelectElement;
-    ownershipFilter.value = target.value as 'all' | 'mine' | 'team';
-    applyFilters();
-};
 
 const startEditCategory = (category: Category) => {
     if (!isPro.value) {
@@ -197,37 +182,21 @@ const startDeleteCategory = (category: Category) => {
                 </Button>
             </div>
 
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
-                <div v-if="hasTeam" class="flex flex-col gap-1.5 lg:w-52">
-                    <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
-                        Portée
-                    </label>
-                    <select
-                        :value="ownershipFilter"
-                        class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
-                        @change="handleOwnershipChange"
-                    >
-                        <option value="all">Tous</option>
-                        <option value="mine">Mes catégories</option>
-                        <option value="team">Équipe</option>
-                    </select>
-                </div>
-                <div class="relative flex-1">
-                    <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-300" />
-                    <Input
-                        v-model="searchTerm"
-                        id="category-search"
-                        type="text"
-                        placeholder="Rechercher une catégorie..."
-                        class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-slate-900 shadow-sm transition focus:border-blue-500 focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
-                    />
-                </div>
+            <div class="relative">
+                <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-300" />
+                <Input
+                    v-model="searchTerm"
+                    id="category-search"
+                    type="text"
+                    placeholder="Rechercher une catégorie..."
+                    class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-slate-900 shadow-sm transition focus:border-blue-500 focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                />
             </div>
 
             <div class="grid gap-4 lg:grid-cols-2">
                 <CategorySection
                     title="Catégories privées"
-                    description="Vos catégories privées et celles partagées par l’équipe."
+                    description="Vos catégories privées."
                     type="private"
                     :categories="privateCategories"
                     @edit="startEditCategory"

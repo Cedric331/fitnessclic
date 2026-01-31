@@ -73,7 +73,6 @@ const clientsDescription = computed(() =>
 );
 
 const searchTerm = ref(props.filters.search || '');
-const ownershipFilter = ref<'all' | 'mine' | 'team'>(props.filters.ownership || 'all');
 
 const searchInput = ref<HTMLInputElement | null>(null);
 const isCreateDialogOpen = ref(false);
@@ -88,17 +87,10 @@ watch(() => props.filters.search, (value) => {
     searchTerm.value = value || '';
 });
 
-watch(() => props.filters.ownership, (value) => {
-    ownershipFilter.value = (value as 'all' | 'mine' | 'team') || 'all';
-});
-
 const handleSearch = () => {
     const query: Record<string, string> = {};
     if (searchTerm.value.trim()) {
         query.search = searchTerm.value.trim();
-    }
-    if (hasTeam.value && ownershipFilter.value) {
-        query.ownership = ownershipFilter.value;
     }
     
     router.get('/customers', query, {
@@ -131,12 +123,6 @@ watch(searchTerm, (newValue, oldValue) => {
         handleSearch();
     }, 300); // 300ms de délai
 });
-
-const handleOwnershipChange = (event: Event) => {
-    const target = event.target as HTMLSelectElement;
-    ownershipFilter.value = target.value as 'all' | 'mine' | 'team';
-    handleSearch();
-};
 
 const handleEditCustomer = (customer: Customer) => {
     editingCustomer.value = customer;
@@ -211,34 +197,18 @@ watch(isDeleteDialogOpen, (open) => {
                 </Button>
             </div>
 
-            <!-- Filters -->
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
-                <div v-if="hasTeam" class="flex flex-col gap-1.5 lg:w-52">
-                    <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
-                        Portée
-                    </label>
-                    <select
-                        :value="ownershipFilter"
-                        class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
-                        @change="handleOwnershipChange"
-                    >
-                        <option value="all">Tous</option>
-                        <option value="mine">Mes clients</option>
-                        <option value="team">Équipe</option>
-                    </select>
-                </div>
-                <div class="relative flex-1">
-                    <Search
-                        class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-                    />
-                    <Input
-                        ref="searchInput"
-                        v-model="searchTerm"
-                        type="text"
-                        placeholder="Rechercher un client..."
-                        class="w-full pl-10"
-                    />
-                </div>
+            <!-- Search Bar -->
+            <div class="relative">
+                <Search
+                    class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                />
+                <Input
+                    ref="searchInput"
+                    v-model="searchTerm"
+                    type="text"
+                    placeholder="Rechercher un client..."
+                    class="w-full pl-10"
+                />
             </div>
 
             <!-- Customer List -->

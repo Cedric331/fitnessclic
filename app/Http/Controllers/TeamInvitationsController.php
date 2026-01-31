@@ -51,21 +51,11 @@ class TeamInvitationsController extends Controller
                 ->with('error', 'Ce coach fait déjà partie de l\'équipe.');
         }
 
-        $existingInvitation = TeamInvitation::query()
+        TeamInvitation::query()
             ->where('team_id', $team->id)
             ->where('email', $email)
             ->whereNull('accepted_at')
-            ->orderByDesc('created_at')
-            ->first();
-
-        if ($existingInvitation && ! $existingInvitation->isExpired()) {
-            return redirect()->route('team.index')
-                ->with('error', 'Une invitation est déjà en attente pour cet email.');
-        }
-
-        if ($existingInvitation) {
-            $existingInvitation->delete();
-        }
+            ->delete();
 
         $invitation = TeamInvitation::create([
             'team_id' => $team->id,
@@ -107,13 +97,8 @@ class TeamInvitationsController extends Controller
         $user = Auth::user();
         $canAccept = false;
         if ($invitation && $status === 'valid' && $user) {
-            if ($user->team_id === $invitation->team_id && $user->email === $invitation->email) {
-                $status = 'already_member';
-                $canAccept = false;
-            } else {
-                $canAccept = $user->email === $invitation->email
-                    && (! $user->team_id || $user->team_id === $invitation->team_id);
-            }
+            $canAccept = $user->email === $invitation->email
+                && (! $user->team_id || $user->team_id === $invitation->team_id);
         }
 
         return Inertia::render('team/Invitation', [

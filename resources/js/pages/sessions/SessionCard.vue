@@ -115,7 +115,7 @@ const remainingExercises = computed(() => {
                 </div>
 
                 <!-- Coach responsable pour les séances partagées -->
-                <div v-if="coachName" class="flex items-center gap-1.5">
+                <div v-if="(isPublicSession || isTeamSession) && coachName" class="flex items-center gap-1.5">
                     <Badge
                         variant="outline"
                         class="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-700"
