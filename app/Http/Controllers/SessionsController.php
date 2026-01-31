@@ -36,10 +36,17 @@ class SessionsController extends Controller
         $user = Auth::user();
         $userId = $user->id;
         $source = $validated['source'] ?? 'my_sessions';
-        if ($source === 'team_sessions' && ! $user->team_id) {
+        $teamId = $validated['team_id'] ?? null;
+        $userTeamIds = $user->teams()->pluck('teams.id');
+
+        if ($teamId && ! $userTeamIds->contains((int) $teamId)) {
+            abort(403);
+        }
+
+        if ($source === 'team_sessions' && ! $user->teams()->exists()) {
             $source = 'my_sessions';
         }
-        $teamMemberIds = $user->teamMemberIds();
+        $teamMemberIds = $teamId ? $user->teamMemberIds((int) $teamId) : $user->teamMemberIds();
 
         $query = Session::query()
             ->with(['customers', 'exercises.media', 'layout', 'user'])
@@ -53,7 +60,7 @@ class SessionsController extends Controller
                 ->whereHas('user', function ($q) {
                     $q->where('role', 'admin');
                 });
-        } elseif ($source === 'team_sessions' && $user->team_id) {
+        } elseif ($source === 'team_sessions') {
             $query->whereIn('user_id', $teamMemberIds);
         } else {
             // Mes séances uniquement
@@ -131,7 +138,9 @@ class SessionsController extends Controller
                 'customer_id' => $validated['customer_id'] ?? null,
                 'sort' => $validated['sort'] ?? null,
                 'source' => $source,
+                'team_id' => $teamId,
             ],
+            'teams' => $user->teams()->orderBy('name')->get(['teams.id', 'teams.name']),
         ]);
     }
 

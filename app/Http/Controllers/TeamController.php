@@ -23,49 +23,52 @@ class TeamController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        $team = $user->team?->load(['members', 'owner']);
-        $pendingInvitations = $team
+        $teams = $user->teams()->with(['members', 'owner'])->get();
+        $teamIds = $teams->pluck('id');
+
+        $pendingInvitations = $teamIds->isNotEmpty()
             ? TeamInvitation::query()
                 ->with('inviter')
-                ->where('team_id', $team->id)
+                ->whereIn('team_id', $teamIds)
                 ->whereNull('accepted_at')
                 ->where('expires_at', '>', now())
                 ->latest()
                 ->get()
             : collect();
 
-        $userInvitations = collect();
-        if (! $team) {
-            $userInvitations = TeamInvitation::query()
-                ->with(['team', 'inviter'])
-                ->where('email', $user->email)
-                ->whereNull('accepted_at')
-                ->where('expires_at', '>', now())
-                ->latest()
-                ->get();
-        }
+        $userInvitations = TeamInvitation::query()
+            ->with(['team', 'inviter'])
+            ->where('email', $user->email)
+            ->whereNull('accepted_at')
+            ->where('expires_at', '>', now())
+            ->when($teamIds->isNotEmpty(), fn ($query) => $query->whereNotIn('team_id', $teamIds))
+            ->latest()
+            ->get();
 
         return Inertia::render('team/Index', [
-            'team' => $team ? [
+            'teams' => $teams->map(fn (Team $team) => [
                 'id' => $team->id,
                 'name' => $team->name,
                 'owner_id' => $team->owner_id,
-            ] : null,
-            'members' => $team
-                ? $team->members->map(fn ($member) => [
+                'is_owner' => $team->owner_id === $user->id,
+                'members' => $team->members->map(fn ($member) => [
                     'id' => $member->id,
                     'name' => $member->name,
                     'email' => $member->email,
-                ])
-                : [],
-            'pendingInvitations' => $pendingInvitations->map(fn ($invitation) => [
-                'id' => $invitation->id,
-                'email' => $invitation->email,
-                'expires_at' => optional($invitation->expires_at)->toDateTimeString(),
-                'invited_by' => $invitation->inviter?->name,
+                ]),
+                'pending_invitations' => $pendingInvitations
+                    ->where('team_id', $team->id)
+                    ->values()
+                    ->map(fn ($invitation) => [
+                        'id' => $invitation->id,
+                        'email' => $invitation->email,
+                        'expires_at' => optional($invitation->expires_at)->toDateTimeString(),
+                        'invited_by' => $invitation->inviter?->name,
+                    ]),
             ]),
             'userInvitations' => $userInvitations->map(fn ($invitation) => [
                 'id' => $invitation->id,
+                'team_id' => $invitation->team_id,
                 'team_name' => $invitation->team?->name,
                 'expires_at' => optional($invitation->expires_at)->toDateTimeString(),
                 'invited_by' => $invitation->inviter?->name,
@@ -81,11 +84,6 @@ class TeamController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if ($user->team_id) {
-            return redirect()->route('team.index')
-                ->with('error', 'Vous avez déjà une équipe.');
-        }
-
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
         ]);
@@ -95,7 +93,7 @@ class TeamController extends Controller
             'owner_id' => $user->id,
         ]);
 
-        $user->update(['team_id' => $team->id]);
+        $team->members()->attach($user->id);
 
         return redirect()->route('team.index')
             ->with('success', 'Équipe créée avec succès.');
@@ -104,18 +102,17 @@ class TeamController extends Controller
     /**
      * Remove a member from the team.
      */
-    public function destroyMember(User $member): RedirectResponse
+    public function destroyMember(Team $team, User $member): RedirectResponse
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $team = $user->team;
 
-        if (! $team || $team->owner_id !== $user->id) {
+        if ($team->owner_id !== $user->id) {
             return redirect()->route('team.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour retirer ce coach.');
         }
 
-        if ($member->team_id !== $team->id) {
+        if (! $team->members()->where('users.id', $member->id)->exists()) {
             return redirect()->route('team.index')
                 ->with('error', 'Ce coach ne fait pas partie de votre équipe.');
         }
@@ -125,7 +122,7 @@ class TeamController extends Controller
                 ->with('error', 'Vous ne pouvez pas retirer le propriétaire de l\'équipe.');
         }
 
-        $member->update(['team_id' => null]);
+        $team->members()->detach($member->id);
 
         return redirect()->route('team.index')
             ->with('success', 'Coach retiré de l\'équipe.');
@@ -134,13 +131,12 @@ class TeamController extends Controller
     /**
      * Leave the current team.
      */
-    public function leave(): RedirectResponse
+    public function leave(Team $team): RedirectResponse
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $team = $user->team;
 
-        if (! $team) {
+        if (! $team->members()->where('users.id', $user->id)->exists()) {
             return redirect()->route('team.index')
                 ->with('error', 'Vous n\'êtes pas membre d\'une équipe.');
         }
@@ -150,7 +146,7 @@ class TeamController extends Controller
                 ->with('error', 'Vous devez transférer la propriété ou supprimer l\'équipe avant de partir.');
         }
 
-        $user->update(['team_id' => null]);
+        $team->members()->detach($user->id);
 
         return redirect()->route('team.index')
             ->with('success', 'Vous avez quitté l\'équipe.');
@@ -159,18 +155,17 @@ class TeamController extends Controller
     /**
      * Transfer team ownership to another member.
      */
-    public function transferOwnership(User $member): RedirectResponse
+    public function transferOwnership(Team $team, User $member): RedirectResponse
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $team = $user->team;
 
-        if (! $team || $team->owner_id !== $user->id) {
+        if ($team->owner_id !== $user->id) {
             return redirect()->route('team.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour transférer la propriété.');
         }
 
-        if ($member->team_id !== $team->id) {
+        if (! $team->members()->where('users.id', $member->id)->exists()) {
             return redirect()->route('team.index')
                 ->with('error', 'Ce coach ne fait pas partie de votre équipe.');
         }
@@ -189,13 +184,14 @@ class TeamController extends Controller
     /**
      * Delete the team and notify members.
      */
-    public function destroy(): RedirectResponse
+    public function destroy(Team $team): RedirectResponse
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $team = $user->team?->load('members');
 
-        if (! $team || $team->owner_id !== $user->id) {
+        $team->load('members');
+
+        if ($team->owner_id !== $user->id) {
             return redirect()->route('team.index')
                 ->with('error', 'Vous n\'avez pas les permissions pour supprimer l\'équipe.');
         }
@@ -209,7 +205,7 @@ class TeamController extends Controller
             }
         }
 
-        User::where('team_id', $team->id)->update(['team_id' => null]);
+        $team->members()->detach();
         $team->delete();
 
         return redirect()->route('team.index')

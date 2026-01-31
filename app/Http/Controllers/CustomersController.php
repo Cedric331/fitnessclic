@@ -21,7 +21,14 @@ class CustomersController extends Controller
         $validated = $request->validated();
         /** @var User $user */
         $user = Auth::user();
-        $teamMemberIds = $user->teamMemberIds();
+        $teamId = $validated['team_id'] ?? null;
+        $userTeamIds = $user->teams()->pluck('teams.id');
+
+        if ($teamId && ! $userTeamIds->contains((int) $teamId)) {
+            abort(403);
+        }
+
+        $teamMemberIds = $teamId ? $user->teamMemberIds((int) $teamId) : $user->teamMemberIds();
 
         $query = Customer::query()
             ->withCount('trainingSessions')
@@ -47,7 +54,11 @@ class CustomersController extends Controller
 
         return Inertia::render('clients/Index', [
             'customers' => $customers,
-            'filters' => $request->only(['search']),
+            'filters' => [
+                'search' => $validated['search'] ?? null,
+                'team_id' => $teamId,
+            ],
+            'teams' => $user->teams()->orderBy('name')->get(['teams.id', 'teams.name']),
         ]);
     }
 

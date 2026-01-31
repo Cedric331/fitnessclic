@@ -19,7 +19,7 @@ function createTeamForUser(User $owner, string $name = 'Equipe Test'): Team
         'owner_id' => $owner->id,
     ]);
 
-    $owner->update(['team_id' => $team->id]);
+    $team->members()->attach($owner->id);
 
     return $team;
 }
@@ -32,15 +32,17 @@ test('user can create a team', function () {
     ]);
 
     $response->assertRedirect(route('team.index'));
-    $user->refresh();
-    expect($user->team_id)->not->toBeNull();
+    $this->assertDatabaseHas('team_user', [
+        'team_id' => Team::where('name', 'Ma Team')->value('id'),
+        'user_id' => $user->id,
+    ]);
     $this->assertDatabaseHas('teams', [
         'name' => 'Ma Team',
         'owner_id' => $user->id,
     ]);
 });
 
-test('user cannot create a second team', function () {
+test('user can create multiple teams', function () {
     $user = User::factory()->create();
     createTeamForUser($user);
 
@@ -49,7 +51,48 @@ test('user cannot create a second team', function () {
     ]);
 
     $response->assertRedirect(route('team.index'));
-    $response->assertSessionHas('error', 'Vous avez déjà une équipe.');
+    expect(Team::where('owner_id', $user->id)->count())->toBe(2);
+});
+
+test('team index lists all teams for a member', function () {
+    $user = User::factory()->create();
+    $teamA = createTeamForUser($user, 'Equipe A');
+    $ownerB = User::factory()->create();
+    $teamB = createTeamForUser($ownerB, 'Equipe B');
+    $teamB->members()->attach($user->id);
+
+    $response = $this->actingAs($user)->get(route('team.index'));
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page
+        ->component('team/Index')
+        ->has('teams', 2)
+        ->where('teams', function ($teams) use ($teamA, $teamB) {
+            $ids = collect($teams)->pluck('id')->sort()->values()->all();
+            return $ids === collect([$teamA->id, $teamB->id])->sort()->values()->all();
+        })
+    );
+});
+
+test('team invitations list excludes teams user already joined', function () {
+    $user = User::factory()->create(['email' => 'member@example.com']);
+    $team = createTeamForUser($user, 'Equipe A');
+
+    TeamInvitation::create([
+        'team_id' => $team->id,
+        'email' => $user->email,
+        'token' => (string) Str::uuid(),
+        'invited_by_user_id' => $user->id,
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $response = $this->actingAs($user)->get(route('team.index'));
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page
+        ->component('team/Index')
+        ->has('userInvitations', 0)
+    );
 });
 
 test('owner can invite a coach by email', function () {
@@ -58,6 +101,7 @@ test('owner can invite a coach by email', function () {
 
     $response = $this->actingAs($owner)->post(route('team.invitations.store'), [
         'email' => 'invitee@example.com',
+        'team_id' => $team->id,
     ]);
 
     $response->assertRedirect(route('team.index'));
@@ -82,6 +126,7 @@ test('owner cannot send duplicate pending invitation', function () {
 
     $response = $this->actingAs($owner)->post(route('team.invitations.store'), [
         'email' => 'invitee@example.com',
+        'team_id' => $team->id,
     ]);
 
     $response->assertRedirect(route('team.index'));
@@ -106,7 +151,7 @@ test('existing user can accept invitation from team page', function () {
 
     $response->assertRedirect(route('team.index'));
     $invitee->refresh();
-    expect($invitee->team_id)->toBe($team->id);
+    expect($invitee->teams()->where('teams.id', $team->id)->exists())->toBeTrue();
     $invitation->refresh();
     expect($invitation->accepted_at)->not->toBeNull();
 });
@@ -136,20 +181,19 @@ test('member can leave a team', function () {
     $owner = User::factory()->create();
     $team = createTeamForUser($owner);
     $member = User::factory()->create();
-    $member->update(['team_id' => $team->id]);
+    $team->members()->attach($member->id);
 
-    $response = $this->actingAs($member)->post(route('team.leave'));
+    $response = $this->actingAs($member)->post(route('team.leave', $team));
 
     $response->assertRedirect(route('team.index'));
-    $member->refresh();
-    expect($member->team_id)->toBeNull();
+    expect($team->members()->where('users.id', $member->id)->exists())->toBeFalse();
 });
 
 test('owner cannot leave team without transfer', function () {
     $owner = User::factory()->create();
-    createTeamForUser($owner);
+    $team = createTeamForUser($owner);
 
-    $response = $this->actingAs($owner)->post(route('team.leave'));
+    $response = $this->actingAs($owner)->post(route('team.leave', $team));
 
     $response->assertRedirect(route('team.index'));
     $response->assertSessionHas('error');
@@ -159,9 +203,9 @@ test('owner can transfer ownership to a member', function () {
     $owner = User::factory()->create();
     $team = createTeamForUser($owner);
     $member = User::factory()->create();
-    $member->update(['team_id' => $team->id]);
+    $team->members()->attach($member->id);
 
-    $response = $this->actingAs($owner)->post(route('team.transfer-ownership', $member));
+    $response = $this->actingAs($owner)->post(route('team.transfer-ownership', [$team, $member]));
 
     $response->assertRedirect(route('team.index'));
     $team->refresh();
@@ -172,14 +216,16 @@ test('owner can delete team and members are notified', function () {
     $owner = User::factory()->create();
     $team = createTeamForUser($owner, 'Team Delete');
     $member = User::factory()->create();
-    $member->update(['team_id' => $team->id]);
+    $team->members()->attach($member->id);
 
-    $response = $this->actingAs($owner)->delete(route('team.destroy'));
+    $response = $this->actingAs($owner)->delete(route('team.destroy', $team));
 
     $response->assertRedirect(route('team.index'));
     $this->assertDatabaseMissing('teams', ['id' => $team->id]);
-    $member->refresh();
-    expect($member->team_id)->toBeNull();
+    $this->assertDatabaseMissing('team_user', [
+        'team_id' => $team->id,
+        'user_id' => $member->id,
+    ]);
     Mail::assertSent(TeamDeletedMail::class);
 });
 

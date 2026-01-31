@@ -34,10 +34,15 @@ export interface CustomersData {
 
 export interface CustomersFilters {
     search?: string;
+    team_id?: number | null;
 }
 
 export interface CustomersProps {
     customers: CustomersData;
     filters: CustomersFilters;
+    teams?: Array<{
+        id: number;
+        name: string;
+    }>;
 }
 

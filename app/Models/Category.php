@@ -57,21 +57,23 @@ class Category extends Model
     /**
      * Scope for categories available to a specific user
      */
-    public function scopeForUser($query, User $user)
+    public function scopeForUser($query, User $user, ?int $teamId = null)
     {
-        $teamId = $user->team_id;
+        $teamIds = $teamId ? collect([$teamId]) : $user->teams()->pluck('teams.id');
 
-        return $query->where(function ($q) use ($user, $teamId) {
+        return $query->where(function ($q) use ($user, $teamIds) {
             $q->where('type', 'public')
-                ->orWhere(function ($q2) use ($user, $teamId) {
+                ->orWhere(function ($q2) use ($user, $teamIds) {
                     $q2->where('type', 'private')
-                        ->where(function ($q3) use ($user, $teamId) {
+                        ->where(function ($q3) use ($user, $teamIds) {
                             $q3->where('user_id', $user->id);
 
-                            if ($teamId) {
-                                $q3->orWhereIn('user_id', User::query()
-                                    ->select('id')
-                                    ->where('team_id', $teamId));
+                            if ($teamIds->isNotEmpty()) {
+                                $q3->orWhereIn('user_id', function ($sub) use ($teamIds) {
+                                    $sub->select('user_id')
+                                        ->from('team_user')
+                                        ->whereIn('team_id', $teamIds);
+                                });
                             }
                         });
                 });

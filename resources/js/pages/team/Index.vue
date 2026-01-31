@@ -25,6 +25,7 @@ interface TeamInvitation {
 
 interface UserInvitation {
     id: number;
+    team_id?: number | null;
     team_name?: string | null;
     invited_by?: string | null;
     expires_at?: string | null;
@@ -34,18 +35,27 @@ interface TeamData {
     id: number;
     name: string;
     owner_id: number;
+    is_owner: boolean;
+    members: TeamMember[];
+    pending_invitations: TeamInvitation[];
 }
 
 const props = defineProps<{
-    team: TeamData | null;
-    members: TeamMember[];
-    pendingInvitations: TeamInvitation[];
+    teams: TeamData[];
     userInvitations?: UserInvitation[];
 }>();
 
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
 const userInvitations = computed(() => props.userInvitations ?? []);
+const teams = computed(() => props.teams ?? []);
+const selectedTeamId = ref<number | null>(null);
+const filteredTeams = computed(() => {
+    if (!selectedTeamId.value) {
+        return teams.value;
+    }
+    return teams.value.filter((team) => team.id === selectedTeamId.value);
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Mon équipe', href: '/team' },
@@ -57,14 +67,18 @@ const createForm = useForm({
 
 const inviteForm = useForm({
     email: '',
+    team_id: null as number | null,
 });
+const inviteEmails = ref<Record<number, string>>({});
 
 const isRemoveDialogOpen = ref(false);
 const memberToRemove = ref<TeamMember | null>(null);
+const teamForMemberAction = ref<TeamData | null>(null);
 const removeForm = useForm({});
 
 const isCancelInviteDialogOpen = ref(false);
 const invitationToCancel = ref<TeamInvitation | null>(null);
+const teamForInviteAction = ref<TeamData | null>(null);
 const cancelInviteForm = useForm({});
 
 const isAcceptInviteDialogOpen = ref(false);
@@ -76,19 +90,17 @@ const invitationToDecline = ref<UserInvitation | null>(null);
 const declineInviteForm = useForm({});
 
 const isLeaveDialogOpen = ref(false);
+const teamToLeave = ref<TeamData | null>(null);
 const leaveForm = useForm({});
 
 const isTransferDialogOpen = ref(false);
 const memberToTransfer = ref<TeamMember | null>(null);
+const teamForTransfer = ref<TeamData | null>(null);
 const transferForm = useForm({});
 
 const isDeleteTeamDialogOpen = ref(false);
+const teamToDelete = ref<TeamData | null>(null);
 const deleteTeamForm = useForm({});
-
-const isOwner = computed(() => {
-    const userId = (page.props as any).auth?.user?.id;
-    return !!props.team && props.team.owner_id === userId;
-});
 
 const formatDate = (value?: string | null) => {
     if (!value) return '—';
@@ -111,17 +123,23 @@ const submitCreateTeam = () => {
     });
 };
 
-const submitInvite = () => {
+const submitInvite = (team: TeamData) => {
+    inviteForm.email = inviteEmails.value[team.id] || '';
+    inviteForm.team_id = team.id;
     inviteForm.post('/team/invitations', {
         preserveScroll: true,
+        preserveState: true,
+        only: ['teams', 'userInvitations', 'flash'],
         onSuccess: () => {
-            inviteForm.reset('email');
+            inviteForm.reset('email', 'team_id');
+            inviteEmails.value[team.id] = '';
         },
     });
 };
 
-const openRemoveDialog = (member: TeamMember) => {
+const openRemoveDialog = (team: TeamData, member: TeamMember) => {
     memberToRemove.value = member;
+    teamForMemberAction.value = team;
     isRemoveDialogOpen.value = true;
 };
 
@@ -129,11 +147,14 @@ const confirmRemoveMember = () => {
     if (!memberToRemove.value || removeForm.processing) {
         return;
     }
-    removeForm.delete(`/team/members/${memberToRemove.value.id}`, {
+    removeForm.delete(`/team/${teamForMemberAction.value.id}/members/${memberToRemove.value.id}`, {
         preserveScroll: true,
+        preserveState: true,
+        only: ['teams', 'flash'],
         onSuccess: () => {
             isRemoveDialogOpen.value = false;
             memberToRemove.value = null;
+            teamForMemberAction.value = null;
         },
         onFinish: () => {
             removeForm.clearErrors();
@@ -141,8 +162,9 @@ const confirmRemoveMember = () => {
     });
 };
 
-const openCancelInviteDialog = (invitation: TeamInvitation) => {
+const openCancelInviteDialog = (team: TeamData, invitation: TeamInvitation) => {
     invitationToCancel.value = invitation;
+    teamForInviteAction.value = team;
     isCancelInviteDialogOpen.value = true;
 };
 
@@ -152,9 +174,12 @@ const confirmCancelInvitation = () => {
     }
     cancelInviteForm.delete(`/team/invitations/${invitationToCancel.value.id}`, {
         preserveScroll: true,
+        preserveState: true,
+        only: ['teams', 'flash'],
         onSuccess: () => {
             isCancelInviteDialogOpen.value = false;
             invitationToCancel.value = null;
+            teamForInviteAction.value = null;
         },
         onFinish: () => {
             cancelInviteForm.clearErrors();
@@ -174,7 +199,7 @@ const confirmAcceptInvitation = () => {
     acceptInviteForm.post(`/team/invitations/${invitationToAccept.value.id}/accept`, {
         preserveScroll: true,
         preserveState: true,
-        only: ['team', 'members', 'pendingInvitations', 'userInvitations', 'flash'],
+        only: ['teams', 'userInvitations', 'flash'],
         onSuccess: () => {
             isAcceptInviteDialogOpen.value = false;
             invitationToAccept.value = null;
@@ -208,7 +233,8 @@ const confirmDeclineInvitation = () => {
     });
 };
 
-const openLeaveDialog = () => {
+const openLeaveDialog = (team: TeamData) => {
+    teamToLeave.value = team;
     isLeaveDialogOpen.value = true;
 };
 
@@ -216,12 +242,16 @@ const confirmLeaveTeam = () => {
     if (leaveForm.processing) {
         return;
     }
-    leaveForm.post('/team/leave', {
+    if (!teamToLeave.value) {
+        return;
+    }
+    leaveForm.post(`/team/${teamToLeave.value.id}/leave`, {
         preserveScroll: true,
         preserveState: true,
-        only: ['team', 'members', 'pendingInvitations', 'userInvitations', 'flash'],
+        only: ['teams', 'userInvitations', 'flash'],
         onSuccess: () => {
             isLeaveDialogOpen.value = false;
+            teamToLeave.value = null;
         },
         onFinish: () => {
             leaveForm.clearErrors();
@@ -229,8 +259,9 @@ const confirmLeaveTeam = () => {
     });
 };
 
-const openTransferDialog = (member: TeamMember) => {
+const openTransferDialog = (team: TeamData, member: TeamMember) => {
     memberToTransfer.value = member;
+    teamForTransfer.value = team;
     isTransferDialogOpen.value = true;
 };
 
@@ -238,13 +269,14 @@ const confirmTransferOwnership = () => {
     if (!memberToTransfer.value || transferForm.processing) {
         return;
     }
-    transferForm.post(`/team/transfer-ownership/${memberToTransfer.value.id}`, {
+    transferForm.post(`/team/${teamForTransfer.value.id}/transfer-ownership/${memberToTransfer.value.id}`, {
         preserveScroll: true,
         preserveState: true,
-        only: ['team', 'members', 'flash'],
+        only: ['teams', 'flash'],
         onSuccess: () => {
             isTransferDialogOpen.value = false;
             memberToTransfer.value = null;
+            teamForTransfer.value = null;
         },
         onFinish: () => {
             transferForm.clearErrors();
@@ -252,7 +284,8 @@ const confirmTransferOwnership = () => {
     });
 };
 
-const openDeleteTeamDialog = () => {
+const openDeleteTeamDialog = (team: TeamData) => {
+    teamToDelete.value = team;
     isDeleteTeamDialogOpen.value = true;
 };
 
@@ -260,12 +293,16 @@ const confirmDeleteTeam = () => {
     if (deleteTeamForm.processing) {
         return;
     }
-    deleteTeamForm.delete('/team', {
+    if (!teamToDelete.value) {
+        return;
+    }
+    deleteTeamForm.delete(`/team/${teamToDelete.value.id}`, {
         preserveScroll: true,
         preserveState: true,
-        only: ['team', 'members', 'pendingInvitations', 'userInvitations', 'flash'],
+        only: ['teams', 'userInvitations', 'flash'],
         onSuccess: () => {
             isDeleteTeamDialogOpen.value = false;
+            teamToDelete.value = null;
         },
         onFinish: () => {
             deleteTeamForm.clearErrors();
@@ -293,6 +330,21 @@ watch(() => (page.props as any).flash, (flash) => {
         setTimeout(() => shownFlashMessages.value.delete(errorKey), 6000);
     }
 }, { immediate: true });
+
+watch(teams, (value) => {
+    if (!selectedTeamId.value) {
+        return;
+    }
+    const stillExists = value.some((team) => team.id === selectedTeamId.value);
+    if (!stillExists) {
+        selectedTeamId.value = null;
+    }
+});
+
+const handleTeamFilterChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement;
+    selectedTeamId.value = target.value ? Number(target.value) : null;
+};
 </script>
 
 <template>
@@ -307,7 +359,23 @@ watch(() => (page.props as any).flash, (flash) => {
                 </p>
             </div>
 
-            <Card v-if="!team">
+            <div v-if="teams.length > 1" class="flex flex-col gap-1.5 sm:max-w-xs">
+                <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+                    Équipe affichée
+                </label>
+                <select
+                    :value="selectedTeamId || ''"
+                    class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                    @change="handleTeamFilterChange"
+                >
+                    <option value="">Toutes les équipes</option>
+                    <option v-for="team in teams" :key="team.id" :value="team.id">
+                        {{ team.name }}
+                    </option>
+                </select>
+            </div>
+
+            <Card>
                 <CardHeader>
                     <CardTitle>Créer votre équipe</CardTitle>
                 </CardHeader>
@@ -332,7 +400,7 @@ watch(() => (page.props as any).flash, (flash) => {
                 </CardContent>
             </Card>
 
-            <Card v-if="!team">
+            <Card>
                 <CardHeader>
                     <CardTitle>Mes invitations</CardTitle>
                 </CardHeader>
@@ -366,12 +434,20 @@ watch(() => (page.props as any).flash, (flash) => {
                 </CardContent>
             </Card>
 
-            <div v-else class="grid gap-6 lg:grid-cols-3">
+            <div v-if="teams.length === 0" class="rounded-lg border border-slate-200 p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-400">
+                Aucune équipe pour le moment. Créez une équipe pour commencer.
+            </div>
+
+            <div
+                v-for="team in filteredTeams"
+                :key="team.id"
+                class="grid gap-6 lg:grid-cols-3"
+            >
                 <Card class="lg:col-span-2">
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
                             {{ team.name }}
-                            <Badge v-if="isOwner" variant="outline">Propriétaire</Badge>
+                            <Badge v-if="team.is_owner" variant="outline">Propriétaire</Badge>
                         </CardTitle>
                     </CardHeader>
                     <CardContent class="space-y-4">
@@ -381,7 +457,7 @@ watch(() => (page.props as any).flash, (flash) => {
                             </p>
                             <div class="space-y-2">
                                 <div
-                                    v-for="member in members"
+                                    v-for="member in team.members"
                                     :key="member.id"
                                     class="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700"
                                 >
@@ -394,16 +470,16 @@ watch(() => (page.props as any).flash, (flash) => {
                                         </p>
                                         <p class="text-xs text-slate-500">{{ member.email }}</p>
                                     </div>
-                                    <div v-if="isOwner && member.id !== team.owner_id" class="flex items-center gap-2">
-                                        <Button variant="outline" size="sm" @click="openTransferDialog(member)">
+                                    <div v-if="team.is_owner && member.id !== team.owner_id" class="flex items-center gap-2">
+                                        <Button variant="outline" size="sm" @click="openTransferDialog(team, member)">
                                             Nommer propriétaire
                                         </Button>
-                                        <Button variant="outline" size="sm" @click="openRemoveDialog(member)">
+                                        <Button variant="outline" size="sm" @click="openRemoveDialog(team, member)">
                                             Retirer
                                         </Button>
                                     </div>
                                 </div>
-                                <p v-if="members.length === 0" class="text-sm text-slate-500">
+                                <p v-if="team.members.length === 0" class="text-sm text-slate-500">
                                     Aucun membre pour le moment.
                                 </p>
                             </div>
@@ -418,18 +494,18 @@ watch(() => (page.props as any).flash, (flash) => {
                         </CardHeader>
                         <CardContent class="space-y-3">
                             <Button
-                                v-if="!isOwner"
+                                v-if="!team.is_owner"
                                 variant="outline"
                                 class="w-full"
-                                @click="openLeaveDialog"
+                                @click="openLeaveDialog(team)"
                             >
                                 Quitter l’équipe
                             </Button>
                             <Button
-                                v-if="isOwner"
+                                v-if="team.is_owner"
                                 variant="outline"
                                 class="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                @click="openDeleteTeamDialog"
+                                @click="openDeleteTeamDialog(team)"
                             >
                                 Supprimer l’équipe
                             </Button>
@@ -441,15 +517,15 @@ watch(() => (page.props as any).flash, (flash) => {
                         </CardHeader>
                         <CardContent class="space-y-3">
                             <Input
-                                v-model="inviteForm.email"
+                                v-model="inviteEmails[team.id]"
                                 type="email"
                                 placeholder="email@exemple.com"
                                 class="w-full"
                             />
                             <Button
                                 class="w-full"
-                                :disabled="inviteForm.processing || !inviteForm.email.trim()"
-                                @click="submitInvite"
+                                :disabled="inviteForm.processing || !inviteEmails[team.id]?.trim()"
+                                @click="submitInvite(team)"
                             >
                                 Envoyer l’invitation
                             </Button>
@@ -462,7 +538,7 @@ watch(() => (page.props as any).flash, (flash) => {
                         </CardHeader>
                         <CardContent class="space-y-3">
                             <div
-                                v-for="invitation in pendingInvitations"
+                                v-for="invitation in team.pending_invitations"
                                 :key="invitation.id"
                                 class="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"
                             >
@@ -473,13 +549,13 @@ watch(() => (page.props as any).flash, (flash) => {
                                 <p v-if="invitation.invited_by" class="text-xs text-slate-500">
                                     Invitée par {{ invitation.invited_by }}
                                 </p>
-                                <div v-if="isOwner" class="mt-3">
-                                    <Button variant="outline" size="sm" @click="openCancelInviteDialog(invitation)">
+                                <div v-if="team.is_owner" class="mt-3">
+                                    <Button variant="outline" size="sm" @click="openCancelInviteDialog(team, invitation)">
                                         Annuler l’invitation
                                     </Button>
                                 </div>
                             </div>
-                            <p v-if="pendingInvitations.length === 0" class="text-sm text-slate-500">
+                            <p v-if="team.pending_invitations.length === 0" class="text-sm text-slate-500">
                                 Aucune invitation en attente.
                             </p>
                         </CardContent>

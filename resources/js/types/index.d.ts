@@ -37,8 +37,6 @@ export interface User {
     hasActiveSubscription?: boolean;
     isPro?: boolean;
     isAdmin?: boolean | null;
-    teamId?: number | null;
-    teamName?: string | null;
     hasTeam?: boolean;
 }
 

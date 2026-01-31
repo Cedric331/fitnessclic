@@ -73,6 +73,8 @@ const clientsDescription = computed(() =>
 );
 
 const searchTerm = ref(props.filters.search || '');
+const teamFilter = ref<number | null>(props.filters.team_id ?? null);
+const teamOptions = computed(() => props.teams ?? []);
 
 const searchInput = ref<HTMLInputElement | null>(null);
 const isCreateDialogOpen = ref(false);
@@ -87,10 +89,17 @@ watch(() => props.filters.search, (value) => {
     searchTerm.value = value || '';
 });
 
+watch(() => props.filters.team_id, (value) => {
+    teamFilter.value = value ?? null;
+});
+
 const handleSearch = () => {
     const query: Record<string, string> = {};
     if (searchTerm.value.trim()) {
         query.search = searchTerm.value.trim();
+    }
+    if (teamFilter.value) {
+        query.team_id = String(teamFilter.value);
     }
     
     router.get('/customers', query, {
@@ -123,6 +132,12 @@ watch(searchTerm, (newValue, oldValue) => {
         handleSearch();
     }, 300); // 300ms de délai
 });
+
+const handleTeamFilterChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement;
+    teamFilter.value = target.value ? Number(target.value) : null;
+    handleSearch();
+};
 
 const handleEditCustomer = (customer: Customer) => {
     editingCustomer.value = customer;
@@ -197,18 +212,35 @@ watch(isDeleteDialogOpen, (open) => {
                 </Button>
             </div>
 
-            <!-- Search Bar -->
-            <div class="relative">
-                <Search
-                    class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
-                />
-                <Input
-                    ref="searchInput"
-                    v-model="searchTerm"
-                    type="text"
-                    placeholder="Rechercher un client..."
-                    class="w-full pl-10"
-                />
+            <!-- Filters -->
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div v-if="teamOptions.length" class="flex flex-col gap-1.5 lg:w-64">
+                    <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+                        Équipe
+                    </label>
+                    <select
+                        :value="teamFilter || ''"
+                        class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                        @change="handleTeamFilterChange"
+                    >
+                        <option value="">Toutes les équipes</option>
+                        <option v-for="team in teamOptions" :key="team.id" :value="team.id">
+                            {{ team.name }}
+                        </option>
+                    </select>
+                </div>
+                <div class="relative flex-1">
+                    <Search
+                        class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+                    />
+                    <Input
+                        ref="searchInput"
+                        v-model="searchTerm"
+                        type="text"
+                        placeholder="Rechercher un client..."
+                        class="w-full pl-10"
+                    />
+                </div>
             </div>
 
             <!-- Customer List -->

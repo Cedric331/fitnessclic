@@ -59,7 +59,7 @@ class CreateNewUser implements CreatesNewUsers
         ]);
 
         if ($invitation) {
-            $user->update(['team_id' => $invitation->team_id]);
+            $user->teams()->syncWithoutDetaching([$invitation->team_id]);
             $invitation->update([
                 'accepted_at' => now(),
                 'invited_user_id' => $user->id,

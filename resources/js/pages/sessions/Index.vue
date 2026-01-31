@@ -71,6 +71,8 @@ const searchTerm = ref(props.filters.search || '');
 const sortOrder = ref<'newest' | 'oldest'>(props.filters.sort || 'newest');
 const customerFilter = ref<number | null>(props.filters.customer_id || null);
 const sourceFilter = ref<'my_sessions' | 'public_sessions' | 'team_sessions'>(props.filters.source || 'my_sessions');
+const teamFilter = ref<number | null>(props.filters.team_id ?? null);
+const teamOptions = computed(() => props.teams ?? []);
 
 const searchInput = ref<HTMLInputElement | null>(null);
 const isDeleteDialogOpen = ref(false);
@@ -121,6 +123,10 @@ watch(() => props.filters.source, (value) => {
     sourceFilter.value = value || 'my_sessions';
 });
 
+watch(() => props.filters.team_id, (value) => {
+    teamFilter.value = value ?? null;
+});
+
 const applyFilters = () => {
     const query: Record<string, string | number> = {};
     
@@ -139,6 +145,10 @@ const applyFilters = () => {
     
     if (sourceFilter.value) {
         query.source = sourceFilter.value;
+    }
+    
+    if (teamFilter.value) {
+        query.team_id = teamFilter.value;
     }
     
     router.get('/sessions', query, {
@@ -194,6 +204,12 @@ const handleSourceFilterChange = (event: Event) => {
     applyFilters();
 };
 
+const handleTeamFilterChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement;
+    teamFilter.value = target.value ? Number(target.value) : null;
+    applyFilters();
+};
+
 const goToPage = (page: number) => {
     if (page < 1 || page > props.sessions.last_page) {
         return;
@@ -217,6 +233,10 @@ const goToPage = (page: number) => {
     
     if (sourceFilter.value) {
         query.source = sourceFilter.value;
+    }
+    
+    if (teamFilter.value) {
+        query.team_id = teamFilter.value;
     }
     
     router.get('/sessions', query, {
@@ -407,6 +427,23 @@ watch(isDeleteDialogOpen, (open) => {
                         <option value="my_sessions">Mes séances</option>
                         <option v-if="hasTeam" value="team_sessions">Séances d'équipe</option>
                         <option value="public_sessions">Séances publiques</option>
+                    </select>
+                </div>
+
+                <!-- Team Filter -->
+                <div v-if="teamOptions.length" class="flex flex-col gap-1.5 lg:w-56">
+                    <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+                        Équipe
+                    </label>
+                    <select
+                        :value="teamFilter || ''"
+                        class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                        @change="handleTeamFilterChange"
+                    >
+                        <option value="">Toutes les équipes</option>
+                        <option v-for="team in teamOptions" :key="team.id" :value="team.id">
+                            {{ team.name }}
+                        </option>
                     </select>
                 </div>
 

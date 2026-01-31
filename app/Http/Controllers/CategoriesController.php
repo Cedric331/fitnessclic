@@ -22,11 +22,17 @@ class CategoriesController extends Controller
         $searchTerm = trim((string) ($validated['search'] ?? ''));
         $showPrivate = $validated['private'] ?? true;
         $showPublic = $validated['public'] ?? true;
+        $teamId = $validated['team_id'] ?? null;
         $user = Auth::user();
+        $userTeamIds = $user?->teams()->pluck('teams.id') ?? collect();
+
+        if ($teamId && ! $userTeamIds->contains((int) $teamId)) {
+            abort(403);
+        }
 
         $privateCategories = collect();
         if ($showPrivate && $user) {
-            $teamMemberIds = $user->teamMemberIds();
+            $teamMemberIds = $teamId ? $user->teamMemberIds((int) $teamId) : $user->teamMemberIds();
             $privateCategories = Category::private()
                 ->with('user')
                 ->whereIn('user_id', $teamMemberIds)
@@ -56,7 +62,9 @@ class CategoriesController extends Controller
                 'search' => $searchTerm ?: null,
                 'show_private' => $showPrivate,
                 'show_public' => $showPublic,
+                'team_id' => $teamId,
             ],
+            'teams' => $user?->teams()->orderBy('name')->get(['teams.id', 'teams.name']),
         ]);
     }
 

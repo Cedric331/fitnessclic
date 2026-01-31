@@ -23,6 +23,7 @@ class IndexCustomerRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:255'],
+            'team_id' => ['nullable', 'integer', 'exists:teams,id'],
         ];
     }
 }

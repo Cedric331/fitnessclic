@@ -4,6 +4,7 @@ use App\Models\Customer;
 use App\Models\Exercise;
 use App\Models\Session;
 use App\Models\SessionLayout;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -14,6 +15,22 @@ beforeEach(function () {
     Storage::fake('local');
     Mail::fake();
 });
+
+function createTeamForSessionTest(User $owner, ?User $member = null): Team
+{
+    $team = Team::create([
+        'name' => 'Team Sessions',
+        'owner_id' => $owner->id,
+    ]);
+
+    $team->members()->attach($owner->id);
+
+    if ($member) {
+        $team->members()->attach($member->id);
+    }
+
+    return $team;
+}
 
 test('unauthenticated user cannot access sessions index', function () {
     $response = $this->get(route('sessions.index'));
@@ -33,6 +50,38 @@ test('authenticated user can view own sessions', function () {
         ->has('sessions.data', 3)
         ->has('customers')
     );
+});
+
+test('sessions index filters by team id', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $team = createTeamForSessionTest($owner, $member);
+    Session::factory()->for($member)->create();
+
+    $response = $this->actingAs($owner)->get(route('sessions.index', [
+        'source' => 'team_sessions',
+        'team_id' => $team->id,
+    ]));
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page
+        ->component('sessions/Index')
+        ->has('sessions.data', 1)
+        ->where('filters.team_id', (string) $team->id)
+    );
+});
+
+test('sessions index forbids team filter for non-member', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $team = createTeamForSessionTest($owner);
+
+    $response = $this->actingAs($user)->get(route('sessions.index', [
+        'source' => 'team_sessions',
+        'team_id' => $team->id,
+    ]));
+
+    $response->assertStatus(403);
 });
 
 test('sessions index filters by search term', function () {

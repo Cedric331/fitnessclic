@@ -1,8 +1,25 @@
 <?php
 
 use App\Models\Category;
+use App\Models\Team;
 use App\Models\User;
 use Laravel\Cashier\Subscription;
+
+function createTeamForCategoryTest(User $owner, ?User $member = null): Team
+{
+    $team = Team::create([
+        'name' => 'Team Categories',
+        'owner_id' => $owner->id,
+    ]);
+
+    $team->members()->attach($owner->id);
+
+    if ($member) {
+        $team->members()->attach($member->id);
+    }
+
+    return $team;
+}
 
 test('unauthenticated user cannot access categories index', function () {
     $response = $this->get(route('categories.index'));
@@ -54,6 +71,39 @@ test('categories index can filter private and public categories', function () {
         ->where('filters.show_private', '1')
         ->where('filters.show_public', '0')
     );
+});
+
+test('categories index filters by team id', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $team = createTeamForCategoryTest($owner, $member);
+    Category::factory()->create([
+        'type' => 'private',
+        'user_id' => $member->id,
+    ]);
+
+    $response = $this->actingAs($owner)->get(route('categories.index', [
+        'team_id' => $team->id,
+    ]));
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page
+        ->component('categories/Index')
+        ->has('privateCategories', 1)
+        ->where('filters.team_id', (string) $team->id)
+    );
+});
+
+test('categories index forbids team filter for non-member', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $team = createTeamForCategoryTest($owner);
+
+    $response = $this->actingAs($user)->get(route('categories.index', [
+        'team_id' => $team->id,
+    ]));
+
+    $response->assertStatus(403);
 });
 
 test('free user cannot create category', function () {

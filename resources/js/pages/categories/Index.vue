@@ -11,13 +11,14 @@ import CategoryEditDialog from './CategoryEditDialog.vue';
 import CategoryDeleteDialog from './CategoryDeleteDialog.vue';
 import CategorySection from './CategorySection.vue';
 import UpgradeModal from '@/components/UpgradeModal.vue';
-import type { Category, Filters } from './types';
+import type { Category, Filters, TeamOption } from './types';
 import { useNotifications } from '@/composables/useNotifications';
 
 const props = defineProps<{
     privateCategories: Category[];
     publicCategories: Category[];
     filters: Filters;
+    teams?: TeamOption[];
 }>();
 
 const breadcrumbs: BreadcrumbItemType[] = [
@@ -69,6 +70,8 @@ watch(() => (page.props as any).flash, (flash) => {
 }, { immediate: true });
 
 const searchTerm = ref(props.filters?.search ?? '');
+const teamFilter = ref<number | null>(props.filters?.team_id ?? null);
+const teamOptions = computed(() => props.teams ?? []);
 
 const isCreateDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
@@ -79,6 +82,10 @@ const deletingCategory = ref<Category | null>(null);
 // Synchroniser searchTerm avec les props
 watch(() => props.filters?.search, (value) => {
     searchTerm.value = value ?? '';
+});
+
+watch(() => props.filters?.team_id, (value) => {
+    teamFilter.value = value ?? null;
 });
 
 watch(isEditDialogOpen, (open) => {
@@ -100,11 +107,20 @@ const applyFilters = () => {
     if (trimmedSearch.length) {
         query.search = trimmedSearch;
     }
+    if (teamFilter.value) {
+        query.team_id = String(teamFilter.value);
+    }
 
     router.get('/categories', query, {
         preserveScroll: true,
         preserveState: true,
     });
+};
+
+const handleTeamFilterChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement;
+    teamFilter.value = target.value ? Number(target.value) : null;
+    applyFilters();
 };
 
 // Recherche en temps réel avec debounce
@@ -182,15 +198,32 @@ const startDeleteCategory = (category: Category) => {
                 </Button>
             </div>
 
-            <div class="relative">
-                <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-300" />
-                <Input
-                    v-model="searchTerm"
-                    id="category-search"
-                    type="text"
-                    placeholder="Rechercher une catégorie..."
-                    class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-slate-900 shadow-sm transition focus:border-blue-500 focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
-                />
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div v-if="teamOptions.length" class="flex flex-col gap-1.5 lg:w-64">
+                    <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+                        Équipe
+                    </label>
+                    <select
+                        :value="teamFilter || ''"
+                        class="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition focus:border-blue-500 focus:outline-none focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                        @change="handleTeamFilterChange"
+                    >
+                        <option value="">Toutes les équipes</option>
+                        <option v-for="team in teamOptions" :key="team.id" :value="team.id">
+                            {{ team.name }}
+                        </option>
+                    </select>
+                </div>
+                <div class="relative flex-1">
+                    <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-300" />
+                    <Input
+                        v-model="searchTerm"
+                        id="category-search"
+                        type="text"
+                        placeholder="Rechercher une catégorie..."
+                        class="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-slate-900 shadow-sm transition focus:border-blue-500 focus:ring-0 dark:border-slate-800 dark:bg-slate-900/70 dark:text-white"
+                    />
+                </div>
             </div>
 
             <div class="grid gap-4 lg:grid-cols-2">

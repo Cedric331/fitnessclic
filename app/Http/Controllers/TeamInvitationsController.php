@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\TeamInvitationMail;
+use App\Models\Team;
 use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -22,18 +23,23 @@ class TeamInvitationsController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $team = $user->team;
-
-        if (! $team) {
-            return redirect()->route('team.index')
-                ->with('error', 'Créez une équipe avant d\'inviter un coach.');
-        }
-
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:255'],
+            'team_id' => ['required', 'integer', 'exists:teams,id'],
         ]);
 
         $email = $validated['email'];
+        $team = Team::findOrFail($validated['team_id']);
+
+        if (! $team->members()->where('users.id', $user->id)->exists()) {
+            return redirect()->route('team.index')
+                ->with('error', 'Vous ne faites pas partie de cette équipe.');
+        }
+
+        if ($team->owner_id !== $user->id) {
+            return redirect()->route('team.index')
+                ->with('error', 'Seul le propriétaire peut inviter un coach.');
+        }
 
         if ($email === $user->email) {
             return redirect()->route('team.index')
@@ -41,15 +47,11 @@ class TeamInvitationsController extends Controller
         }
 
         $existingUser = User::where('email', $email)->first();
-        if ($existingUser && $existingUser->team_id && $existingUser->team_id !== $team->id) {
-            return redirect()->route('team.index')
-                ->with('error', 'Ce coach appartient déjà à une autre équipe.');
-        }
-
-        if ($existingUser && $existingUser->team_id === $team->id) {
+        if ($existingUser && $existingUser->teams()->where('teams.id', $team->id)->exists()) {
             return redirect()->route('team.index')
                 ->with('error', 'Ce coach fait déjà partie de l\'équipe.');
         }
+
 
         $existingInvitation = TeamInvitation::query()
             ->where('team_id', $team->id)
@@ -107,8 +109,13 @@ class TeamInvitationsController extends Controller
         $user = Auth::user();
         $canAccept = false;
         if ($invitation && $status === 'valid' && $user) {
-            $canAccept = $user->email === $invitation->email
-                && (! $user->team_id || $user->team_id === $invitation->team_id);
+            if ($user->teams()->where('teams.id', $invitation->team_id)->exists() && $user->email === $invitation->email) {
+                $status = 'already_member';
+                $canAccept = false;
+            } else {
+                $canAccept = $user->email === $invitation->email
+                    && ! $user->teams()->where('teams.id', $invitation->team_id)->exists();
+            }
         }
 
         return Inertia::render('team/Invitation', [
@@ -155,12 +162,7 @@ class TeamInvitationsController extends Controller
                 ->with('error', 'Cette invitation ne correspond pas à votre adresse email.');
         }
 
-        if ($user->team_id && $user->team_id !== $invitation->team_id) {
-            return redirect()->route('team.invitations.show', $token)
-                ->with('error', 'Vous faites déjà partie d\'une autre équipe.');
-        }
-
-        $user->update(['team_id' => $invitation->team_id]);
+        $user->teams()->syncWithoutDetaching([$invitation->team_id]);
 
         $invitation->update([
             'accepted_at' => now(),
@@ -189,12 +191,7 @@ class TeamInvitationsController extends Controller
                 ->with('error', 'Cette invitation ne correspond pas à votre adresse email.');
         }
 
-        if ($user->team_id) {
-            return redirect()->route('team.index')
-                ->with('error', 'Vous faites déjà partie d\'une équipe.');
-        }
-
-        $user->update(['team_id' => $invitation->team_id]);
+        $user->teams()->syncWithoutDetaching([$invitation->team_id]);
 
         $invitation->update([
             'accepted_at' => now(),
@@ -236,7 +233,7 @@ class TeamInvitationsController extends Controller
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
-        $team = $user->team;
+        $team = $invitation->team;
 
         if (! $team || $team->owner_id !== $user->id) {
             return redirect()->route('team.index')

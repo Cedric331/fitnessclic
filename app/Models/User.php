@@ -8,7 +8,6 @@ use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -48,7 +47,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
      * @var list<string>
      */
     protected $fillable = [
-        'team_id',
         'name',
         'email',
         'role',
@@ -324,11 +322,19 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
     }
 
     /**
-     * Relation with the team.
+     * Relation with teams (many-to-many).
      */
-    public function team(): BelongsTo
+    public function teams(): BelongsToMany
     {
-        return $this->belongsTo(Team::class);
+        return $this->belongsToMany(Team::class)->withTimestamps();
+    }
+
+    /**
+     * Teams owned by the user.
+     */
+    public function ownedTeams(): HasMany
+    {
+        return $this->hasMany(Team::class, 'owner_id');
     }
 
     /**
@@ -340,22 +346,33 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName
             return false;
         }
 
-        return $this->team_id !== null && $this->team_id === $other->team_id;
+        $teamIds = $this->teams()->pluck('teams.id');
+        if ($teamIds->isEmpty()) {
+            return false;
+        }
+
+        return $other->teams()->whereIn('teams.id', $teamIds)->exists();
     }
 
     /**
-     * Get the IDs of team members (including the user).
+     * Get the IDs of team members for a given team (or all teams).
      *
      * @return \Illuminate\Support\Collection<int, int>
      */
-    public function teamMemberIds()
+    public function teamMemberIds(?int $teamId = null)
     {
-        if (! $this->team_id) {
+        $teamIds = $teamId ? collect([$teamId]) : $this->teams()->pluck('teams.id');
+
+        if ($teamIds->isEmpty()) {
             return collect([$this->id]);
         }
 
         return static::query()
-            ->where('team_id', $this->team_id)
+            ->whereIn('id', function ($query) use ($teamIds) {
+                $query->select('user_id')
+                    ->from('team_user')
+                    ->whereIn('team_id', $teamIds);
+            })
             ->pluck('id');
     }
 

@@ -2,8 +2,25 @@
 
 use App\Models\Customer;
 use App\Models\Session;
+use App\Models\Team;
 use App\Models\User;
 use Laravel\Cashier\Subscription;
+
+function createTeamForCustomerTest(User $owner, ?User $member = null): Team
+{
+    $team = Team::create([
+        'name' => 'Team Clients',
+        'owner_id' => $owner->id,
+    ]);
+
+    $team->members()->attach($owner->id);
+
+    if ($member) {
+        $team->members()->attach($member->id);
+    }
+
+    return $team;
+}
 
 test('unauthenticated user cannot access customers index', function () {
     $response = $this->get(route('client.customers.index'));
@@ -56,6 +73,36 @@ test('customers index paginates results', function () {
         ->has('customers.data', 12)
         ->where('customers.per_page', 12)
     );
+});
+
+test('customers index filters by team id', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $team = createTeamForCustomerTest($owner, $member);
+    Customer::factory()->for($member)->create();
+
+    $response = $this->actingAs($owner)->get(route('client.customers.index', [
+        'team_id' => $team->id,
+    ]));
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page
+        ->component('clients/Index')
+        ->has('customers.data', 1)
+        ->where('filters.team_id', (string) $team->id)
+    );
+});
+
+test('customers index forbids team filter for non-member', function () {
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+    $team = createTeamForCustomerTest($owner);
+
+    $response = $this->actingAs($user)->get(route('client.customers.index', [
+        'team_id' => $team->id,
+    ]));
+
+    $response->assertStatus(403);
 });
 
 test('free user cannot create customer', function () {

@@ -154,6 +154,11 @@ export interface SessionsProps {
         customer_id?: number | null;
         sort?: 'newest' | 'oldest';
         source?: 'my_sessions' | 'public_sessions' | 'team_sessions';
+        team_id?: number | null;
     };
+    teams?: Array<{
+        id: number;
+        name: string;
+    }>;
 }
 

@@ -37,12 +37,7 @@ class LoginResponse implements LoginResponseContract
                     ->with('error', 'Cette invitation ne correspond pas à votre adresse email.');
             }
 
-            if ($user->team_id && $user->team_id !== $invitation->team_id) {
-                return redirect()->route('team.invitations.show', $token)
-                    ->with('error', 'Vous faites déjà partie d\'une autre équipe.');
-            }
-
-            $user->update(['team_id' => $invitation->team_id]);
+            $user->teams()->syncWithoutDetaching([$invitation->team_id]);
             $invitation->update([
                 'accepted_at' => now(),
                 'invited_user_id' => $user->id,
