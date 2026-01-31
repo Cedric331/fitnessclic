@@ -51,11 +51,21 @@ class TeamInvitationsController extends Controller
                 ->with('error', 'Ce coach fait déjà partie de l\'équipe.');
         }
 
-        TeamInvitation::query()
+        $existingInvitation = TeamInvitation::query()
             ->where('team_id', $team->id)
             ->where('email', $email)
             ->whereNull('accepted_at')
-            ->delete();
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($existingInvitation && ! $existingInvitation->isExpired()) {
+            return redirect()->route('team.index')
+                ->with('error', 'Une invitation est déjà en attente pour cet email.');
+        }
+
+        if ($existingInvitation) {
+            $existingInvitation->delete();
+        }
 
         $invitation = TeamInvitation::create([
             'team_id' => $team->id,
