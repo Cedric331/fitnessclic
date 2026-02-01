@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useNotifications } from '@/composables/useNotifications';
+import { LogOut, Mail, Trash2, UserPlus } from 'lucide-vue-next';
 
 interface TeamMember {
     id: number;
@@ -81,6 +82,12 @@ const invitationToCancel = ref<TeamInvitation | null>(null);
 const teamForInviteAction = ref<TeamData | null>(null);
 const cancelInviteForm = useForm({});
 
+const isInviteDialogOpen = ref(false);
+const teamForInvite = ref<TeamData | null>(null);
+
+const isPendingInvitesDialogOpen = ref(false);
+const teamForPendingInvites = ref<TeamData | null>(null);
+
 const isAcceptInviteDialogOpen = ref(false);
 const invitationToAccept = ref<UserInvitation | null>(null);
 const acceptInviteForm = useForm({});
@@ -133,8 +140,22 @@ const submitInvite = (team: TeamData) => {
         onSuccess: () => {
             inviteForm.reset('email', 'team_id');
             inviteEmails.value[team.id] = '';
+            if (teamForInvite.value?.id === team.id) {
+                isInviteDialogOpen.value = false;
+                teamForInvite.value = null;
+            }
         },
     });
+};
+
+const openInviteDialog = (team: TeamData) => {
+    teamForInvite.value = team;
+    isInviteDialogOpen.value = true;
+};
+
+const openPendingInvitesDialog = (team: TeamData) => {
+    teamForPendingInvites.value = team;
+    isPendingInvitesDialogOpen.value = true;
 };
 
 const openRemoveDialog = (team: TeamData, member: TeamMember) => {
@@ -144,7 +165,7 @@ const openRemoveDialog = (team: TeamData, member: TeamMember) => {
 };
 
 const confirmRemoveMember = () => {
-    if (!memberToRemove.value || removeForm.processing) {
+    if (!memberToRemove.value || !teamForMemberAction.value || removeForm.processing) {
         return;
     }
     removeForm.delete(`/team/${teamForMemberAction.value.id}/members/${memberToRemove.value.id}`, {
@@ -266,7 +287,7 @@ const openTransferDialog = (team: TeamData, member: TeamMember) => {
 };
 
 const confirmTransferOwnership = () => {
-    if (!memberToTransfer.value || transferForm.processing) {
+    if (!memberToTransfer.value || !teamForTransfer.value || transferForm.processing) {
         return;
     }
     transferForm.post(`/team/${teamForTransfer.value.id}/transfer-ownership/${memberToTransfer.value.id}`, {
@@ -355,7 +376,7 @@ const handleTeamFilterChange = (event: Event) => {
             <div class="flex flex-col gap-2">
                 <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Mon équipe</h1>
                 <p class="text-sm text-slate-600 dark:text-slate-400">
-                    Gérez vos coachs et partagez vos données d’équipe.
+                    Créer un groupe de coachs et partager vos séances, clients et exercices.
                 </p>
             </div>
 
@@ -375,81 +396,79 @@ const handleTeamFilterChange = (event: Event) => {
                 </select>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Créer votre équipe</CardTitle>
-                </CardHeader>
-                <CardContent class="space-y-4">
-                    <p class="text-sm text-slate-600 dark:text-slate-400">
-                        Créez une équipe pour inviter d’autres coachs et partager vos séances, clients et catégories.
-                    </p>
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <Input
-                            v-model="createForm.name"
-                            type="text"
-                            placeholder="Nom de l'équipe"
-                            class="w-full"
-                        />
-                        <Button
-                            :disabled="createForm.processing || !createForm.name.trim()"
-                            @click="submitCreateTeam"
-                        >
-                            Créer l’équipe
-                        </Button>
+            <div class="grid gap-6 xl:grid-cols-3">
+                <div class="order-2 space-y-6 lg:order-1 lg:col-span-2">
+                    <div v-if="teams.length === 0" class="rounded-lg border border-slate-200 p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-400">
+                        Aucune équipe pour le moment. Créez une équipe pour commencer.
                     </div>
-                </CardContent>
-            </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Mes invitations</CardTitle>
-                </CardHeader>
-                <CardContent class="space-y-3">
                     <div
-                        v-for="invitation in userInvitations"
-                        :key="invitation.id"
-                        class="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"
+                        v-for="team in filteredTeams"
+                        :key="team.id"
+                        class="grid gap-6"
                     >
-                        <p class="font-medium text-slate-900 dark:text-white">
-                            Équipe : {{ invitation.team_name || '—' }}
-                        </p>
-                        <p v-if="invitation.invited_by" class="text-xs text-slate-500">
-                            Invitée par {{ invitation.invited_by }}
-                        </p>
-                        <p class="text-xs text-slate-500">
-                            Expire le {{ formatDate(invitation.expires_at) }}
-                        </p>
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            <Button size="sm" @click="openAcceptInviteDialog(invitation)">
-                                Accepter
-                            </Button>
-                            <Button variant="outline" size="sm" @click="openDeclineInviteDialog(invitation)">
-                                Refuser
-                            </Button>
-                        </div>
-                    </div>
-                    <p v-if="userInvitations.length === 0" class="text-sm text-slate-500">
-                        Aucune invitation en attente.
-                    </p>
-                </CardContent>
-            </Card>
-
-            <div v-if="teams.length === 0" class="rounded-lg border border-slate-200 p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-400">
-                Aucune équipe pour le moment. Créez une équipe pour commencer.
-            </div>
-
-            <div
-                v-for="team in filteredTeams"
-                :key="team.id"
-                class="grid gap-6 lg:grid-cols-3"
-            >
-                <Card class="lg:col-span-2">
-                    <CardHeader>
+                        <Card>
+                <CardHeader>
+                    <div class="flex flex-wrap items-center justify-between gap-3">
                         <CardTitle class="flex items-center gap-2">
                             {{ team.name }}
                             <Badge v-if="team.is_owner" variant="outline">Propriétaire</Badge>
                         </CardTitle>
-                    </CardHeader>
+                        <div class="flex items-center gap-2">
+                            <Button
+                                v-if="team.is_owner"
+                                variant="ghost"
+                                size="sm"
+                                class="h-8 w-8 gap-2 px-0 sm:h-9 sm:w-auto sm:px-3"
+                                @click="openInviteDialog(team)"
+                                title="Inviter un coach"
+                            >
+                                <UserPlus class="size-4" />
+                                <span class="hidden sm:inline">Inviter</span>
+                            </Button>
+                            <Button
+                                v-if="team.is_owner"
+                                variant="ghost"
+                                size="sm"
+                                class="h-8 w-8 gap-2 px-0 sm:h-9 sm:w-auto sm:px-3"
+                                @click="openPendingInvitesDialog(team)"
+                                title="Invitations en attente"
+                            >
+                                <Mail class="size-4" />
+                                <span class="hidden sm:inline">En attente</span>
+                                <Badge
+                                    v-if="team.pending_invitations.length"
+                                    variant="outline"
+                                    class="hidden sm:inline"
+                                >
+                                    {{ team.pending_invitations.length }}
+                                </Badge>
+                            </Button>
+                            <Button
+                                v-if="team.is_owner"
+                                variant="ghost"
+                                size="sm"
+                                class="h-8 w-8 gap-2 px-0 text-red-600 hover:text-red-700 hover:bg-red-50 sm:h-9 sm:w-auto sm:px-3 dark:hover:bg-red-900/20"
+                                @click="openDeleteTeamDialog(team)"
+                                title="Supprimer l’équipe"
+                            >
+                                <Trash2 class="size-4" />
+                                <span class="hidden sm:inline">Supprimer</span>
+                            </Button>
+                            <Button
+                                v-if="!team.is_owner"
+                                variant="ghost"
+                                size="sm"
+                                class="h-8 w-8 gap-2 px-0 sm:h-9 sm:w-auto sm:px-3"
+                                @click="openLeaveDialog(team)"
+                                title="Quitter l’équipe"
+                            >
+                                <LogOut class="size-4" />
+                                <span class="hidden sm:inline">Quitter</span>
+                            </Button>
+                        </div>
+                    </div>
+                </CardHeader>
                     <CardContent class="space-y-4">
                         <div>
                             <p class="text-xs uppercase text-slate-500 dark:text-slate-400 mb-2">
@@ -485,77 +504,65 @@ const handleTeamFilterChange = (event: Event) => {
                             </div>
                         </div>
                     </CardContent>
-                </Card>
+                        </Card>
+                    </div>
+                </div>
 
-                <div class="space-y-6">
+                <div class="order-1 space-y-6 lg:order-2">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Actions</CardTitle>
+                            <CardTitle>Créer votre équipe</CardTitle>
                         </CardHeader>
-                        <CardContent class="space-y-3">
-                            <Button
-                                v-if="!team.is_owner"
-                                variant="outline"
-                                class="w-full"
-                                @click="openLeaveDialog(team)"
-                            >
-                                Quitter l’équipe
-                            </Button>
-                            <Button
-                                v-if="team.is_owner"
-                                variant="outline"
-                                class="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                @click="openDeleteTeamDialog(team)"
-                            >
-                                Supprimer l’équipe
-                            </Button>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Inviter un coach</CardTitle>
-                        </CardHeader>
-                        <CardContent class="space-y-3">
-                            <Input
-                                v-model="inviteEmails[team.id]"
-                                type="email"
-                                placeholder="email@exemple.com"
-                                class="w-full"
-                            />
-                            <Button
-                                class="w-full"
-                                :disabled="inviteForm.processing || !inviteEmails[team.id]?.trim()"
-                                @click="submitInvite(team)"
-                            >
-                                Envoyer l’invitation
-                            </Button>
+                        <CardContent class="space-y-4">
+                            <p class="text-sm text-slate-600 dark:text-slate-400">
+                                Créer ici votre équipe et commencer à inviter les premiers coachs.
+                            </p>
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <Input
+                                    v-model="createForm.name"
+                                    type="text"
+                                    placeholder="Nom de l'équipe"
+                                    class="w-full"
+                                />
+                                <Button
+                                    :disabled="createForm.processing || !createForm.name.trim()"
+                                    @click="submitCreateTeam"
+                                >
+                                    Créer l’équipe
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Invitations en attente</CardTitle>
+                            <CardTitle>Mes invitations</CardTitle>
                         </CardHeader>
                         <CardContent class="space-y-3">
                             <div
-                                v-for="invitation in team.pending_invitations"
+                                v-for="invitation in userInvitations"
                                 :key="invitation.id"
                                 class="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"
                             >
-                                <p class="font-medium text-slate-900 dark:text-white">{{ invitation.email }}</p>
-                                <p class="text-xs text-slate-500">
-                                    Expire le {{ formatDate(invitation.expires_at) }}
+                                <p class="font-medium text-slate-900 dark:text-white">
+                                    Équipe : {{ invitation.team_name || '—' }}
                                 </p>
                                 <p v-if="invitation.invited_by" class="text-xs text-slate-500">
                                     Invitée par {{ invitation.invited_by }}
                                 </p>
-                                <div v-if="team.is_owner" class="mt-3">
-                                    <Button variant="outline" size="sm" @click="openCancelInviteDialog(team, invitation)">
-                                        Annuler l’invitation
+                                <p class="text-xs text-slate-500">
+                                    Expire le {{ formatDate(invitation.expires_at) }}
+                                </p>
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <Button size="sm" @click="openAcceptInviteDialog(invitation)">
+                                        Accepter
+                                    </Button>
+                                    <Button variant="outline" size="sm" @click="openDeclineInviteDialog(invitation)">
+                                        Refuser
                                     </Button>
                                 </div>
                             </div>
-                            <p v-if="team.pending_invitations.length === 0" class="text-sm text-slate-500">
+                            <p v-if="userInvitations.length === 0" class="text-sm text-slate-500">
                                 Aucune invitation en attente.
                             </p>
                         </CardContent>
@@ -599,6 +606,80 @@ const handleTeamFilterChange = (event: Event) => {
                         </Button>
                         <Button @click="confirmCancelInvitation" :disabled="cancelInviteForm.processing">
                             Confirmer
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog v-model:open="isInviteDialogOpen">
+                <DialogContent class="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Inviter un coach</DialogTitle>
+                        <DialogDescription>
+                            Invitez un coach à rejoindre l’équipe
+                            <strong>{{ teamForInvite?.name }}</strong>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div class="space-y-3">
+                        <Input
+                            v-model="inviteEmails[teamForInvite?.id ?? 0]"
+                            type="email"
+                            placeholder="email@exemple.com"
+                            class="w-full"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" @click="isInviteDialogOpen = false" :disabled="inviteForm.processing">
+                            Annuler
+                        </Button>
+                        <Button
+                            @click="teamForInvite && submitInvite(teamForInvite)"
+                            :disabled="inviteForm.processing || !inviteEmails[teamForInvite?.id ?? 0]?.trim()"
+                        >
+                            Envoyer l’invitation
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog v-model:open="isPendingInvitesDialogOpen">
+                <DialogContent class="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Invitations en attente</DialogTitle>
+                        <DialogDescription>
+                            Invitations envoyées pour l’équipe
+                            <strong>{{ teamForPendingInvites?.name }}</strong>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div class="space-y-3">
+                        <div
+                            v-for="invitation in teamForPendingInvites?.pending_invitations ?? []"
+                            :key="invitation.id"
+                            class="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"
+                        >
+                            <p class="font-medium text-slate-900 dark:text-white">{{ invitation.email }}</p>
+                            <p class="text-xs text-slate-500">
+                                Expire le {{ formatDate(invitation.expires_at) }}
+                            </p>
+                            <p v-if="invitation.invited_by" class="text-xs text-slate-500">
+                                Invitée par {{ invitation.invited_by }}
+                            </p>
+                            <div class="mt-3">
+                                <Button variant="outline" size="sm" @click="teamForPendingInvites && openCancelInviteDialog(teamForPendingInvites, invitation)">
+                                    Annuler l’invitation
+                                </Button>
+                            </div>
+                        </div>
+                        <p
+                            v-if="(teamForPendingInvites?.pending_invitations ?? []).length === 0"
+                            class="text-sm text-slate-500"
+                        >
+                            Aucune invitation en attente.
+                        </p>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" @click="isPendingInvitesDialogOpen = false">
+                            Fermer
                         </Button>
                     </DialogFooter>
                 </DialogContent>
