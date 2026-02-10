@@ -9,6 +9,8 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
+use App\Filament\Exports\UserExporter;
+use Filament\Actions\ExportAction;
 use Filament\Tables\Table;
 
 class UsersTable
@@ -66,6 +68,10 @@ class UsersTable
             ->recordActions([
                 EditAction::make()
                     ->label('Modifier'),
+            ])
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(UserExporter::class),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
