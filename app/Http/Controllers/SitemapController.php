@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BlogPost;
 use Illuminate\Http\Response;
 
 class SitemapController extends Controller
@@ -22,6 +23,13 @@ class SitemapController extends Controller
                 'lastmod' => $now,
                 'changefreq' => 'daily',
                 'priority' => '1.0',
+            ],
+            // Blog
+            [
+                'loc' => route('blog.index'),
+                'lastmod' => $now,
+                'changefreq' => 'weekly',
+                'priority' => '0.7',
             ],
             // Pages publiques
             [
@@ -49,6 +57,19 @@ class SitemapController extends Controller
                 'priority' => '0.5',
             ],
         ];
+
+        $posts = BlogPost::query()
+            ->published()
+            ->get(['slug', 'updated_at', 'published_at']);
+
+        foreach ($posts as $post) {
+            $urls[] = [
+                'loc' => route('blog.show', $post->slug),
+                'lastmod' => ($post->updated_at ?? $post->published_at ?? now())->toAtomString(),
+                'changefreq' => 'monthly',
+                'priority' => '0.6',
+            ];
+        }
 
         $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n";
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'."\n";

@@ -6,6 +6,7 @@
     const year = computed(() => new Date().getFullYear())
     
     const legalLinks = [
+        { label: 'Blog', href: '/blog' },
         { label: 'Mentions légales', href: '/mentions-legales' },
         { label: 'Politique de confidentialité', href: '/politique-confidentialite' },
         { label: "Conditions d'utilisation", href: '/conditions-utilisation' },

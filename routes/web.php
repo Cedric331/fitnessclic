@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AnnouncementsController;
 use App\Http\Controllers\ArtisanCommandController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\ExercisesController;
 use App\Http\Controllers\PublicSessionController;
@@ -19,6 +20,10 @@ Route::get('/', function () {
         'canRegister' => Features::enabled(Features::registration()),
     ]);
 })->name('home');
+
+// Blog public
+Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 
 // dashboard redirect to create a session
 Route::get('dashboard', function () {

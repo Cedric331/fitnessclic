@@ -63,17 +63,19 @@ onMounted(() => {
 <template>
     <header class="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
         <nav class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-            <Link :href="dashboard.url()" class="flex items-center gap-3 transition-opacity hover:opacity-80" aria-label="FitnessClic - Accueil">
-                <img 
-                    src="/assets/logo_fitnessclic.png" 
-                    alt="FitnessClic - Logiciel pour coachs sportifs, créer vos programmes rapidement" 
-                    width="40"
-                    height="40"
-                    class="h-10 w-auto"
-                    loading="eager"
-                />
-                <span class="text-xl font-bold text-gray-900 dark:text-white">FitnessClic</span>
-            </Link>
+            <div class="flex items-center gap-6">
+                <Link :href="dashboard.url()" class="flex items-center gap-3 transition-opacity hover:opacity-80" aria-label="FitnessClic - Accueil">
+                    <img 
+                        src="/assets/logo_fitnessclic.png" 
+                        alt="FitnessClic - Logiciel pour coachs sportifs, créer vos programmes rapidement" 
+                        width="40"
+                        height="40"
+                        class="h-10 w-auto"
+                        loading="eager"
+                    />
+                    <span class="text-xl font-bold text-gray-900 dark:text-white">FitnessClic</span>
+                </Link>
+            </div>
             
             <!-- Menu desktop -->
             <div class="hidden items-center gap-4 md:flex">
@@ -94,6 +96,13 @@ onMounted(() => {
                     />
                 </button>
 
+                <Link
+                    href="/blog"
+                    class="text-sm font-semibold text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-200 dark:hover:text-blue-400"
+                >
+                    Blog
+                </Link>
+                
                 <Link
                     v-if="$page.props.auth.user"
                     :href="dashboard.url()"
@@ -169,6 +178,13 @@ onMounted(() => {
                 class="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 md:hidden"
             >
                 <div class="space-y-1 px-6 pb-4 pt-4">
+                    <Link
+                        href="/blog"
+                        @click="closeMobileMenu"
+                        class="block rounded-lg border border-transparent px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                        Blog
+                    </Link>
                     <Link
                         v-if="$page.props.auth.user"
                         :href="dashboard.url()"
