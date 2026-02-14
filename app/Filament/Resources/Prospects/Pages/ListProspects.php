@@ -1,0 +1,12 @@
+<?php
+
+namespace App\Filament\Resources\Prospects\Pages;
+
+use App\Filament\Resources\Prospects\ProspectResource;
+use Filament\Resources\Pages\ListRecords;
+
+class ListProspects extends ListRecords
+{
+    protected static string $resource = ProspectResource::class;
+}
+

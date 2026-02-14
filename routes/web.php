@@ -5,6 +5,7 @@ use App\Http\Controllers\ArtisanCommandController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CategoriesController;
 use App\Http\Controllers\ExercisesController;
+use App\Http\Controllers\PopinsController;
 use App\Http\Controllers\PublicSessionController;
 use App\Http\Controllers\SessionsController;
 use App\Http\Controllers\SitemapController;
@@ -20,6 +21,11 @@ Route::get('/', function () {
         'canRegister' => Features::enabled(Features::registration()),
     ]);
 })->name('home');
+
+// Popins publiques (prospects)
+Route::get('/popins/active', [PopinsController::class, 'active'])->name('popins.active');
+Route::post('/popins/{popin}/prospects', [PopinsController::class, 'storeProspect'])
+    ->name('popins.prospects.store');
 
 // Blog public
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');

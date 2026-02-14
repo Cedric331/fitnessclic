@@ -34,12 +34,22 @@ class BlogController extends Controller
         ]);
     }
 
-    public function show(string $slug): Response
+    public function show(Request $request, string $slug)
     {
         $post = BlogPost::query()
             ->published()
             ->where('slug', $slug)
             ->firstOrFail();
+
+        if ($this->shouldServeShareView($request->userAgent())) {
+            return response()->view('blog.share', [
+                'title' => $post->title,
+                'excerpt' => $post->excerpt,
+                'imageUrl' => $post->banner_url ?: url('/assets/logo_fitnessclic.png'),
+                'url' => url("/blog/{$post->slug}"),
+                'publishedAt' => optional($post->published_at)->toAtomString(),
+            ]);
+        }
 
         return Inertia::render('blog/Show', [
             'post' => [
@@ -53,6 +63,36 @@ class BlogController extends Controller
                 'tags' => $post->tags ?? [],
             ],
         ]);
+    }
+
+    private function shouldServeShareView(?string $userAgent): bool
+    {
+        if (! $userAgent) {
+            return false;
+        }
+
+        $botAgents = [
+            'facebookexternalhit',
+            'facebot',
+            'twitterbot',
+            'linkedinbot',
+            'slackbot',
+            'discordbot',
+            'whatsapp',
+            'telegrambot',
+            'pinterest',
+            'skypeuripreview',
+        ];
+
+        $userAgent = strtolower($userAgent);
+
+        foreach ($botAgents as $bot) {
+            if (str_contains($userAgent, $bot)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

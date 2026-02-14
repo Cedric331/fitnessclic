@@ -10,6 +10,7 @@ import PricingSection from '@/components/welcome/PricingSection.vue';
 import CtaSection from '@/components/welcome/CtaSection.vue';
 import Footer from '@/components/welcome/Footer.vue';
 import CookieBanner from '@/components/welcome/CookieBanner.vue';
+import PopinModal from '@/components/welcome/PopinModal.vue';
 
 withDefaults(
     defineProps<{
@@ -176,5 +177,6 @@ onUnmounted(() => {
         </main>
         <Footer />
         <CookieBanner />
+        <PopinModal />
     </div>
 </template>

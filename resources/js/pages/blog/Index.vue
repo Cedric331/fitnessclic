@@ -209,35 +209,6 @@ const shareOnInstagram = async (post: BlogPost) => {
                                 </p>
                                 <div class="mt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-gray-500 dark:text-gray-400">
                                     <span>{{ formatDate(post.published_at) }}</span>
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <Link :href="`/blog/${post.slug}`" class="font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
-                                            Lire l'article
-                                        </Link>
-                                        <span class="text-gray-300 dark:text-gray-700">•</span>
-                                        <a
-                                            :href="shareLinks(post).facebook"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
-                                        >
-                                            Facebook
-                                        </a>
-                                        <a
-                                            :href="shareLinks(post).x"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
-                                        >
-                                            X
-                                        </a>
-                                        <button
-                                            type="button"
-                                            class="text-sm font-medium text-gray-600 transition-colors hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
-                                            @click="shareOnInstagram(post)"
-                                        >
-                                            Instagram
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
                         </article>
