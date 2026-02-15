@@ -34,6 +34,7 @@ class PopinsController extends Controller
                 'title' => $popin->title,
                 'content' => $popin->content,
                 'image_url' => $popin->image_url,
+                'image_size' => $popin->image_size,
                 'delay_seconds' => $popin->delay_seconds,
                 'has_promo_code' => (bool) $popin->promo_code,
                 'register_url' => url('/register'),

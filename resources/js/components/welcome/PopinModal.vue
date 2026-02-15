@@ -19,6 +19,7 @@ interface Popin {
     title: string;
     content: string;
     image_url: string | null;
+    image_size?: 'small' | 'medium' | 'large' | null;
     delay_seconds: number;
     has_promo_code: boolean;
     register_url: string;
@@ -35,6 +36,18 @@ const formError = ref('');
 const promoCode = ref<string | null>(null);
 const registerUrl = ref('/register');
 const submissionSuccess = ref(false);
+
+const imageSizeClass = computed(() => {
+    switch (popin.value?.image_size) {
+        case 'small':
+            return 'max-h-[150px]';
+        case 'large':
+            return 'max-h-[300px]';
+        case 'medium':
+        default:
+            return 'max-h-[200px]';
+    }
+});
 
 let openTimer: number | null = null;
 
@@ -151,7 +164,8 @@ onUnmounted(() => {
                         <img
                             :src="popin.image_url"
                             :alt="popin.title"
-                            class="w-full h-auto max-h-[160px] object-cover"
+                            class="w-full h-auto object-cover"
+                            :class="imageSizeClass"
                         />
                         <div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none"></div>
                     </div>

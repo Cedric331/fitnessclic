@@ -26,6 +26,7 @@ class Popin extends Model implements HasMedia
     protected $fillable = [
         'title',
         'content',
+        'image_size',
         'promo_code',
         'delay_seconds',
         'is_active',

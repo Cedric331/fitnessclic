@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('content');
+            $table->string('image_size')->default('medium');
             $table->string('promo_code')->nullable();
             $table->unsignedInteger('delay_seconds')->default(0);
             $table->boolean('is_active')->default(false);
