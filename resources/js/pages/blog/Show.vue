@@ -85,7 +85,7 @@ const formatDate = (date: string | null) => {
 };
 
 const shareLinks = computed(() => {
-    const url = encodeURIComponent(currentUrl.value);
+    const url = currentUrl.value;
     const text = encodeURIComponent(props.post.title);
     return {
         facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
