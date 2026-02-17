@@ -55,6 +55,7 @@ class BlogPostForm
                     ->fileAttachmentsDisk('public')
                     ->fileAttachmentsDirectory('blog')
                     ->fileAttachmentsVisibility('public')
+                    // ->resizableImages()
                     ->toolbarButtons([
                         'bold',
                         'italic',
@@ -68,8 +69,13 @@ class BlogPostForm
                         'blockquote',
                         'codeBlock',
                         'attachFiles',
+                        'alignStart',
+                        'alignCenter',
+                        'alignEnd',
                     ])
+                    ->extraAttributes(['class' => 'editor-content'])
                     ->columnSpanFull(),
+                
 
                 TagsInput::make('tags')
                     ->label('Tags')

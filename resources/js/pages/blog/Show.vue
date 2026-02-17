@@ -21,14 +21,14 @@ const props = defineProps<{
 
 const siteName = 'FitnessClic';
 const defaultSiteUrl = 'https://fitnessclic.com';
-const currentUrl = computed(() => {
-    if (typeof window !== 'undefined') {
-        return window.location.href.replace('http://', 'https://');
-    }
-    return `${defaultSiteUrl}/blog/${props.post.slug}`;
-});
+const currentUrl = computed(() => `${defaultSiteUrl}/blog/${props.post.slug}`);
 
-const imageUrl = computed(() => props.post.image_url ?? `${defaultSiteUrl}/assets/logo_fitnessclic.png`);
+
+const imageUrl = computed(() => {
+  const img = props.post.image_url;
+  if (!img) return `${defaultSiteUrl}/assets/logo_fitnessclic.png`;
+  return img.startsWith('http') ? img : `${defaultSiteUrl}${img}`;
+});
 const title = computed(() => `${props.post.title} | Blog FitnessClic`);
 const description = computed(() => props.post.excerpt);
 
