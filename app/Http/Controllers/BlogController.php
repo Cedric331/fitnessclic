@@ -42,11 +42,19 @@ class BlogController extends Controller
             ->firstOrFail();
 
         if ($this->shouldServeShareView($request->userAgent())) {
+            $canonicalUrl = url("/blog/{$post->slug}");
+            $canonicalUrl = str_replace('http://', 'https://', $canonicalUrl);
+            $imageUrl = $post->banner_url ?: '/assets/logo_fitnessclic.png';
+            if ($imageUrl && ! preg_match('~^https?://~', $imageUrl)) {
+                $imageUrl = url($imageUrl);
+            }
+            $imageUrl = str_replace('http://', 'https://', $imageUrl);
+
             return response()->view('blog.share', [
                 'title' => $post->title,
                 'excerpt' => $post->excerpt,
-                'imageUrl' => $post->banner_url ?: url('/assets/logo_fitnessclic.png'),
-                'url' => url("/blog/{$post->slug}"),
+                'imageUrl' => $imageUrl,
+                'url' => $canonicalUrl,
                 'publishedAt' => optional($post->published_at)->toAtomString(),
             ]);
         }

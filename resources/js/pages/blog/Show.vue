@@ -21,13 +21,14 @@ const props = defineProps<{
 
 const siteName = 'FitnessClic';
 const defaultSiteUrl = 'https://fitnessclic.com';
-const currentUrl = computed(() => `${defaultSiteUrl}/blog/${props.post.slug}`);
+const baseUrl = computed(() => (typeof window !== 'undefined' ? window.location.origin : defaultSiteUrl));
+const currentUrl = computed(() => `${baseUrl.value}/blog/${props.post.slug}`);
 
 
 const imageUrl = computed(() => {
   const img = props.post.image_url;
-  if (!img) return `${defaultSiteUrl}/assets/logo_fitnessclic.png`;
-  return img.startsWith('http') ? img : `${defaultSiteUrl}${img}`;
+  if (!img) return `${baseUrl.value}/assets/logo_fitnessclic.png`;
+  return img.startsWith('http') ? img : `${baseUrl.value}${img}`;
 });
 const title = computed(() => `${props.post.title} | Blog FitnessClic`);
 const description = computed(() => props.post.excerpt);
@@ -48,7 +49,7 @@ const structuredData = computed(() => ({
         name: siteName,
         logo: {
             '@type': 'ImageObject',
-            url: `${defaultSiteUrl}/assets/logo_fitnessclic.png`,
+            url: `${baseUrl.value}/assets/logo_fitnessclic.png`,
         },
     },
     mainEntityOfPage: {
