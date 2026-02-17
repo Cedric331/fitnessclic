@@ -42,11 +42,12 @@ class BlogController extends Controller
             ->firstOrFail();
 
         if ($this->shouldServeShareView($request->userAgent())) {
-            $canonicalUrl = url("/blog/{$post->slug}");
-            $canonicalUrl = str_replace('http://', 'https://', $canonicalUrl);
+            $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
+            $baseUrl = str_replace('http://', 'https://', $baseUrl);
+            $canonicalUrl = $baseUrl."/blog/{$post->slug}";
             $imageUrl = $post->banner_url ?: '/assets/logo_fitnessclic.png';
             if ($imageUrl && ! preg_match('~^https?://~', $imageUrl)) {
-                $imageUrl = url($imageUrl);
+                $imageUrl = $baseUrl.$imageUrl;
             }
             $imageUrl = str_replace('http://', 'https://', $imageUrl);
 
