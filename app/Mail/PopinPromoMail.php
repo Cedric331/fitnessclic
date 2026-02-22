@@ -30,6 +30,7 @@ class PopinPromoMail extends Mailable
                 'content' => $this->popin->content,
                 'promoCode' => $this->popin->promo_code,
                 'registerUrl' => $this->registerUrl,
+                'logoUrl' => asset('assets/logo_fitnessclic.png'),
             ]);
     }
 }

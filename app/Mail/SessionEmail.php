@@ -60,6 +60,7 @@ class SessionEmail extends Mailable
                 'sessionDate' => $sessionDate,
                 'sessionNotes' => $this->session->notes,
                 'publicUrl' => $publicUrl,
+                'logoUrl' => asset('assets/logo_fitnessclic.png'),
             ],
         );
     }

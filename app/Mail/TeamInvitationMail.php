@@ -37,6 +37,7 @@ class TeamInvitationMail extends Mailable
                 'inviterName' => $inviterName,
                 'acceptUrl' => $acceptUrl,
                 'expiresAt' => $this->invitation->expires_at,
+                'logoUrl' => asset('assets/logo_fitnessclic.png'),
             ]);
     }
 }

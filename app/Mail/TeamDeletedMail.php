@@ -29,6 +29,7 @@ class TeamDeletedMail extends Mailable
             ->view('emails.team-deleted')
             ->with([
                 'teamName' => $this->teamName,
+                'logoUrl' => asset('assets/logo_fitnessclic.png'),
             ]);
     }
 }
