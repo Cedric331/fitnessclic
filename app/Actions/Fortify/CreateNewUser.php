@@ -2,8 +2,11 @@
 
 namespace App\Actions\Fortify;
 
+use App\Mail\WelcomeEmail;
 use App\Models\TeamInvitation;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -63,6 +66,16 @@ class CreateNewUser implements CreatesNewUsers
             $invitation->update([
                 'accepted_at' => now(),
                 'invited_user_id' => $user->id,
+            ]);
+        }
+
+        try {
+            Mail::to($user->email)->send(new WelcomeEmail($user));
+        } catch (\Exception $e) {
+            Log::error('Erreur envoi email de bienvenue:', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'message' => $e->getMessage(),
             ]);
         }
 
