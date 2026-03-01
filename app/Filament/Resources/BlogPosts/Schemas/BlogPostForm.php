@@ -55,7 +55,7 @@ class BlogPostForm
                     ->fileAttachmentsDisk('public')
                     ->fileAttachmentsDirectory('blog')
                     ->fileAttachmentsVisibility('public')
-                    // ->resizableImages()
+                    ->resizableImages()
                     ->toolbarButtons([
                         'bold',
                         'italic',
