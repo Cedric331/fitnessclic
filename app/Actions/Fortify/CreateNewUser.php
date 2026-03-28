@@ -30,7 +30,7 @@ class CreateNewUser implements CreatesNewUsers
                 'required',
                 'string',
                 'max:255',
-                Email::default(),
+                (new Email)->validateMxRecord()->preventSpoofing(),
                 Rule::unique(User::class),
             ],
             'password' => $this->passwordRules(),
