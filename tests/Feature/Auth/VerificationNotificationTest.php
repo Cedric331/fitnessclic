@@ -27,3 +27,21 @@ test('does not send verification notification if email is verified', function ()
 
     Notification::assertNothingSent();
 });
+
+test('verification resend is limited to one request per minute', function () {
+    Notification::fake();
+
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user)
+        ->from(route('verification.notice'))
+        ->post(route('verification.send'))
+        ->assertRedirect(route('verification.notice', absolute: false));
+
+    $this->actingAs($user)
+        ->from(route('verification.notice'))
+        ->post(route('verification.send'))
+        ->assertTooManyRequests();
+
+    Notification::assertSentToTimes($user, VerifyEmail::class, 1);
+});

@@ -37,6 +37,10 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
+        if ($request->user()->wasChanged('email') && $request->user() instanceof MustVerifyEmail) {
+            $request->user()->sendEmailVerificationNotification();
+        }
+
         return to_route('profile.edit');
     }
 

@@ -14,6 +14,7 @@ use App\Services\ExerciseImageGeneratorService;
 use OpenAI\Factory;
 use OpenAI\Client;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Validation\Rules\Email;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -49,5 +50,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
+
+        Email::defaults(function () {
+            $rule = (new Email)->rfcCompliant();
+
+            if (! app()->environment('testing')) {
+                $rule->validateMxRecord();
+            }
+
+            return $rule;
+        });
     }
 }

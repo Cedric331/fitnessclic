@@ -47,6 +47,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $request->user()->id,
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
+                    'email_verified_at' => $request->user()->email_verified_at?->toIso8601String(),
                     'hasActiveSubscription' => $request->user()->hasActiveSubscription(),
                     'isPro' => $request->user()->isPro() || $request->user()->isAdmin(),
                     'isAdmin' => $request->user()->isAdmin(),

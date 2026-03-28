@@ -6,7 +6,9 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route as RegisteredRoute;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -31,6 +33,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->registerResponses();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->patchVerificationSendThrottle();
     }
 
     /**
@@ -94,6 +97,35 @@ class FortifyServiceProvider extends ServiceProvider
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);
+        });
+
+        RateLimiter::for('verification-send', function (Request $request) {
+            $id = $request->user()?->getAuthIdentifier();
+
+            return Limit::perMinute(1)->by($id !== null ? (string) $id : $request->ip());
+        });
+    }
+
+    /**
+     * Fortify uses the same throttle for resend and verify-link; limit resend to 1/minute per user only.
+     */
+    private function patchVerificationSendThrottle(): void
+    {
+        $this->app->booted(function () {
+            $route = Route::getRoutes()->getByName('verification.send');
+
+            if (! $route instanceof RegisteredRoute) {
+                return;
+            }
+
+            $middleware = collect($route->middleware())
+                ->reject(fn (string $m) => str_starts_with($m, 'throttle:'))
+                ->push('throttle:verification-send')
+                ->values()
+                ->all();
+
+            $route->action['middleware'] = $middleware;
+            $route->computedMiddleware = null;
         });
     }
 }

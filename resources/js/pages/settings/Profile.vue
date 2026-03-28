@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
-import { Form, Head, Link, usePage } from '@inertiajs/vue3';
+import { Form, Head, usePage } from '@inertiajs/vue3';
 
 import DeleteUser from '@/components/DeleteUser.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
@@ -78,15 +78,23 @@ const user = page.props.auth.user;
                     </div>
 
                     <div v-if="mustVerifyEmail && !user.email_verified_at">
-                        <p class="-mt-4 text-sm text-muted-foreground">
+                        <p class="-mt-4 inline text-sm text-muted-foreground">
                             Votre adresse e-mail n'est pas vérifiée.
-                        <Link
-                            :href="send.url()"
-                                as="button"
-                                class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                            <Form
+                                v-bind="send.form()"
+                                class="inline"
+                                v-slot="{ processing }"
                             >
-                                Cliquez ici pour renvoyer l'e-mail de vérification.
-                            </Link>
+                                <Button
+                                    type="submit"
+                                    variant="ghost"
+                                    size="sm"
+                                    :disabled="processing"
+                                    class="h-auto min-h-0 px-0 py-0 font-normal text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:bg-transparent hover:decoration-current! dark:decoration-neutral-500"
+                                >
+                                    Cliquez ici pour renvoyer l'e-mail de vérification.
+                                </Button>
+                            </Form>
                         </p>
 
                         <div

@@ -43,10 +43,11 @@ defineProps<Props>();
             <Link
                 class="block w-full"
                 :href="logout.url()"
-            @click="handleLogout"
-            as="button"
-            data-test="logout-button"
-        >
+                method="post"
+                as="button"
+                data-test="logout-button"
+                @click="handleLogout"
+            >
             <LogOut class="mr-2 h-4 w-4" />
             Log out
         </Link>
