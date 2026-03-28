@@ -11,7 +11,7 @@ defineProps<{
 
 const page = usePage();
 const isAuthenticated = computed(() => !!page.props.auth?.user);
-const backUrl = computed(() => isAuthenticated.value ? dashboard.url() : home.url());
+const backUrl = computed(() => isAuthenticated.value && page.props.auth?.user?.email_verified_at ? dashboard.url() : home.url());
 </script>
 
 <template>
@@ -24,7 +24,7 @@ const backUrl = computed(() => isAuthenticated.value ? dashboard.url() : home.ur
             class="absolute left-6 top-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground md:left-10 md:top-10"
         >
             <ArrowLeft class="h-4 w-4" />
-            Retour à l'accueil
+            {{ isAuthenticated.value && page.props.auth?.user?.email_verified_at ? 'Retour à l\'accueil' : 'Retour sur le site' }}
         </Link>
 
         <div class="w-full max-w-sm">
