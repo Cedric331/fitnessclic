@@ -28,6 +28,7 @@ class UploadFilesExerciseRequest extends FormRequest
             'files.*' => ['required', 'image', 'max:5120'], // 5MB max per file
             'category_ids' => ['required', 'array', 'min:1'],
             'category_ids.*' => ['required', 'exists:categories,id'],
+            'is_premium' => ['nullable', 'boolean'],
         ];
     }
 

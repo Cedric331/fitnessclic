@@ -5,14 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-    Search, 
+import {
+    Search,
     Grid3x3,
     LayoutGrid,
     Grid2x2,
-    List, 
+    List,
     Plus,
-    Filter
+    Filter,
+    Crown
 } from 'lucide-vue-next';
 import type { Exercise, Category } from './types';
 import { useNotifications } from '@/composables/useNotifications';
@@ -47,6 +48,9 @@ const hasMoreExercises = ref(true);
 const currentExercisePage = ref(1);
 const totalExercises = ref(0);
 const exerciseSearchTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+
+// Filtre premium : null = tous, true = premium, false = gratuit
+const premiumFilter = ref<boolean | null>(null);
 
 // Valeur locale de recherche pour une mise à jour immédiate de l'input
 const localSearchValue = ref(props.searchTerm);
@@ -109,7 +113,11 @@ const loadExercises = async (page: number = 1, reset: boolean = false) => {
         if (props.selectedCategoryId) {
             params.append('category_id', props.selectedCategoryId.toString());
         }
-        
+
+        if (premiumFilter.value !== null) {
+            params.append('is_premium', premiumFilter.value ? '1' : '0');
+        }
+
         // Ajouter le filtre user_id si showOnlyMine est activé
         if (props.showOnlyMine && currentUserId.value) {
             params.append('user_id', currentUserId.value.toString());
@@ -177,6 +185,11 @@ watch(() => props.selectedCategoryId, () => {
 
 // Watcher pour showOnlyMine
 watch(() => props.showOnlyMine, () => {
+    reloadExercises();
+});
+
+// Watcher pour le filtre premium
+watch(premiumFilter, () => {
     reloadExercises();
 });
 
@@ -324,6 +337,41 @@ const handleDragEnd = () => {
                         </select>
                     </div>
 
+                    <!-- Filtre Premium/Gratuit -->
+                    <div class="flex items-center gap-1 border rounded-md p-0.5">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            :class="premiumFilter === null ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                            @click.stop="premiumFilter = null"
+                            title="Tous les exercices"
+                        >
+                            <span class="text-xs">Tous</span>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            :class="premiumFilter === true ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : ''"
+                            @click.stop="premiumFilter = true"
+                            title="Exercices Premium uniquement"
+                        >
+                            <Crown class="h-3.5 w-3.5 mr-1" />
+                            <span class="text-xs">Premium</span>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            :class="premiumFilter === false ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
+                            @click.stop="premiumFilter = false"
+                            title="Exercices gratuits uniquement"
+                        >
+                            <span class="text-xs">Gratuit</span>
+                        </Button>
+                    </div>
+
                     <!-- Filtre utilisateur -->
                     <div class="flex items-center gap-2">
                         <Button
@@ -412,6 +460,14 @@ const handleDragEnd = () => {
                             >
                                 <span class="text-xs">Aucune image</span>
                             </div>
+                            <!-- Badge premium -->
+                            <div
+                                v-if="exercise.is_premium"
+                                class="absolute top-1 left-1 z-10 flex items-center gap-0.5 rounded-full bg-amber-500 px-1.5 py-0.5 shadow"
+                            >
+                                <Crown class="w-2.5 h-2.5 text-white" />
+                                <span v-if="viewMode !== 'grid-6'" class="text-xs font-semibold text-white leading-none">Premium</span>
+                            </div>
                             <!-- Overlay au survol avec titre et icône -->
                             <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-3 gap-2 pointer-events-none">
                                 <div class="flex flex-col items-center gap-2">
@@ -477,10 +533,17 @@ const handleDragEnd = () => {
                             </div>
 
                             <!-- Informations avec padding -->
-                            <div class="flex-1 min-w-0 flex items-center px-3 py-2">
+                            <div class="flex-1 min-w-0 flex items-center gap-2 px-3 py-2">
                                 <h3 class="font-semibold text-sm line-clamp-1">
                                     {{ exercise.title }}
                                 </h3>
+                                <div
+                                    v-if="exercise.is_premium"
+                                    class="flex-shrink-0 flex items-center gap-0.5 rounded-full bg-amber-500 px-1.5 py-0.5"
+                                >
+                                    <Crown class="w-2.5 h-2.5 text-white" />
+                                    <span class="text-xs font-semibold text-white leading-none">Pro</span>
+                                </div>
                             </div>
 
                             <!-- Bouton ajouter -->

@@ -8,6 +8,7 @@ export interface Exercise {
         id: number;
         name: string;
     }>;
+    is_premium?: boolean;
     created_at: string;
 }
 
@@ -16,6 +17,7 @@ export interface ExercisesFilters {
     category_id?: number | null;
     sort?: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc';
     view?: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8';
+    is_premium?: boolean | null;
 }
 
 export interface ExercisesProps {

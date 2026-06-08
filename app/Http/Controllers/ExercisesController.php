@@ -32,12 +32,14 @@ class ExercisesController extends Controller
         $categoryId = $validated['category_id'] ?? null;
         $sortOrder = $validated['sort'] ?? 'newest';
         $viewMode = $validated['view'] ?? 'grid-6';
+        $isPremium = array_key_exists('is_premium', $validated) ? $validated['is_premium'] : null;
 
         $exercisesQuery = Exercise::query()
             ->where('is_shared', true)
             ->with('categories')
             ->when($searchTerm !== '', fn ($query) => $query->where('title', 'like', "%{$searchTerm}%"))
-            ->when($categoryId, fn ($query, $value) => $query->whereHas('categories', fn ($query) => $query->where('categories.id', $value)));
+            ->when($categoryId, fn ($query, $value) => $query->whereHas('categories', fn ($query) => $query->where('categories.id', $value)))
+            ->when($isPremium !== null, fn ($query) => $query->where('is_premium', $isPremium));
 
         if ($sortOrder === 'oldest') {
             $exercisesQuery->orderBy('created_at', 'asc');
@@ -66,6 +68,7 @@ class ExercisesController extends Controller
                         'id' => $category->id,
                         'name' => $category->name,
                     ]),
+                    'is_premium' => $exercise->is_premium,
                     'created_at' => optional($exercise->created_at)->toDateTimeString(),
                 ]),
                 'current_page' => $exercises->currentPage(),
@@ -79,6 +82,7 @@ class ExercisesController extends Controller
                 'category_id' => $categoryId ? (int) $categoryId : null,
                 'sort' => in_array($sortOrder, ['newest', 'oldest', 'alphabetical', 'alphabetical-desc'], true) ? $sortOrder : 'newest',
                 'view' => in_array($viewMode, ['grid-2', 'grid-4', 'grid-6', 'grid-8'], true) ? $viewMode : 'grid-6',
+                'is_premium' => $isPremium,
             ],
             'categories' => Category::forUser(Auth::user())->orderBy('name')->get(['id', 'name']),
         ]);
@@ -163,6 +167,7 @@ class ExercisesController extends Controller
                 ->with('error', 'Cet exercice n\'est pas disponible.');
         }
 
+
         $userId = Auth::id();
 
         $exercise->load(['categories', 'user']);
@@ -182,6 +187,7 @@ class ExercisesController extends Controller
                 'created_at' => optional($exercise->created_at)->toDateTimeString(),
                 'user_id' => $exercise->user_id,
                 'user_name' => $exercise->user?->name,
+                'is_premium' => $exercise->is_premium,
             ],
             'categories' => $exercise->categories->map(fn ($category) => [
                 'id' => $category->id,
@@ -248,6 +254,7 @@ class ExercisesController extends Controller
                     'description' => null,
                     'suggested_duration' => null,
                     'is_shared' => true,
+                    'is_premium' => (bool) ($validated['is_premium'] ?? false),
                 ]);
 
                 $exercise->categories()->attach($categoryIds);

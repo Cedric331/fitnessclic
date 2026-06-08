@@ -26,6 +26,7 @@ class IndexExerciseRequest extends FormRequest
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'sort' => ['nullable', 'string', 'in:newest,oldest,alphabetical,alphabetical-desc'],
             'view' => ['nullable', 'string', 'in:grid-2,grid-4,grid-6,grid-8'],
+            'is_premium' => ['nullable', 'boolean'],
         ];
     }
 }

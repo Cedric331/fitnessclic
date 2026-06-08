@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Trash2, Eye, Download, Printer } from 'lucide-vue-next';
+import { ArrowLeft, Edit, Trash2, Eye, Download, Printer, Crown } from 'lucide-vue-next';
 import { computed, ref, watch, nextTick } from 'vue';
 import type { BreadcrumbItemType } from '@/types';
 import ExerciseFormDialog from './ExerciseFormDialog.vue';
@@ -22,6 +22,7 @@ interface Exercise {
     created_at: string;
     user_id: number;
     user_name: string | null;
+    is_premium?: boolean;
 }
 
 interface Category {
@@ -193,16 +194,17 @@ const handlePrint = (session: Session) => {
     })
     .then(async response => {
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
+            const text = await response.text();
+            let message = text || 'Erreur lors de la génération du PDF';
+            try { message = JSON.parse(text)?.error ?? message; } catch {}
+            throw new Error(message);
         }
-        
+
         const contentType = response.headers.get('content-type');
         if (contentType && !contentType.includes('application/pdf')) {
-            const errorText = await response.text();
             throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
         }
-        
+
         return response.blob();
     })
     .then(blob => {
@@ -253,6 +255,13 @@ const handlePrint = (session: Session) => {
                         <h1 class="text-2xl font-semibold text-slate-900 dark:text-white">
                             {{ exercise.title }}
                         </h1>
+                        <div
+                            v-if="exercise.is_premium"
+                            class="flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 shadow-sm"
+                        >
+                            <Crown class="w-3.5 h-3.5 text-white" />
+                            <span class="text-xs font-semibold text-white">Premium</span>
+                        </div>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">

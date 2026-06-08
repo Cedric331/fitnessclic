@@ -40,6 +40,7 @@ class Exercise extends Model implements HasMedia
         'description',
         'suggested_duration',
         'is_shared',
+        'is_premium',
     ];
 
     /**
@@ -51,6 +52,7 @@ class Exercise extends Model implements HasMedia
     {
         return [
             'is_shared' => 'boolean',
+            'is_premium' => 'boolean',
         ];
     }
 

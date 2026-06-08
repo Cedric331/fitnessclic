@@ -221,6 +221,15 @@ class SessionsController extends Controller
                 ->with('error', 'L\'enregistrement des séances est réservé aux abonnés Pro. Passez à Pro pour enregistrer vos séances.');
         }
 
+        if (! $user->isPro()) {
+            $exerciseIds = array_column($validated['exercises'] ?? [], 'exercise_id');
+            $hasPremium = Exercise::whereIn('id', $exerciseIds)->where('is_premium', true)->exists();
+            if ($hasPremium) {
+                return redirect()->route('sessions.create')
+                    ->with('error', 'Les exercices Premium sont réservés aux abonnés Pro.');
+            }
+        }
+
         $customerIds = $validated['customer_ids'] ?? [];
 
         $session = Session::create([
@@ -546,6 +555,16 @@ class SessionsController extends Controller
     public function update(UpdateSessionRequest $request, Session $session): RedirectResponse
     {
         $validated = $request->validated();
+        $user = Auth::user();
+
+        if (! $user->isPro()) {
+            $exerciseIds = array_column($validated['exercises'] ?? [], 'exercise_id');
+            $hasPremium = Exercise::whereIn('id', $exerciseIds)->where('is_premium', true)->exists();
+            if ($hasPremium) {
+                return redirect()->route('sessions.edit', $session)
+                    ->with('error', 'Les exercices Premium sont réservés aux abonnés Pro.');
+            }
+        }
 
         $customerIds = $validated['customer_ids'] ?? [];
 
@@ -807,6 +826,14 @@ class SessionsController extends Controller
             $validated = $request->validated();
 
             $exerciseIds = array_column($validated['exercises'], 'exercise_id');
+
+            if (! $user->isPro()) {
+                $hasPremium = Exercise::whereIn('id', $exerciseIds)->where('is_premium', true)->exists();
+                if ($hasPremium) {
+                    return response()->json(['error' => 'Les exercices Premium sont réservés aux abonnés Pro.'], 403);
+                }
+            }
+
             $exercises = Exercise::whereIn('id', $exerciseIds)
                 ->with(['categories', 'media'])
                 ->get()
@@ -1083,6 +1110,7 @@ class SessionsController extends Controller
         $categoryId = $request->input('category_id');
         $userId = $request->input('user_id'); // Pour le filtre "Mes exercices uniquement"
         $requireImage = filter_var($request->input('require_image', true), FILTER_VALIDATE_BOOLEAN); // Par défaut true pour le layout editor
+        $isPremium = $request->has('is_premium') ? filter_var($request->input('is_premium'), FILTER_VALIDATE_BOOLEAN) : null;
         $page = (int) $request->input('page', 1);
         $perPage = 20;
 
@@ -1094,7 +1122,8 @@ class SessionsController extends Controller
             ->with(['categories', 'media'])
             ->when($searchTerm !== '', fn ($query) => $query->where('title', 'like', "%{$searchTerm}%"))
             ->when($categoryId, fn ($query, $value) => $query->whereHas('categories', fn ($query) => $query->where('categories.id', $value)))
-            ->when($userId, fn ($query, $value) => $query->where('user_id', $value));
+            ->when($userId, fn ($query, $value) => $query->where('user_id', $value))
+            ->when($isPremium !== null, fn ($query) => $query->where('is_premium', $isPremium));
 
         $paginatedExercises = $exercisesQuery
             ->orderBy('title')
@@ -1108,6 +1137,7 @@ class SessionsController extends Controller
                 'image_url' => $exercise->image_url,
                 'suggested_duration' => $exercise->suggested_duration,
                 'user_id' => $exercise->user_id,
+                'is_premium' => $exercise->is_premium,
                 'categories' => $exercise->categories->map(fn ($cat) => [
                     'id' => $cat->id,
                     'name' => $cat->name,

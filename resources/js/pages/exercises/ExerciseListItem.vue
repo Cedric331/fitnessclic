@@ -4,17 +4,19 @@ import { Button } from '@/components/ui/button';
 import type { Exercise } from './types';
 import { computed } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
-import { Edit, Eye, Trash2 } from 'lucide-vue-next';
+import { Edit, Eye, Trash2, Crown } from 'lucide-vue-next';
 
 const props = defineProps<{
     exercise: Exercise;
     onEdit?: (exercise: Exercise) => void;
     viewMode?: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8';
+    isPro?: boolean;
 }>();
 
 const emit = defineEmits<{
     edit: [exercise: Exercise];
     delete: [exercise: Exercise];
+    premiumClick: [];
 }>();
 
 const page = usePage();
@@ -41,6 +43,8 @@ const formattedDate = computed(() => {
     });
 });
 
+const isBlocked = computed(() => props.exercise.is_premium && !props.isPro);
+
 const handleView = () => {
     router.visit(`/exercises/${props.exercise.id}`);
 };
@@ -58,7 +62,6 @@ const handleDelete = (event: Event) => {
     event.stopPropagation();
     emit('delete', props.exercise);
 };
-
 
 const showOverlay = computed(() => {
     return true;
@@ -106,8 +109,17 @@ const imageObjectFit = computed(() => {
                 height="400"
             />
             
+            <!-- Icône premium (toujours visible si l'exercice est premium) -->
+            <div
+                v-if="exercise.is_premium"
+                class="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 shadow-md"
+            >
+                <Crown class="w-3 h-3 text-white" />
+                <span class="text-xs font-semibold text-white">Premium</span>
+            </div>
+
             <!-- Overlay au survol avec titre et catégories - uniquement pour grid-2 sur mobile, toujours sur desktop -->
-            <div 
+            <div
                 :class="{
                     'hidden md:flex': viewMode !== 'grid-2',
                     'flex': viewMode === 'grid-2'

@@ -45,6 +45,11 @@ class ExerciseForm
                     ->label('Partagé')
                     ->default(true)
                     ->required(),
+
+                Toggle::make('is_premium')
+                    ->label('Premium')
+                    ->default(false)
+                    ->required(),
             ]);
     }
 }

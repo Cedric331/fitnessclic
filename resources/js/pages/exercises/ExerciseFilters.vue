@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Input } from '@/components/ui/input';
-import { LayoutGrid, Search } from 'lucide-vue-next';
+import { Crown, LayoutGrid, Search } from 'lucide-vue-next';
 import { computed, ref, watch, watchEffect } from 'vue';
 
 const props = defineProps<{
@@ -8,6 +8,7 @@ const props = defineProps<{
     categoryId?: number | null;
     sortOrder?: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc';
     viewMode?: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8';
+    isPremium?: boolean | null;
     categories: Array<{
         id: number;
         name: string;
@@ -19,6 +20,7 @@ const emit = defineEmits<{
     (e: 'update:categoryId', value: number | null): void;
     (e: 'update:sortOrder', value: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc'): void;
     (e: 'update:viewMode', value: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8'): void;
+    (e: 'update:isPremium', value: boolean | null): void;
     (e: 'apply'): void;
 }>();
 
@@ -26,6 +28,7 @@ const localSearch = ref(props.search ?? '');
 const localCategory = ref(props.categoryId !== undefined && props.categoryId !== null ? String(props.categoryId) : '');
 const localSort = ref(props.sortOrder ?? 'newest');
 const localView = ref(props.viewMode ?? 'grid-4');
+const localPremium = ref<boolean | null>(props.isPremium ?? null);
 
 // Synchroniser avec les props
 watch(() => props.search, (value) => {
@@ -91,6 +94,12 @@ const handleSortChange = (event: Event) => {
     emit('apply');
 };
 
+const handlePremiumChange = (value: boolean | null) => {
+    localPremium.value = value;
+    emit('update:isPremium', value);
+    emit('apply');
+};
+
 const handleViewChange = (mode: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8') => {
     localView.value = mode;
     emit('update:viewMode', mode);
@@ -152,6 +161,46 @@ const handleViewChange = (mode: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8') => {
                     <option value="alphabetical">A-Z</option>
                     <option value="alphabetical-desc">Z-A</option>
                 </select>
+            </div>
+
+            <!-- Accès -->
+            <div class="flex flex-col gap-1.5 w-auto">
+                <label class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">
+                    Accès
+                </label>
+                <div class="flex items-center rounded-2xl border border-slate-200 bg-white overflow-hidden dark:border-slate-800 dark:bg-slate-900/70">
+                    <button
+                        type="button"
+                        class="h-10 px-3 text-sm transition"
+                        :class="localPremium === null
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'"
+                        @click="handlePremiumChange(null)"
+                    >
+                        Tous
+                    </button>
+                    <button
+                        type="button"
+                        class="h-10 px-3 text-sm flex items-center gap-1.5 transition"
+                        :class="localPremium === true
+                            ? 'bg-amber-500 text-white'
+                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'"
+                        @click="handlePremiumChange(true)"
+                    >
+                        <Crown class="size-3.5" />
+                        Premium
+                    </button>
+                    <button
+                        type="button"
+                        class="h-10 px-3 text-sm transition"
+                        :class="localPremium === false
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'"
+                        @click="handlePremiumChange(false)"
+                    >
+                        Gratuit
+                    </button>
+                </div>
             </div>
 
             <!-- Affichage - visible sur tous les écrans -->

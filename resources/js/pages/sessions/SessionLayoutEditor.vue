@@ -42,7 +42,8 @@ import {
     AlignRight,
     Pencil,
     Printer,
-    MoreVertical
+    MoreVertical,
+    Crown
 } from 'lucide-vue-next';
 import { useNotifications } from '@/composables/useNotifications';
 import Konva from 'konva';
@@ -155,6 +156,7 @@ const props = defineProps<{
     sessionId?: number;
     exercises: Exercise[];
     categories?: Category[];
+    isPro?: boolean;
     initialLayout?: {
         layout_data: LayoutElement[];
         canvas_width: number;
@@ -273,6 +275,7 @@ const saveCategoryFilterToCache = (categoryId: number | null) => {
 };
 
 const selectedCategoryId = ref<number | null>(getCachedCategoryFilter());
+const premiumFilter = ref<boolean | null>(null);
 const draggingExerciseId = ref<number | null>(null);
 
 // Pagination des exercices
@@ -1881,7 +1884,12 @@ const handleExerciseDrop = async (exercise: Exercise, x?: number, y?: number) =>
         notifyError('Canvas non initialisé');
         return;
     }
-    
+
+    if (exercise.is_premium && !props.isPro) {
+        notifyError('Les exercices Premium sont réservés aux abonnés Pro.', 'Accès restreint');
+        return;
+    }
+
     if (!exercise.image_url) {
         notifyError('Cet exercice n\'a pas d\'image');
         return;
@@ -1999,7 +2007,11 @@ const loadExercises = async (page: number = 1, reset: boolean = false) => {
         if (selectedCategoryId.value) {
             params.append('category_id', selectedCategoryId.value.toString());
         }
-        
+
+        if (premiumFilter.value !== null) {
+            params.append('is_premium', premiumFilter.value ? '1' : '0');
+        }
+
         const response = await fetch(`/sessions/layout/exercises?${params.toString()}`, {
             headers: {
                 'Accept': 'application/json',
@@ -2056,8 +2068,11 @@ watch(exerciseSearchTerm, () => {
 
 // Watcher pour la catégorie
 watch(selectedCategoryId, (newCategoryId) => {
-    // Sauvegarder le filtre de catégorie dans le localStorage
     saveCategoryFilterToCache(newCategoryId);
+    reloadExercises();
+});
+
+watch(premiumFilter, () => {
     reloadExercises();
 });
 
@@ -4080,6 +4095,43 @@ const setupDragAndDrop = () => {
                             </option>
                         </select>
                     </div>
+                    <!-- Filtre premium / gratuit -->
+                    <div class="flex items-center gap-1">
+                        <button
+                            type="button"
+                            @click="premiumFilter = null"
+                            :class="[
+                                'flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                                premiumFilter === null
+                                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100'
+                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ]"
+                        >Tous</button>
+                        <button
+                            type="button"
+                            @click="premiumFilter = true"
+                            :class="[
+                                'flex-1 flex items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                                premiumFilter === true
+                                    ? 'bg-amber-500 text-white'
+                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ]"
+                        >
+                            <Crown class="w-3 h-3" />
+                            Premium
+                        </button>
+                        <button
+                            type="button"
+                            @click="premiumFilter = false"
+                            :class="[
+                                'flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                                premiumFilter === false
+                                    ? 'bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-800'
+                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ]"
+                        >Gratuit</button>
+                    </div>
+
                     <!-- View mode selector - masqué en dessous de 1500px car forcé à 2 colonnes -->
                     <div v-if="!isSmallScreen" class="flex items-center gap-2">
                         <span class="text-xs text-neutral-500">Affichage:</span>
@@ -4155,6 +4207,14 @@ const setupDragAndDrop = () => {
                                         class="h-full w-full flex items-center justify-center text-neutral-400"
                                     >
                                         <span class="text-xs">Aucune image</span>
+                                    </div>
+                                    <!-- Badge premium -->
+                                    <div
+                                        v-if="exercise.is_premium"
+                                        class="absolute top-1 left-1 z-10 flex items-center gap-0.5 rounded-full bg-amber-500 px-1.5 py-0.5"
+                                    >
+                                        <Crown class="w-2.5 h-2.5 text-white" />
+                                        <span v-if="libraryViewMode !== 'grid-6'" class="text-xs font-semibold text-white leading-none">Premium</span>
                                     </div>
                                     <!-- Overlay au survol -->
                                     <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">

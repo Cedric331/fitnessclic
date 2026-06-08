@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
-import { Upload, X, Loader2 } from 'lucide-vue-next';
+import { Upload, X, Loader2, Crown } from 'lucide-vue-next';
 
 interface Props {
     open?: boolean;
@@ -36,6 +36,7 @@ const emit = defineEmits<{
 const isOpen = ref(props.open);
 const selectedFiles = ref<File[]>([]);
 const selectedCategoryIds = ref<number[]>([]);
+const isPremium = ref(false);
 const isUploading = ref(false);
 const uploadProgress = ref({ current: 0, total: 0 });
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -56,6 +57,7 @@ watch(() => props.open, (newValue) => {
         cleanupPreviews();
         selectedFiles.value = [];
         selectedCategoryIds.value = [];
+        isPremium.value = false;
     }
 });
 
@@ -65,6 +67,7 @@ watch(isOpen, (newValue) => {
         cleanupPreviews();
         selectedFiles.value = [];
         selectedCategoryIds.value = [];
+        isPremium.value = false;
     }
 });
 
@@ -102,6 +105,8 @@ const uploadBatch = async (files: File[], batchNumber: number, totalBatches: num
         selectedCategoryIds.value.forEach((categoryId) => {
             formData.append('category_ids[]', categoryId.toString());
         });
+
+        formData.append('is_premium', isPremium.value ? '1' : '0');
 
         router.post('/exercises/upload-files', formData, {
             preserveScroll: true,
@@ -267,6 +272,30 @@ const getFilePreview = (file: File): string => {
                             </Button>
                         </div>
                     </div>
+                </div>
+
+                <!-- Toggle Premium -->
+                <div class="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/70">
+                    <div class="flex items-center gap-2">
+                        <Crown class="w-4 h-4 text-amber-500" />
+                        <div>
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Exercices Premium</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Réservés aux abonnés Pro</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        role="switch"
+                        :aria-checked="isPremium"
+                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                        :class="isPremium ? 'bg-amber-500' : 'bg-slate-200 dark:bg-slate-700'"
+                        @click="isPremium = !isPremium"
+                    >
+                        <span
+                            class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform"
+                            :class="isPremium ? 'translate-x-6' : 'translate-x-1'"
+                        />
+                    </button>
                 </div>
 
                 <!-- Sélection des catégories -->

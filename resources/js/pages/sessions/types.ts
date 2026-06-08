@@ -5,6 +5,7 @@ export interface Exercise {
     image_url?: string;
     suggested_duration?: string;
     user_id?: number;
+    is_premium?: boolean;
     categories?: Array<{
         id: number;
         name: string;

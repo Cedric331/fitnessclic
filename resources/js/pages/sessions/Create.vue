@@ -52,6 +52,7 @@ const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
 const { success: notifySuccess, error: notifyError } = useNotifications();
 
 const isUpgradeModalOpen = ref(false);
+const upgradeModalFeature = ref("La sélection de clients et l'enregistrement des séances sont réservés aux abonnés Pro. Passez à Pro pour débloquer toutes les fonctionnalités.");
 const showLayoutEditor = ref(false);
 const savedSessionId = ref<number | null>(null);
 
@@ -475,8 +476,13 @@ const addExerciseToSession = (exercise: Exercise, targetBlockId?: number, isFrom
     if (!exercise || !exercise.id) {
         return;
     }
-    console.log('addExerciseToSession', exercise, targetBlockId, isFromClick);
-    
+
+    if (exercise.is_premium && !isPro.value) {
+        upgradeModalFeature.value = "Cet exercice est réservé aux abonnés Pro. Passez à Pro pour accéder à tous les exercices premium.";
+        isUpgradeModalOpen.value = true;
+        return;
+    }
+
     // Si il y a des super sets et que c'est un clic (pas un glisser-déposer), afficher la modal
     if (isFromClick && availableSuperSets.value.length > 0 && targetBlockId === undefined) {
         pendingExercise.value = exercise;
@@ -542,6 +548,12 @@ const createNewSetBlock = (exercise: Exercise) => {
     if (!exercise || !exercise.id) {
         return;
     }
+
+    if (exercise.is_premium && !isPro.value) {
+        upgradeModalFeature.value = "Cet exercice est réservé aux abonnés Pro. Passez à Pro pour accéder à tous les exercices premium.";
+        isUpgradeModalOpen.value = true;
+        return;
+    }
     const blockId = nextBlockId++;
     const sessionExercise: SessionExercise = {
         id: --sessionExerciseIdCounter,
@@ -574,6 +586,12 @@ const createNewSetBlock = (exercise: Exercise) => {
 
 const addExerciseToSetBlock = (exercise: Exercise, blockId: number) => {
     if (!exercise || !exercise.id) {
+        return;
+    }
+
+    if (exercise.is_premium && !isPro.value) {
+        upgradeModalFeature.value = "Cet exercice est réservé aux abonnés Pro. Passez à Pro pour accéder à tous les exercices premium.";
+        isUpgradeModalOpen.value = true;
         return;
     }
     
@@ -1577,23 +1595,24 @@ const executeGeneratePDF = (customerId: number | null = null) => {
     })
     .then(async response => {
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
+            const text = await response.text();
+            let message = text || 'Erreur lors de la génération du PDF';
+            try { message = JSON.parse(text)?.error ?? message; } catch {}
+            throw new Error(message);
         }
-        
+
         const contentType = response.headers.get('content-type');
         if (contentType && !contentType.includes('application/pdf')) {
-            const errorText = await response.text();
             throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
         }
-        
+
         return response.blob();
     })
     .then(blob => {
         if (blob.size === 0) {
             throw new Error('Le PDF généré est vide');
         }
-        
+
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1708,23 +1727,24 @@ const executePrintPDF = (customerId: number | null = null) => {
     })
     .then(async response => {
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Erreur ${response.status}: ${errorText || 'Erreur lors de la génération du PDF'}`);
+            const text = await response.text();
+            let message = text || 'Erreur lors de la génération du PDF';
+            try { message = JSON.parse(text)?.error ?? message; } catch {}
+            throw new Error(message);
         }
-        
+
         const contentType = response.headers.get('content-type');
         if (contentType && !contentType.includes('application/pdf')) {
-            const errorText = await response.text();
             throw new Error('Le serveur n\'a pas renvoyé un PDF valide');
         }
-        
+
         return response.blob();
     })
     .then(blob => {
         if (blob.size === 0) {
             throw new Error('Le PDF généré est vide');
         }
-        
+
         const url = window.URL.createObjectURL(blob);
         const printWindow = window.open(url, '_blank');
         
@@ -2296,7 +2316,7 @@ watch(
 
         <UpgradeModal
             v-model:open="isUpgradeModalOpen"
-            feature="La sélection de clients et l'enregistrement des séances sont réservés aux abonnés Pro. Passez à Pro pour débloquer toutes les fonctionnalités."
+            :feature="upgradeModalFeature"
         />
 
         <!-- Modal de sélection du client pour PDF/impression -->
@@ -2353,6 +2373,7 @@ watch(
                 :exercises="exercises"
                 :categories="categories"
                 :customers="customers"
+                :is-pro="isPro"
                 :session-name="form.name"
                 @close="showLayoutEditor = false"
                 @saved="(id: number) => { savedSessionId = id; }"

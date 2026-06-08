@@ -140,6 +140,7 @@ const { success: notifySuccess, error: notifyError } = useNotifications();
 // Vérifier si l'utilisateur est Pro
 const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
 const isUpgradeModalOpen = ref(false);
+const upgradeModalFeature = ref("L'import et la création d'exercices sont réservés aux abonnés Pro. Passez à Pro pour créer et importer des exercices illimités.");
 
 // Écouter les messages flash et les convertir en notifications
 const shownFlashMessages = ref(new Set<string>());
@@ -188,6 +189,7 @@ const searchTerm = ref(initialSearch);
 const categoryFilter = ref<number | null>(initialCategory);
 const sortOrder = ref<'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc'>(initialSort as 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc');
 const viewMode = ref<'grid-2' | 'grid-4' | 'grid-6' | 'grid-8'>(initialView as 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8');
+const isPremiumFilter = ref<boolean | null>(props.filters?.is_premium ?? null);
 const currentPage = ref(props.exercises?.current_page ?? 1);
 const isLoading = ref(false);
 
@@ -311,6 +313,10 @@ const applyFilters = (resetPage = true) => {
 
     if (viewMode.value) {
         query.view = viewMode.value;
+    }
+
+    if (isPremiumFilter.value !== null) {
+        query.is_premium = isPremiumFilter.value ? 1 : 0;
     }
 
     if (resetPage) {
@@ -559,7 +565,7 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
                             variant="outline"
                             size="sm"
                             class="gap-2 w-full sm:w-auto"
-                            @click="isUpgradeModalOpen = true"
+                            @click="() => { upgradeModalFeature = 'L\'import et la création d\'exercices sont réservés aux abonnés Pro. Passez à Pro pour créer et importer des exercices illimités.'; isUpgradeModalOpen = true; }"
                         >
                             <Upload class="size-4" />
                             <span>Importer</span>
@@ -578,7 +584,7 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
                             v-else
                             size="sm"
                             class="gap-2 bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-                            @click="isUpgradeModalOpen = true"
+                            @click="() => { upgradeModalFeature = 'L\'import et la création d\'exercices sont réservés aux abonnés Pro. Passez à Pro pour créer et importer des exercices illimités.'; isUpgradeModalOpen = true; }"
                         >
                             <Plus class="size-4" />
                             <span class="hidden sm:inline">Ajouter un exercice</span>
@@ -594,12 +600,13 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
                 :category-id="categoryFilter"
                 :sort-order="sortOrder"
                 :view-mode="viewMode"
+                :is-premium="isPremiumFilter"
                 @update:search="(value: string) => { searchTerm = value; }"
                 @update:categoryId="(value: number | null) => { categoryFilter = value; }"
                 @update:sortOrder="(value: 'newest' | 'oldest' | 'alphabetical' | 'alphabetical-desc') => { sortOrder = value; }"
                 @update:viewMode="(value: 'grid-2' | 'grid-4' | 'grid-6' | 'grid-8') => { viewMode = value; }"
+                @update:isPremium="(value: boolean | null) => { isPremiumFilter = value; }"
                 @apply="async () => {
-                    // Attendre que les valeurs soient synchronisées avant d'appliquer
                     await nextTick();
                     applyFilters(true);
                 }"
@@ -610,13 +617,15 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
                 class="grid auto-rows-min gap-4"
                 :class="gridColsClass"
             >
-                <ExerciseListItem 
-                    v-for="exercise in exercises" 
-                    :key="exercise.id" 
+                <ExerciseListItem
+                    v-for="exercise in exercises"
+                    :key="exercise.id"
                     :exercise="exercise"
                     :view-mode="viewMode"
+                    :is-pro="isPro"
                     @edit="handleEditExercise"
                     @delete="handleDeleteExercise"
+                    @premium-click="() => { upgradeModalFeature = 'Cet exercice est réservé aux abonnés Pro. Passez à Pro pour accéder à tous les exercices premium et importer des exercices illimités.'; isUpgradeModalOpen = true; }"
                 />
             </div>
 
@@ -680,7 +689,7 @@ const handleDeleteExercise = (exercise: { id: number; name: string; image_url: s
         />
         <UpgradeModal
             v-model:open="isUpgradeModalOpen"
-            feature="L'import et la création d'exercices sont réservés aux abonnés Pro. Passez à Pro pour créer et importer des exercices illimités."
+            :feature="upgradeModalFeature"
         />
     </AppLayout>
 </template>
