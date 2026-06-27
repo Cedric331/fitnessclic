@@ -11,6 +11,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
@@ -116,19 +117,74 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
     }
 
     /**
-     * Check if the user is a customer
+     * Check if the user is a coach (account holder managing clients & sessions)
      */
-    public function isClient(): bool
+    public function isCoach(): bool
     {
-        return $this->role === UserRole::CUSTOMER;
+        return $this->role === UserRole::COACH;
     }
 
     /**
-     * Relation with customers managed by this user
+     * Check if the user is a client account (logs in to view their courses & message coaches)
+     */
+    public function isClientAccount(): bool
+    {
+        return $this->role === UserRole::CLIENT;
+    }
+
+    /**
+     * Relation with customers managed by this user (as a coach)
      */
     public function customers(): HasMany
     {
         return $this->hasMany(Customer::class);
+    }
+
+    /**
+     * Relation with the customer records linked to this client account.
+     * A client may be a customer of several coaches → several records.
+     */
+    public function customerRecords(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'account_user_id');
+    }
+
+    /**
+     * Relation with the public coach profile (1-1).
+     */
+    public function coachProfile(): HasOne
+    {
+        return $this->hasOne(CoachProfile::class);
+    }
+
+    /**
+     * Conversations where this user is the coach.
+     */
+    public function conversationsAsCoach(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'coach_id');
+    }
+
+    /**
+     * Conversations where this user is the client.
+     */
+    public function conversationsAsClient(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'client_id');
+    }
+
+    /**
+     * Total unread messages across all the user's conversations.
+     */
+    public function unreadMessagesCount(): int
+    {
+        return Message::query()
+            ->whereNull('read_at')
+            ->where('sender_id', '!=', $this->id)
+            ->whereHas('conversation', fn ($q) => $q
+                ->where('coach_id', $this->id)
+                ->orWhere('client_id', $this->id))
+            ->count();
     }
 
     /**

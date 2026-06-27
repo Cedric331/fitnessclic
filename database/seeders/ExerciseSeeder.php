@@ -32,7 +32,7 @@ class ExerciseSeeder extends Seeder
         }
 
         // Get customer users
-        $clientUsers = User::where('role', UserRole::CUSTOMER->value)->get();
+        $clientUsers = User::where('role', UserRole::COACH->value)->get();
 
         if ($clientUsers->isEmpty()) {
             $clientUsers = User::factory()->count(5)->customer()->create();

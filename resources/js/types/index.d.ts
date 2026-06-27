@@ -37,6 +37,10 @@ export interface User {
     hasActiveSubscription?: boolean;
     isPro?: boolean;
     isAdmin?: boolean | null;
+    isCoach?: boolean;
+    isClient?: boolean;
+    role?: string | null;
+    unreadMessages?: number;
     hasTeam?: boolean;
 }
 

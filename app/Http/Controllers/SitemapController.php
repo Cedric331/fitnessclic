@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BlogPost;
+use App\Models\CoachProfile;
 use Illuminate\Http\Response;
 
 class SitemapController extends Controller
@@ -30,6 +31,13 @@ class SitemapController extends Controller
                 'lastmod' => $now,
                 'changefreq' => 'weekly',
                 'priority' => '0.7',
+            ],
+            // Annuaire des coachs
+            [
+                'loc' => route('coachs.index'),
+                'lastmod' => $now,
+                'changefreq' => 'daily',
+                'priority' => '0.8',
             ],
             // Pages publiques
             [
@@ -67,6 +75,19 @@ class SitemapController extends Controller
                 'loc' => route('blog.show', $post->slug),
                 'lastmod' => ($post->updated_at ?? $post->published_at ?? now())->toAtomString(),
                 'changefreq' => 'monthly',
+                'priority' => '0.6',
+            ];
+        }
+
+        $coaches = CoachProfile::query()
+            ->published()
+            ->get(['slug', 'updated_at', 'published_at']);
+
+        foreach ($coaches as $coach) {
+            $urls[] = [
+                'loc' => route('coachs.show', $coach->slug),
+                'lastmod' => ($coach->updated_at ?? $coach->published_at ?? now())->toAtomString(),
+                'changefreq' => 'weekly',
                 'priority' => '0.6',
             ];
         }

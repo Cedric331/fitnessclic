@@ -97,12 +97,19 @@ onMounted(() => {
                 </button>
 
                 <Link
+                    href="/coachs"
+                    class="text-sm font-semibold text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-200 dark:hover:text-blue-400"
+                >
+                    Trouver un coach
+                </Link>
+
+                <Link
                     href="/blog"
                     class="text-sm font-semibold text-gray-700 transition-colors hover:text-blue-600 dark:text-gray-200 dark:hover:text-blue-400"
                 >
                     Blog
                 </Link>
-                
+
                 <Link
                     v-if="$page.props.auth.user"
                     :href="dashboard.url()"
@@ -178,6 +185,13 @@ onMounted(() => {
                 class="border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 md:hidden"
             >
                 <div class="space-y-1 px-6 pb-4 pt-4">
+                    <Link
+                        href="/coachs"
+                        @click="closeMobileMenu"
+                        class="block rounded-lg border border-transparent px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                        Trouver un coach
+                    </Link>
                     <Link
                         href="/blog"
                         @click="closeMobileMenu"

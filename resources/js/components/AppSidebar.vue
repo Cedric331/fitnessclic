@@ -28,6 +28,9 @@ import {
     LogOut,
     FileText,
     Layout,
+    IdCard,
+    MessageCircle,
+    Search,
 } from 'lucide-vue-next';
 import { useInitials } from '@/composables/useInitials';
 import { useNotifications } from '@/composables/useNotifications';
@@ -95,8 +98,43 @@ const isUpgradeButton = computed(() => {
     return !hasActiveSubscription.value;
 });
 
-const filteredNavItems = computed(() => {
-    return mainNavItems;
+const clientNavItems: NavItem[] = [
+    {
+        title: 'Mon espace',
+        href: '/espace-client',
+        icon: Dumbbell,
+    },
+    {
+        title: 'Trouver un coach',
+        href: '/coachs',
+        icon: Search,
+    },
+];
+
+const messagingTitle = computed(() => {
+    const unread = user.value?.unreadMessages ?? 0;
+    return unread > 0 ? `Messagerie (${unread})` : 'Messagerie';
+});
+
+const filteredNavItems = computed<NavItem[]>(() => {
+    const messaging: NavItem = {
+        title: messagingTitle.value,
+        href: '/messages',
+        icon: MessageCircle,
+    };
+    // Les comptes clients n'ont pas accès aux outils coach.
+    if (user.value?.isClient) {
+        return [...clientNavItems, messaging];
+    }
+    // Coachs/admins : Messagerie juste après "Catégories" (donc avant "Abonnement").
+    const items = [...mainNavItems];
+    const aboIndex = items.findIndex((i) => i.href === '/subscription');
+    if (aboIndex === -1) {
+        items.push(messaging);
+    } else {
+        items.splice(aboIndex, 0, messaging);
+    }
+    return items;
 });
 
 const isCurrentRoute = computed(
@@ -238,7 +276,7 @@ const handleLogout = () => {
                 <SidebarGroupLabel class="text-xs uppercase text-slate-400 px-2 py-3 mb-2">
                     NAVIGATION
                 </SidebarGroupLabel>
-                <SidebarMenu class="space-y-1.5">
+                <SidebarMenu class="space-y-1">
                     <!-- Items de navigation -->
                     <SidebarMenuItem
                         v-for="item in filteredNavItems"
@@ -251,7 +289,7 @@ const handleLogout = () => {
                             :is-active="isCurrentRoute(item.href)"
                             :tooltip="subscriptionTitle"
                             :class="[
-                                'h-10 px-3',
+                                'h-9 px-3 text-[13px]',
                                 isUpgradeButton
                                     ? 'bg-gradient-to-r from-yellow-600/20 to-yellow-500/20 hover:from-yellow-600/30 hover:to-yellow-500/30 text-yellow-400 border border-yellow-500/30 data-[active=true]:from-yellow-600/30 data-[active=true]:to-yellow-500/30'
                                     : 'text-white hover:text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600'
@@ -275,7 +313,7 @@ const handleLogout = () => {
                             as-child
                             :is-active="isCurrentRoute(item.href)"
                             :tooltip="item.title"
-                            class="text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 h-10 px-3"
+                            class="text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 h-9 px-3 text-[13px]"
                         >
                             <Link :href="item.href" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
                                 <component
@@ -289,8 +327,8 @@ const handleLogout = () => {
                 </SidebarMenu>
             </SidebarGroup>
 
-            <!-- Toggle Mode d'édition -->
-            <div class="hidden lg:block px-2 py-4 border-t border-slate-700">
+            <!-- Toggle Mode d'édition (réservé aux coachs) -->
+            <div v-if="!user?.isClient" class="hidden lg:block px-2 py-4 border-t border-slate-700">
                 <div class="flex gap-2">
                     <Button
                         :variant="currentEditMode === 'standard' ? 'default' : 'outline'"
@@ -323,7 +361,7 @@ const handleLogout = () => {
         </SidebarContent>
 
         <SidebarFooter class="border-t border-slate-700 px-2 py-4">
-            <SidebarMenu class="space-y-2">
+            <SidebarMenu class="space-y-1.5">
                 <!-- Informations utilisateur -->
                 <SidebarMenuItem class="pb-2">
                     <div class="flex items-center gap-3 px-2 py-2">
@@ -340,12 +378,26 @@ const handleLogout = () => {
                     </div>
                 </SidebarMenuItem>
 
+                <!-- Mon profil coach (coachs uniquement) -->
+                <SidebarMenuItem v-if="user?.isCoach" class="py-0.5">
+                    <SidebarMenuButton
+                        as-child
+                        :is-active="isCurrentRoute('/mon-profil-coach')"
+                        class="text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 h-9 px-3 text-[13px]"
+                    >
+                        <Link href="/mon-profil-coach" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+                            <IdCard class="size-4 text-white" />
+                            <span class="text-white group-data-[collapsible=icon]:hidden">Mon profil coach</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+
                 <!-- Paramètres -->
                 <SidebarMenuItem class="py-0.5">
                     <SidebarMenuButton
                         as-child
                         :is-active="urlIsActive(edit.url(), page.url)"
-                        class="text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 h-10 px-3"
+                        class="text-white hover:bg-slate-800 data-[active=true]:text-white data-[active=true]:bg-blue-600 h-9 px-3 text-[13px]"
                     >
                     <Link :href="edit.url()" class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
                             <Settings class="size-4 text-white" />
@@ -359,7 +411,7 @@ const handleLogout = () => {
                     <SidebarMenuButton
                         as="button"
                         @click="handleLogout"
-                        class="text-white hover:bg-slate-800 w-full h-10 px-3"
+                        class="text-white hover:bg-slate-800 w-full h-9 px-3 text-[13px]"
                     >
                         <div class="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
                             <LogOut class="size-4 text-white" />

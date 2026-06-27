@@ -20,6 +20,8 @@ export interface Customer {
     internal_note?: string;
     coach_name?: string | null;
     is_owner?: boolean;
+    account_user_id?: number | null;
+    has_account?: boolean;
     training_sessions_count?: number;
     training_sessions?: TrainingSessionHistory[];
 }

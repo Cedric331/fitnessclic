@@ -15,7 +15,7 @@ class CustomerSeeder extends Seeder
     public function run(): void
     {
         // Get all customer users
-        $clientUsers = User::where('role', UserRole::CUSTOMER->value)->get();
+        $clientUsers = User::where('role', UserRole::COACH->value)->get();
 
         if ($clientUsers->isEmpty()) {
             // Create some customer users first if none exist

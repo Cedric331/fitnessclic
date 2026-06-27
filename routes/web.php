@@ -4,6 +4,10 @@ use App\Http\Controllers\AnnouncementsController;
 use App\Http\Controllers\ArtisanCommandController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CategoriesController;
+use App\Http\Controllers\ClientSpaceController;
+use App\Http\Controllers\CoachDirectoryController;
+use App\Http\Controllers\CoachProfileController;
+use App\Http\Controllers\ConversationsController;
 use App\Http\Controllers\ExercisesController;
 use App\Http\Controllers\PopinsController;
 use App\Http\Controllers\PublicSessionController;
@@ -31,16 +35,40 @@ Route::post('/popins/{popin}/prospects', [PopinsController::class, 'storeProspec
 Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
 Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 
-// dashboard redirect to create a session
+// Annuaire public des coachs
+Route::get('/coachs', [CoachDirectoryController::class, 'index'])->name('coachs.index');
+Route::get('/coachs/{slug}', [CoachDirectoryController::class, 'show'])->name('coachs.show');
+
+// dashboard redirect: clients go to their space, coaches to session creation
 Route::get('dashboard', function () {
-    return redirect()->route('sessions.create');
+    return redirect()->route(
+        auth()->user()?->isClientAccount() ? 'client.space.index' : 'sessions.create'
+    );
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Routes clients
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Espace client (compte client)
+    Route::get('/espace-client', [ClientSpaceController::class, 'index'])->name('client.space.index');
+
+    // Messagerie (coach ↔ client)
+    Route::get('/messages', [ConversationsController::class, 'index'])->name('messages.index');
+    Route::get('/messages/unread-count', [ConversationsController::class, 'unreadCount'])->name('messages.unread-count');
+    Route::post('/messages/start', [ConversationsController::class, 'start'])->name('messages.start');
+    Route::get('/messages/{conversation}', [ConversationsController::class, 'show'])->name('messages.show');
+    Route::post('/messages/{conversation}/reply', [ConversationsController::class, 'reply'])->name('messages.reply');
+
+    // Annonces (visibles par tous les utilisateurs authentifiés)
+    Route::get('/announcements/current', [AnnouncementsController::class, 'current'])->name('announcements.current');
+    Route::post('/announcements/{announcement}/seen', [AnnouncementsController::class, 'markAsSeen'])->name('announcements.seen');
+
+    // ───────── Routes réservées aux coachs (et admins) ─────────
+    Route::middleware('coach')->group(function () {
+
     // Customers routes
     Route::get('/customers', [\App\Http\Controllers\CustomersController::class, 'index'])->name('client.customers.index');
     Route::get('/customers/{customer}', [\App\Http\Controllers\CustomersController::class, 'show'])->name('client.customers.show');
+    Route::post('/customers/{customer}/message', [ConversationsController::class, 'startFromCustomer'])->name('client.customers.message');
     Route::post('/customers', [\App\Http\Controllers\CustomersController::class, 'store'])->name('client.customers.store');
     Route::put('/customers/{customer}', [\App\Http\Controllers\CustomersController::class, 'update'])->name('client.customers.update');
     Route::delete('/customers/{customer}', [\App\Http\Controllers\CustomersController::class, 'destroy'])->name('client.customers.destroy');
@@ -91,9 +119,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/subscription/portal', [\App\Http\Controllers\SubscriptionController::class, 'portal'])->name('subscription.portal');
     Route::get('/subscription/success', [\App\Http\Controllers\SubscriptionController::class, 'success'])->name('subscription.success');
 
-    // Announcements routes
-    Route::get('/announcements/current', [AnnouncementsController::class, 'current'])->name('announcements.current');
-    Route::post('/announcements/{announcement}/seen', [AnnouncementsController::class, 'markAsSeen'])->name('announcements.seen');
+    // Profil coach public (édition)
+    Route::get('/mon-profil-coach', [CoachProfileController::class, 'edit'])->name('coach.profile.edit');
+    Route::post('/mon-profil-coach', [CoachProfileController::class, 'update'])->name('coach.profile.update');
 
     // Team routes
     Route::get('/team', [TeamController::class, 'index'])->name('team.index');
@@ -109,6 +137,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/team/invitations/{token}/accept', [TeamInvitationsController::class, 'accept'])
         ->whereUuid('token')
         ->name('team.invitations.accept');
+
+    }); // fin du groupe réservé aux coachs
 });
 
 // Team invitation landing page (public)

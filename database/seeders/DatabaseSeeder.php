@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Customer 1 User',
                 'password' => Hash::make('password'),
-                'role' => UserRole::CUSTOMER->value,
+                'role' => UserRole::COACH->value,
                 'email_verified_at' => now(),
             ]
         );
@@ -41,7 +41,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Customer 2 User',
                 'password' => Hash::make('password'),
-                'role' => UserRole::CUSTOMER->value,
+                'role' => UserRole::COACH->value,
                 'email_verified_at' => now(),
             ]
         );
@@ -52,6 +52,7 @@ class DatabaseSeeder extends Seeder
             // CategorySeeder::class,
             // ExerciseSeeder::class,
             // SessionSeeder::class,
+            // CoachSeeder::class, // 100 coachs de démo : php artisan db:seed --class=CoachSeeder
         ]);
     }
 }

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Eye, Download, Printer, Mail, Edit, Trash2, Layout } from 'lucide-vue-next';
+import { ArrowLeft, Eye, Download, Printer, Mail, Edit, Trash2, Layout, MessageCircle } from 'lucide-vue-next';
 import { computed, ref, watch, nextTick } from 'vue';
 import type { Customer, TrainingSessionHistory } from './types';
 import { useNotifications } from '@/composables/useNotifications';
@@ -634,6 +634,11 @@ const handleEditCustomer = () => {
     isEditDialogOpen.value = true;
 };
 
+// Ouvre (ou crée) la conversation avec le compte client lié à cette fiche.
+const sendMessageToClient = () => {
+    router.post(`/customers/${props.customer.id}/message`);
+};
+
 const handleDeleteCustomer = () => {
     isDeleteDialogOpen.value = true;
 };
@@ -686,6 +691,15 @@ watch(isDeleteDialogOpen, (open) => {
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <Button
+                        v-if="props.customer.has_account"
+                        size="sm"
+                        class="inline-flex items-center gap-2"
+                        @click="sendMessageToClient"
+                    >
+                        <MessageCircle class="size-4" />
+                        <span>Envoyer un message</span>
+                    </Button>
                     <Button
                         v-if="isOwner"
                         variant="outline"

@@ -25,9 +25,10 @@ class UserForm
                     ->label('Rôle')
                     ->options([
                         UserRole::ADMIN->value => 'Administrateur',
-                        UserRole::CUSTOMER->value => 'Client',
+                        UserRole::COACH->value => 'Coach',
+                        UserRole::CLIENT->value => 'Client',
                     ])
-                    ->default(UserRole::CUSTOMER->value)
+                    ->default(UserRole::COACH->value)
                     ->required(),
                 DateTimePicker::make('email_verified_at')
                     ->label('Email vérifié le'),

@@ -14,6 +14,7 @@ import { ref } from 'vue';
 const inviteToken = ref<string | null>(null);
 const inviteEmail = ref<string | null>(null);
 const emailValue = ref('');
+const selectedRole = ref<'coach' | 'client'>('coach');
 
 if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -44,7 +45,46 @@ if (typeof window !== 'undefined') {
                 name="invite_token"
                 :value="inviteToken"
             />
+            <!-- Le rôle est toujours envoyé ; côté serveur une invitation force "coach". -->
+            <input type="hidden" name="role" :value="selectedRole" />
             <div class="grid gap-6">
+                <div v-if="!inviteToken" class="grid gap-2">
+                    <Label>Je suis…</Label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            :class="[
+                                'rounded-lg border p-3 text-center text-sm font-medium transition',
+                                selectedRole === 'coach'
+                                    ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary'
+                                    : 'border-input text-muted-foreground hover:bg-accent',
+                            ]"
+                            @click="selectedRole = 'coach'"
+                        >
+                            Coach
+                            <span class="mt-0.5 block text-xs font-normal opacity-70">
+                                Je propose mes séances
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            :class="[
+                                'rounded-lg border p-3 text-center text-sm font-medium transition',
+                                selectedRole === 'client'
+                                    ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary'
+                                    : 'border-input text-muted-foreground hover:bg-accent',
+                            ]"
+                            @click="selectedRole = 'client'"
+                        >
+                            Client
+                            <span class="mt-0.5 block text-xs font-normal opacity-70">
+                                Je cherche un coach
+                            </span>
+                        </button>
+                    </div>
+                    <InputError :message="errors.role" />
+                </div>
+
                 <div class="grid gap-2">
                     <Label for="name">Nom</Label>
                     <Input

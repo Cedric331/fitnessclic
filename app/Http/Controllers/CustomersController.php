@@ -121,6 +121,7 @@ class CustomersController extends Controller
         $customer->setAttribute('training_sessions_count', $trainingSessions->count());
         $customer->setAttribute('coach_name', $customer->user?->name);
         $customer->setAttribute('is_owner', $customer->user_id === $user->id);
+        $customer->setAttribute('has_account', $customer->account_user_id !== null);
 
         return Inertia::render('clients/Show', [
             'customer' => $customer,

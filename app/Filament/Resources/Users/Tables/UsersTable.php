@@ -28,10 +28,7 @@ class UsersTable
                 TextColumn::make('role')
                     ->label('Rôle')
                     ->badge()
-                    ->formatStateUsing(fn (UserRole $state): string => match ($state) {
-                        UserRole::ADMIN => 'Administrateur',
-                        UserRole::CUSTOMER => 'Client',
-                    }),
+                    ->formatStateUsing(fn (UserRole $state): string => $state->label()),
                 TextColumn::make('email_verified_at')
                     ->label('Email vérifié le')
                     ->dateTime()
@@ -52,7 +49,8 @@ class UsersTable
                     ->label('Rôle')
                     ->options([
                         UserRole::ADMIN->value => 'Administrateur',
-                        UserRole::CUSTOMER->value => 'Client',
+                        UserRole::COACH->value => 'Coach',
+                        UserRole::CLIENT->value => 'Client',
                     ]),
                 TernaryFilter::make('email_verified_at')
                     ->label('Email vérifié')

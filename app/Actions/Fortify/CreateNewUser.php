@@ -2,9 +2,11 @@
 
 namespace App\Actions\Fortify;
 
+use App\Enums\UserRole;
 use App\Mail\WelcomeEmail;
 use App\Models\TeamInvitation;
 use App\Models\User;
+use App\Services\CustomerAccountLinker;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
@@ -35,6 +37,7 @@ class CreateNewUser implements CreatesNewUsers
             ],
             'password' => $this->passwordRules(),
             'invite_token' => ['nullable', 'string'],
+            'role' => ['nullable', Rule::in([UserRole::COACH->value, UserRole::CLIENT->value])],
         ])->validate();
 
         $invitation = null;
@@ -56,10 +59,17 @@ class CreateNewUser implements CreatesNewUsers
             }
         }
 
+        // An invited user always joins as a coach (team member).
+        // Otherwise honor the role chosen at registration, defaulting to coach.
+        $role = $invitation
+            ? UserRole::COACH
+            : (($input['role'] ?? null) === UserRole::CLIENT->value ? UserRole::CLIENT : UserRole::COACH);
+
         $user = User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
+            'role' => $role,
         ]);
 
         if ($invitation) {
@@ -68,6 +78,11 @@ class CreateNewUser implements CreatesNewUsers
                 'accepted_at' => now(),
                 'invited_user_id' => $user->id,
             ]);
+        }
+
+        // Link any existing coach-managed customer records sharing this email.
+        if ($user->isClientAccount()) {
+            app(CustomerAccountLinker::class)->linkUserToCustomers($user);
         }
 
         try {

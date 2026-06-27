@@ -3,10 +3,15 @@
 namespace App\Providers;
 
 use App\Models\Category;
+use App\Models\CoachProfile;
+use App\Models\Conversation;
 use App\Models\Customer;
 use App\Models\Exercise;
 use App\Models\Session;
+use App\Observers\CustomerObserver;
 use App\Policies\CategoryPolicy;
+use App\Policies\CoachProfilePolicy;
+use App\Policies\ConversationPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\ExercisePolicy;
 use App\Policies\SessionPolicy;
@@ -28,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
         Customer::class => CustomerPolicy::class,
         Category::class => CategoryPolicy::class,
         Session::class => SessionPolicy::class,
+        CoachProfile::class => CoachProfilePolicy::class,
+        Conversation::class => ConversationPolicy::class,
     ];
 
     /**
@@ -50,6 +57,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
+
+        Customer::observe(CustomerObserver::class);
 
         Email::defaults(function () {
             $rule = (new Email)->rfcCompliant();

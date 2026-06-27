@@ -18,6 +18,7 @@ class Customer extends Model
      */
     protected $fillable = [
         'user_id',
+        'account_user_id',
         'first_name',
         'last_name',
         'email',
@@ -39,11 +40,27 @@ class Customer extends Model
     }
 
     /**
-     * Relation with the owner user
+     * Relation with the owner user (the coach managing this record)
      */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Relation with the linked client login account (nullable)
+     */
+    public function accountUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'account_user_id');
+    }
+
+    /**
+     * Whether this record is linked to a client login account.
+     */
+    public function isLinkedToAccount(): bool
+    {
+        return $this->account_user_id !== null;
     }
 
     /**

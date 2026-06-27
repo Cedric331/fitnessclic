@@ -17,7 +17,7 @@ class SessionSeeder extends Seeder
     public function run(): void
     {
         // Get customer users (only customers create sessions)
-        $clientUsers = User::where('role', UserRole::CUSTOMER->value)->get();
+        $clientUsers = User::where('role', UserRole::COACH->value)->get();
 
         if ($clientUsers->isEmpty()) {
             $clientUsers = User::factory()->count(5)->customer()->create();

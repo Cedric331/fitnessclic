@@ -140,7 +140,7 @@ class StripeMigrateSubscription extends Command
                 ['email' => $customer->email],
                 [
                     'name' => $customer->name ?? $customer->email,
-                    'role' => UserRole::CUSTOMER->value,
+                    'role' => UserRole::COACH->value,
                     'email_verified_at' => now(),
                     'stripe_id' => $customer->id,
                     'pm_type' => $customer->default_source,
