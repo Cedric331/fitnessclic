@@ -25,8 +25,15 @@ type ConversationItem = {
     unread_count: number;
 };
 
+type Contact = {
+    user_id: number;
+    name: string | null;
+    avatar: string | null;
+};
+
 const props = defineProps<{
     conversations: ConversationItem[];
+    contacts: Contact[];
     conversation: { id: number; other_name: string | null; other_avatar: string | null };
     messages: ChatMessage[];
 }>();
@@ -111,7 +118,11 @@ const timeLabel = (iso: string) =>
             <div class="flex h-full overflow-hidden rounded-2xl border bg-card">
                 <!-- Liste (masquée sur mobile) -->
                 <aside class="hidden w-[360px] shrink-0 flex-col border-r md:flex lg:w-[400px]">
-                    <ConversationList :conversations="conversations" :active-id="conversation.id" />
+                    <ConversationList
+                        :conversations="conversations"
+                        :contacts="contacts"
+                        :active-id="conversation.id"
+                    />
                 </aside>
 
                 <!-- Fil de discussion -->

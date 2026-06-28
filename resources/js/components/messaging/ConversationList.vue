@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { Search } from 'lucide-vue-next';
+import { PenSquare, Search } from 'lucide-vue-next';
+import NewConversationDialog from '@/components/messaging/NewConversationDialog.vue';
+import type { AppPageProps } from '@/types';
 
 type ConversationItem = {
     id: number;
@@ -12,12 +14,28 @@ type ConversationItem = {
     unread_count: number;
 };
 
-const props = defineProps<{
-    conversations: ConversationItem[];
-    activeId?: number | null;
-}>();
+type Contact = {
+    user_id: number;
+    name: string | null;
+    avatar: string | null;
+};
+
+const props = withDefaults(
+    defineProps<{
+        conversations: ConversationItem[];
+        contacts?: Contact[];
+        activeId?: number | null;
+    }>(),
+    { contacts: () => [] },
+);
+
+const page = usePage<AppPageProps>();
+const targetLabel = computed(() =>
+    page.props.auth?.user?.role === 'coach' ? 'client' : 'coach',
+);
 
 const search = ref('');
+const newConversationOpen = ref(false);
 
 const filtered = computed(() => {
     const term = search.value.trim().toLowerCase();
@@ -51,7 +69,17 @@ const initials = (name: string | null) =>
     <div class="flex h-full flex-col">
         <!-- En-tête + recherche -->
         <div class="space-y-3 border-b p-4">
-            <h1 class="text-xl font-bold tracking-tight">Messagerie</h1>
+            <div class="flex items-center justify-between gap-2">
+                <h1 class="text-xl font-bold tracking-tight">Messagerie</h1>
+                <button
+                    type="button"
+                    class="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700"
+                    @click="newConversationOpen = true"
+                >
+                    <PenSquare class="size-4" />
+                    <span class="hidden sm:inline">Nouveau</span>
+                </button>
+            </div>
             <div class="relative">
                 <Search
                     class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
@@ -148,8 +176,22 @@ const initials = (name: string | null) =>
             </div>
 
             <div v-else class="px-3 py-10 text-center text-sm text-muted-foreground">
-                Aucune conversation pour le moment.
+                <p>Aucune conversation pour le moment.</p>
+                <button
+                    type="button"
+                    class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700"
+                    @click="newConversationOpen = true"
+                >
+                    <PenSquare class="size-4" />
+                    Démarrer une conversation
+                </button>
             </div>
         </div>
+
+        <NewConversationDialog
+            v-model:open="newConversationOpen"
+            :contacts="contacts"
+            :target-label="targetLabel"
+        />
     </div>
 </template>

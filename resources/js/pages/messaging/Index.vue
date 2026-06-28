@@ -13,7 +13,13 @@ type ConversationItem = {
     unread_count: number;
 };
 
-defineProps<{ conversations: ConversationItem[] }>();
+type Contact = {
+    user_id: number;
+    name: string | null;
+    avatar: string | null;
+};
+
+defineProps<{ conversations: ConversationItem[]; contacts: Contact[] }>();
 
 const breadcrumbItems: BreadcrumbItem[] = [{ title: 'Messagerie', href: '/messages' }];
 </script>
@@ -26,7 +32,7 @@ const breadcrumbItems: BreadcrumbItem[] = [{ title: 'Messagerie', href: '/messag
             <div class="flex h-full overflow-hidden rounded-2xl border bg-card">
                 <!-- Liste (pleine largeur sur mobile) -->
                 <aside class="flex w-full flex-col md:w-[360px] md:shrink-0 md:border-r lg:w-[400px]">
-                    <ConversationList :conversations="conversations" />
+                    <ConversationList :conversations="conversations" :contacts="contacts" />
                 </aside>
 
                 <!-- Panneau droit : invite à sélectionner (desktop) -->

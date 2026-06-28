@@ -170,3 +170,116 @@ it('forbids messaging a customer belonging to another coach', function () {
 it('redirects guests away from messaging', function () {
     get('/messages')->assertRedirect(route('login'));
 });
+
+it('exposes a client\'s coaches as contacts in the messaging index', function () {
+    $coach = publishedCoach('coach-contacts');
+    $coach->update(['name' => 'Coach Contact']);
+    $client = User::factory()->client()->create(['email' => 'contact-client@x.fr']);
+    Customer::create([
+        'user_id' => $coach->id,
+        'account_user_id' => $client->id,
+        'first_name' => 'Co', 'last_name' => 'Cli', 'email' => 'contact-client@x.fr',
+    ]);
+
+    actingAs($client)
+        ->get('/messages')
+        ->assertInertia(fn ($page) => $page
+            ->component('messaging/Index')
+            ->has('contacts', 1)
+            ->where('contacts.0.user_id', $coach->id));
+});
+
+it('exposes a coach\'s linked clients as contacts and ignores unlinked ones', function () {
+    $coach = User::factory()->coach()->create();
+    $client = User::factory()->client()->create(['email' => 'linked@x.fr']);
+    Customer::create([
+        'user_id' => $coach->id,
+        'account_user_id' => $client->id,
+        'first_name' => 'Lin', 'last_name' => 'Ked', 'email' => 'linked@x.fr',
+    ]);
+    // Sans compte lié → ne doit pas apparaître.
+    Customer::create([
+        'user_id' => $coach->id,
+        'first_name' => 'No', 'last_name' => 'Account', 'email' => 'noacct@x.fr',
+    ]);
+
+    actingAs($coach)
+        ->get('/messages')
+        ->assertInertia(fn ($page) => $page
+            ->has('contacts', 1)
+            ->where('contacts.0.user_id', $client->id)
+            ->where('contacts.0.name', 'Lin Ked'));
+});
+
+it('lets a client start a conversation with a coach from their contacts', function () {
+    $coach = publishedCoach('coach-startwith');
+    $client = User::factory()->client()->create(['email' => 'startwith@x.fr']);
+    Customer::create([
+        'user_id' => $coach->id,
+        'account_user_id' => $client->id,
+        'first_name' => 'S', 'last_name' => 'W', 'email' => 'startwith@x.fr',
+    ]);
+
+    actingAs($client)->post("/messages/with/{$coach->id}")->assertRedirect();
+    expect(Conversation::where('coach_id', $coach->id)->where('client_id', $client->id)->exists())->toBeTrue();
+
+    // Réutilise la même conversation.
+    actingAs($client)->post("/messages/with/{$coach->id}");
+    expect(Conversation::count())->toBe(1);
+});
+
+it('lets a coach start a conversation with a linked client from their contacts', function () {
+    $coach = User::factory()->coach()->create();
+    $client = User::factory()->client()->create(['email' => 'coachstart@x.fr']);
+    Customer::create([
+        'user_id' => $coach->id,
+        'account_user_id' => $client->id,
+        'first_name' => 'C', 'last_name' => 'S', 'email' => 'coachstart@x.fr',
+    ]);
+
+    actingAs($coach)->post("/messages/with/{$client->id}")->assertRedirect();
+    expect(Conversation::where('coach_id', $coach->id)->where('client_id', $client->id)->exists())->toBeTrue();
+});
+
+it('forbids starting a conversation with someone outside the contact list', function () {
+    $client = User::factory()->client()->create();
+    $strangerCoach = User::factory()->coach()->create();
+
+    actingAs($client)->post("/messages/with/{$strangerCoach->id}")->assertForbidden();
+    expect(Conversation::count())->toBe(0);
+});
+
+it('lets an admin browse conversations and open one in the admin panel', function () {
+    $admin = User::factory()->admin()->create();
+    $coach = User::factory()->coach()->create();
+    $client = User::factory()->client()->create(['email' => 'adminbrowse@x.fr']);
+    $conversation = Conversation::create(['coach_id' => $coach->id, 'client_id' => $client->id]);
+    $conversation->messages()->create(['sender_id' => $coach->id, 'body' => 'Bonjour']);
+
+    actingAs($admin)->get('/admin/conversations')->assertOk();
+    actingAs($admin)->get("/admin/conversations/{$conversation->id}")->assertOk();
+});
+
+it('forbids a non-admin from the admin conversations panel', function () {
+    $coach = User::factory()->coach()->create();
+
+    actingAs($coach)->get('/admin/conversations')->assertForbidden();
+});
+
+it('throttles message sending after the per-minute limit', function () {
+    $coach = User::factory()->coach()->create();
+    $client = User::factory()->client()->create(['email' => 'throttle@x.fr']);
+    $conversation = Conversation::create(['coach_id' => $coach->id, 'client_id' => $client->id]);
+
+    actingAs($client);
+
+    // 30 envois autorisés dans la minute.
+    for ($i = 0; $i < 30; $i++) {
+        $this->post("/messages/{$conversation->id}/reply", ['body' => "msg {$i}"])
+            ->assertRedirect();
+    }
+
+    // Le 31e est bloqué.
+    $this->post("/messages/{$conversation->id}/reply", ['body' => 'de trop'])
+        ->assertTooManyRequests();
+});

@@ -27,7 +27,60 @@ class ConversationsController extends Controller
 
         return Inertia::render('messaging/Index', [
             'conversations' => $this->conversationsFor($user),
+            'contacts' => $this->contactsFor($user),
         ]);
+    }
+
+    /**
+     * Build the list of people the user can start a conversation with, drawn
+     * from their existing relationships: a client's coaches, a coach's clients
+     * (only those linked to a login account, since the others can't be messaged).
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function contactsFor(User $user)
+    {
+        if ($user->isCoach()) {
+            return $user->customers()
+                ->whereNotNull('account_user_id')
+                ->with('accountUser:id,name,avatar_url')
+                ->get()
+                ->groupBy('account_user_id')
+                ->map(function ($records) {
+                    /** @var Customer $customer */
+                    $customer = $records->first();
+
+                    return [
+                        'user_id' => (int) $customer->account_user_id,
+                        'name' => $customer->full_name,
+                        'avatar' => $this->avatarFor($customer->accountUser),
+                    ];
+                })
+                ->sortBy('name', SORT_FLAG_CASE | SORT_NATURAL)
+                ->values();
+        }
+
+        if ($user->isClientAccount()) {
+            return $user->customerRecords()
+                ->whereNotNull('user_id')
+                ->with('user:id,name,avatar_url', 'user.coachProfile.media')
+                ->get()
+                ->groupBy('user_id')
+                ->map(function ($records) {
+                    /** @var Customer $customer */
+                    $coach = $records->first()->user;
+
+                    return [
+                        'user_id' => (int) $coach->id,
+                        'name' => $coach->name,
+                        'avatar' => $this->avatarFor($coach),
+                    ];
+                })
+                ->sortBy('name', SORT_FLAG_CASE | SORT_NATURAL)
+                ->values();
+        }
+
+        return collect();
     }
 
     /**
@@ -107,6 +160,7 @@ class ConversationsController extends Controller
 
         return Inertia::render('messaging/Show', [
             'conversations' => $this->conversationsFor($user),
+            'contacts' => $this->contactsFor($user),
             'conversation' => [
                 'id' => $conversation->id,
                 'other_name' => $other?->name,
@@ -146,6 +200,45 @@ class ConversationsController extends Controller
         $conversation = Conversation::firstOrCreate([
             'coach_id' => $coach->id,
             'client_id' => $user->id,
+        ]);
+
+        return redirect()->route('messages.show', $conversation->id);
+    }
+
+    /**
+     * Start (or reopen) a conversation with a contact picked from the messaging
+     * search (a client's coach, or a coach's linked client). The target must
+     * belong to the requester's existing relationships.
+     */
+    public function startWith(User $user, Request $request): RedirectResponse
+    {
+        /** @var User $me */
+        $me = Auth::user();
+        $other = $user;
+
+        if ($me->isCoach() && $other->isClientAccount()) {
+            abort_unless(
+                $me->customers()->where('account_user_id', $other->id)->exists(),
+                403,
+                'Ce client ne fait pas partie de vos contacts.'
+            );
+            $coachId = $me->id;
+            $clientId = $other->id;
+        } elseif ($me->isClientAccount() && $other->isCoach()) {
+            abort_unless(
+                $me->customerRecords()->where('user_id', $other->id)->exists(),
+                403,
+                'Ce coach ne fait pas partie de vos contacts.'
+            );
+            $coachId = $other->id;
+            $clientId = $me->id;
+        } else {
+            abort(403);
+        }
+
+        $conversation = Conversation::firstOrCreate([
+            'coach_id' => $coachId,
+            'client_id' => $clientId,
         ]);
 
         return redirect()->route('messages.show', $conversation->id);
