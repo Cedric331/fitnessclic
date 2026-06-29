@@ -91,6 +91,36 @@ test('unauthenticated user cannot mark announcement as seen', function () {
     $response->assertStatus(401);
 });
 
+test('client does not see a coaches-only announcement', function () {
+    $client = User::factory()->client()->create();
+    Announcement::factory()->active()->create(); // audience = coaches par défaut
+
+    $response = $this->actingAs($client)->getJson(route('announcements.current'));
+
+    $response->assertStatus(200);
+    $response->assertJson(['announcement' => null]);
+});
+
+test('client sees an announcement targeting everyone', function () {
+    $client = User::factory()->client()->create();
+    $announcement = Announcement::factory()->active()->forEveryone()->create();
+
+    $response = $this->actingAs($client)->getJson(route('announcements.current'));
+
+    $response->assertStatus(200);
+    $response->assertJson(['announcement' => ['id' => $announcement->id]]);
+});
+
+test('coach sees an announcement targeting everyone', function () {
+    $coach = User::factory()->coach()->create();
+    $announcement = Announcement::factory()->active()->forEveryone()->create();
+
+    $response = $this->actingAs($coach)->getJson(route('announcements.current'));
+
+    $response->assertStatus(200);
+    $response->assertJson(['announcement' => ['id' => $announcement->id]]);
+});
+
 test('activating an announcement deactivates others', function () {
     $announcement1 = Announcement::factory()->active()->create();
     $announcement2 = Announcement::factory()->create();

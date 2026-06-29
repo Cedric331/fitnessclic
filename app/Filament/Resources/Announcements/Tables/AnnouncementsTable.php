@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Announcements\Tables;
 
+use App\Enums\AnnouncementAudience;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
@@ -21,6 +23,11 @@ class AnnouncementsTable
                     ->searchable()
                     ->sortable()
                     ->limit(50),
+
+                TextColumn::make('audience')
+                    ->label('Audience')
+                    ->badge()
+                    ->sortable(),
 
                 IconColumn::make('is_active')
                     ->label('Active')
@@ -58,6 +65,10 @@ class AnnouncementsTable
                     ->trueLabel('Actives')
                     ->falseLabel('Inactives')
                     ->boolean(),
+
+                SelectFilter::make('audience')
+                    ->label('Audience')
+                    ->options(AnnouncementAudience::class),
             ])
             ->recordActions([
                 EditAction::make()

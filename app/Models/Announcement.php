@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AnnouncementAudience;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -26,6 +27,7 @@ class Announcement extends Model implements HasMedia
     protected $fillable = [
         'title',
         'description',
+        'audience',
         'is_active',
         'published_at',
     ];
@@ -38,6 +40,7 @@ class Announcement extends Model implements HasMedia
     protected function casts(): array
     {
         return [
+            'audience' => AnnouncementAudience::class,
             'is_active' => 'boolean',
             'published_at' => 'datetime',
         ];
@@ -100,6 +103,21 @@ class Announcement extends Model implements HasMedia
     }
 
     /**
+     * Scope to only announcements visible to the given user.
+     *
+     * Les clients ne voient que les annonces ciblant « tout le monde » ;
+     * les coachs (et admins) voient toutes les audiences.
+     */
+    public function scopeVisibleTo($query, User $user)
+    {
+        if ($user->isClientAccount()) {
+            return $query->where('audience', AnnouncementAudience::ALL->value);
+        }
+
+        return $query;
+    }
+
+    /**
      * Get the active announcement
      */
     public static function getActive(): ?self
@@ -113,6 +131,7 @@ class Announcement extends Model implements HasMedia
     public static function getUnseenFor(User $user): ?self
     {
         return static::active()
+            ->visibleTo($user)
             ->whereDoesntHave('seenByUsers', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })

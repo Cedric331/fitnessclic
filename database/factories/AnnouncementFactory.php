@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\AnnouncementAudience;
 use App\Models\Announcement;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -22,6 +23,7 @@ class AnnouncementFactory extends Factory
         return [
             'title' => fake()->sentence(4),
             'description' => fake()->paragraphs(2, true),
+            'audience' => AnnouncementAudience::COACHES,
             'is_active' => false,
             'published_at' => null,
         ];
@@ -35,6 +37,16 @@ class AnnouncementFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'is_active' => true,
             'published_at' => now(),
+        ]);
+    }
+
+    /**
+     * Indicate that the announcement targets coaches and clients.
+     */
+    public function forEveryone(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'audience' => AnnouncementAudience::ALL,
         ]);
     }
 }

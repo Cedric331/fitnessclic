@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Announcements\Schemas;
 
+use App\Enums\AnnouncementAudience;
 use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -43,6 +45,15 @@ class AnnouncementForm
                     ->image()
                     ->imageEditor()
                     ->preserveFilenames()
+                    ->columnSpanFull(),
+
+                Select::make('audience')
+                    ->label('Audience')
+                    ->helperText('Qui voit cette annonce. Par défaut, seuls les coachs sont concernés.')
+                    ->options(AnnouncementAudience::class)
+                    ->default(AnnouncementAudience::COACHES->value)
+                    ->selectablePlaceholder(false)
+                    ->required()
                     ->columnSpanFull(),
 
                 Toggle::make('is_active')
