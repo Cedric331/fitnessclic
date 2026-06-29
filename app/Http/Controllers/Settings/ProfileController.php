@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class ProfileController extends Controller
         return Inertia::render('settings/Profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
+            'clientAvatarUrl' => $request->user()->getMessagingAvatarUrl(),
         ]);
     }
 
@@ -40,6 +42,32 @@ class ProfileController extends Controller
         if ($request->user()->wasChanged('email') && $request->user() instanceof MustVerifyEmail) {
             $request->user()->sendEmailVerificationNotification();
         }
+
+        return to_route('profile.edit');
+    }
+
+    /**
+     * Upload (or replace) the user's messaging profile photo.
+     */
+    public function updatePhoto(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'photo' => ['required', 'image', 'max:5120'],
+        ]);
+
+        $request->user()
+            ->addMediaFromRequest('photo')
+            ->toMediaCollection(User::MEDIA_AVATAR);
+
+        return to_route('profile.edit');
+    }
+
+    /**
+     * Remove the user's messaging profile photo.
+     */
+    public function destroyPhoto(Request $request): RedirectResponse
+    {
+        $request->user()->clearMediaCollection(User::MEDIA_AVATAR);
 
         return to_route('profile.edit');
     }

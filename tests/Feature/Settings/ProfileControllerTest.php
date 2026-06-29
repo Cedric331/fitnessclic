@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 test('unauthenticated user cannot access profile settings', function () {
     $response = $this->get(route('profile.edit'));
@@ -87,4 +89,40 @@ test('user session is invalidated after profile deletion', function () {
 
     $response->assertRedirect('/');
     $this->assertGuest();
+});
+
+test('user can upload a messaging profile photo', function () {
+    Storage::fake('public');
+    $user = User::factory()->client()->create();
+
+    $response = $this->actingAs($user)->post(route('profile.photo.update'), [
+        'photo' => UploadedFile::fake()->image('avatar.jpg'),
+    ]);
+
+    $response->assertRedirect(route('profile.edit'));
+    expect($user->fresh()->getMessagingAvatarUrl())->not->toBeNull();
+});
+
+test('uploading a non-image profile photo fails validation', function () {
+    Storage::fake('public');
+    $user = User::factory()->client()->create();
+
+    $response = $this->actingAs($user)->post(route('profile.photo.update'), [
+        'photo' => UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
+    ]);
+
+    $response->assertSessionHasErrors('photo');
+    expect($user->fresh()->getMessagingAvatarUrl())->toBeNull();
+});
+
+test('user can remove their messaging profile photo', function () {
+    Storage::fake('public');
+    $user = User::factory()->client()->create();
+    $user->addMedia(UploadedFile::fake()->image('avatar.jpg'))->toMediaCollection(User::MEDIA_AVATAR);
+    expect($user->fresh()->getMessagingAvatarUrl())->not->toBeNull();
+
+    $response = $this->actingAs($user)->delete(route('profile.photo.destroy'));
+
+    $response->assertRedirect(route('profile.edit'));
+    expect($user->fresh()->getMessagingAvatarUrl())->toBeNull();
 });

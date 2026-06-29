@@ -16,11 +16,21 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, MustVerifyEmail
+class User extends Authenticatable implements FilamentUser, HasAvatar, HasMedia, HasName, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use Billable, HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use Billable, HasFactory, InteractsWithMedia, Notifiable, TwoFactorAuthenticatable;
+
+    /**
+     * Photo de profil uploadée par un client — affichée uniquement dans la messagerie.
+     */
+    public const MEDIA_AVATAR = 'client_avatar';
+
+    public const MEDIA_DISK = 'public';
 
     /**
      * Boot the model.
@@ -98,6 +108,36 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
     public function getFilamentAvatarUrl(): ?string
     {
         return $this->avatar_url;
+    }
+
+    /**
+     * URL de la photo de profil affichée dans la messagerie (uploadée par le client).
+     */
+    public function getMessagingAvatarUrl(): ?string
+    {
+        $url = $this->getFirstMediaUrl(self::MEDIA_AVATAR, 'optimized')
+            ?: $this->getFirstMediaUrl(self::MEDIA_AVATAR);
+
+        return $url ?: null;
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection(self::MEDIA_AVATAR)
+            ->singleFile()
+            ->useDisk(self::MEDIA_DISK);
+    }
+
+    public function registerMediaConversions(?Media $media = null): void
+    {
+        $this->addMediaConversion('optimized')
+            ->performOnCollections(self::MEDIA_AVATAR)
+            ->width(600)
+            ->height(600)
+            ->sharpen(10)
+            ->quality(85)
+            ->optimize()
+            ->nonQueued();
     }
 
     /**

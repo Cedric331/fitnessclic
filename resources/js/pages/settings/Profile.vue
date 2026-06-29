@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
-import { Form, Head, usePage } from '@inertiajs/vue3';
+import { Form, Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 import DeleteUser from '@/components/DeleteUser.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
@@ -16,9 +17,10 @@ import { type BreadcrumbItem } from '@/types';
 interface Props {
     mustVerifyEmail: boolean;
     status?: string;
+    clientAvatarUrl?: string | null;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -29,6 +31,41 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
 const page = usePage();
 const user = page.props.auth.user;
+const isClient = computed(() => (user as any)?.role === 'client');
+
+// Photo de profil — visible uniquement dans la messagerie.
+const photoForm = useForm({ photo: null as File | null });
+const localPreview = ref<string | null>(null);
+const photoPreview = computed(() => localPreview.value ?? props.clientAvatarUrl ?? null);
+const removingPhoto = ref(false);
+
+const onPhotoChange = (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0] ?? null;
+    photoForm.photo = file;
+    localPreview.value = file ? URL.createObjectURL(file) : null;
+};
+
+const submitPhoto = () => {
+    photoForm.post('/settings/profile/photo', {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            photoForm.reset('photo');
+            localPreview.value = null;
+        },
+    });
+};
+
+const removePhoto = () => {
+    removingPhoto.value = true;
+    router.delete('/settings/profile/photo', {
+        preserveScroll: true,
+        onFinish: () => {
+            removingPhoto.value = false;
+            localPreview.value = null;
+        },
+    });
+};
 </script>
 
 <template>
@@ -127,6 +164,53 @@ const user = page.props.auth.user;
                         </Transition>
                     </div>
                 </Form>
+            </div>
+
+            <div v-if="isClient" class="flex flex-col space-y-6">
+                <HeadingSmall
+                    title="Photo de profil"
+                    description="Cette photo s'affiche uniquement dans la messagerie avec vos coachs."
+                />
+
+                <form class="space-y-4" @submit.prevent="submitPhoto">
+                    <div class="flex items-center gap-4">
+                        <div class="size-20 shrink-0 overflow-hidden rounded-full border bg-muted">
+                            <img
+                                v-if="photoPreview"
+                                :src="photoPreview"
+                                alt="Aperçu de la photo de profil"
+                                class="size-full object-cover"
+                            />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <Input
+                                type="file"
+                                accept="image/*"
+                                class="max-w-xs"
+                                @change="onPhotoChange"
+                            />
+                            <InputError :message="photoForm.errors.photo" />
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <Button
+                            type="submit"
+                            :disabled="photoForm.processing || !photoForm.photo"
+                        >
+                            Enregistrer la photo
+                        </Button>
+                        <Button
+                            v-if="props.clientAvatarUrl"
+                            type="button"
+                            variant="outline"
+                            :disabled="removingPhoto"
+                            @click="removePhoto"
+                        >
+                            Supprimer
+                        </Button>
+                    </div>
+                </form>
             </div>
 
             <DeleteUser />

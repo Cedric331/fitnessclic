@@ -43,7 +43,7 @@ class ConversationsController extends Controller
         if ($user->isCoach()) {
             return $user->customers()
                 ->whereNotNull('account_user_id')
-                ->with('accountUser:id,name,avatar_url')
+                ->with('accountUser:id,name,avatar_url', 'accountUser.media')
                 ->get()
                 ->groupBy('account_user_id')
                 ->map(function ($records) {
@@ -93,8 +93,8 @@ class ConversationsController extends Controller
         return Conversation::query()
             ->forUser($user)
             ->with([
-                'coach:id,name,avatar_url', 'coach.coachProfile.media',
-                'client:id,name,avatar_url', 'client.coachProfile.media',
+                'coach:id,name,avatar_url', 'coach.coachProfile.media', 'coach.media',
+                'client:id,name,avatar_url', 'client.coachProfile.media', 'client.media',
             ])
             ->withCount(['messages as unread_count' => fn ($q) => $q
                 ->where('sender_id', '!=', $user->id)
@@ -131,6 +131,9 @@ class ConversationsController extends Controller
             ? ($profile->getFirstMediaUrl(CoachProfile::MEDIA_AVATAR, 'optimized')
                 ?: $profile->getFirstMediaUrl(CoachProfile::MEDIA_AVATAR))
             : null;
+
+        // Photo de profil uploadée par le client — visible uniquement dans la messagerie.
+        $mediaUrl = $mediaUrl ?: $user->getMessagingAvatarUrl();
 
         return $mediaUrl ?: ($user->avatar_url ?: null);
     }
@@ -182,8 +185,8 @@ class ConversationsController extends Controller
 
         $conversation->load([
             'messages.sender:id,name',
-            'coach:id,name,avatar_url', 'coach.coachProfile.media',
-            'client:id,name,avatar_url', 'client.coachProfile.media',
+            'coach:id,name,avatar_url', 'coach.coachProfile.media', 'coach.media',
+            'client:id,name,avatar_url', 'client.coachProfile.media', 'client.media',
         ]);
         $other = $conversation->otherParticipant($user);
 

@@ -5,7 +5,9 @@ use App\Models\Conversation;
 use App\Models\Customer;
 use App\Models\User;
 use App\Notifications\NewMessageNotification;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
@@ -293,6 +295,20 @@ it('forbids a non-admin from the admin conversations panel', function () {
     $coach = User::factory()->coach()->create();
 
     actingAs($coach)->get('/admin/conversations')->assertForbidden();
+});
+
+it("shows a client's profile photo to the coach in the conversation", function () {
+    Storage::fake('public');
+    $coach = publishedCoach();
+    $client = User::factory()->client()->create();
+    $client->addMedia(UploadedFile::fake()->image('avatar.jpg'))->toMediaCollection(User::MEDIA_AVATAR);
+    $conversation = Conversation::create(['coach_id' => $coach->id, 'client_id' => $client->id]);
+
+    actingAs($coach)
+        ->get("/messages/{$conversation->id}")
+        ->assertInertia(fn ($page) => $page
+            ->where('conversation.other_avatar', fn ($url) => filled($url))
+        );
 });
 
 it('throttles message sending after the per-minute limit', function () {
