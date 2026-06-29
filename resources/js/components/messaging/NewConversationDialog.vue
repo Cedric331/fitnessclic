@@ -21,22 +21,69 @@ const props = defineProps<{
     contacts: Contact[];
     /** Libellé adapté au rôle (ex. « coach » ou « client »). */
     targetLabel?: string;
+    /**
+     * Si fourni, la recherche interroge le serveur (annuaire complet) au lieu
+     * de filtrer uniquement la liste des contacts existants.
+     */
+    searchUrl?: string;
 }>();
 
 const emit = defineEmits<{ 'update:open': [value: boolean] }>();
 
 const search = ref('');
 const starting = ref<number | null>(null);
+const remoteResults = ref<Contact[]>([]);
+const loading = ref(false);
+let debounce: ReturnType<typeof setTimeout> | null = null;
 
 watch(
     () => props.open,
     (open) => {
-        if (open) search.value = '';
+        if (open) {
+            search.value = '';
+            remoteResults.value = [];
+            loading.value = false;
+        }
     },
 );
 
+// Recherche serveur (debounce) quand un searchUrl est fourni.
+watch(search, (value) => {
+    if (!props.searchUrl) return;
+    if (debounce) clearTimeout(debounce);
+
+    const term = value.trim();
+    if (!term) {
+        remoteResults.value = [];
+        loading.value = false;
+        return;
+    }
+
+    loading.value = true;
+    debounce = setTimeout(async () => {
+        try {
+            const res = await fetch(
+                `${props.searchUrl}?q=${encodeURIComponent(term)}`,
+                { headers: { Accept: 'application/json' } },
+            );
+            const data = await res.json();
+            remoteResults.value = data.coaches ?? [];
+        } catch {
+            remoteResults.value = [];
+        } finally {
+            loading.value = false;
+        }
+    }, 250);
+});
+
 const filtered = computed(() => {
     const term = search.value.trim().toLowerCase();
+
+    // Mode recherche serveur : contacts existants par défaut, annuaire dès qu'on tape.
+    if (props.searchUrl) {
+        return term ? remoteResults.value : props.contacts;
+    }
+
     if (!term) return props.contacts;
     return props.contacts.filter((c) => (c.name ?? '').toLowerCase().includes(term));
 });
@@ -89,7 +136,14 @@ const start = (contact: Contact) => {
             </div>
 
             <div class="max-h-80 overflow-y-auto">
-                <template v-if="filtered.length">
+                <div
+                    v-if="loading"
+                    class="px-3 py-8 text-center text-sm text-muted-foreground"
+                >
+                    Recherche…
+                </div>
+
+                <template v-else-if="filtered.length">
                     <button
                         v-for="c in filtered"
                         :key="c.user_id"
@@ -117,10 +171,17 @@ const start = (contact: Contact) => {
                 </template>
 
                 <div
-                    v-else-if="contacts.length"
+                    v-else-if="search.trim()"
                     class="px-3 py-8 text-center text-sm text-muted-foreground"
                 >
                     Aucun résultat pour « {{ search }} ».
+                </div>
+
+                <div
+                    v-else-if="searchUrl"
+                    class="px-3 py-8 text-center text-sm text-muted-foreground"
+                >
+                    Recherchez un {{ targetLabel ?? 'contact' }} par son nom.
                 </div>
 
                 <div v-else class="px-3 py-8 text-center text-sm text-muted-foreground">

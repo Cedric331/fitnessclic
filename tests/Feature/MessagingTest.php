@@ -241,12 +241,41 @@ it('lets a coach start a conversation with a linked client from their contacts',
     expect(Conversation::where('coach_id', $coach->id)->where('client_id', $client->id)->exists())->toBeTrue();
 });
 
-it('forbids starting a conversation with someone outside the contact list', function () {
+it('forbids starting a conversation with an unpublished coach', function () {
     $client = User::factory()->client()->create();
-    $strangerCoach = User::factory()->coach()->create();
+    $strangerCoach = User::factory()->coach()->create(); // pas de profil publié
 
     actingAs($client)->post("/messages/with/{$strangerCoach->id}")->assertForbidden();
     expect(Conversation::count())->toBe(0);
+});
+
+it('lets a client start a conversation with any published coach (no prior relationship)', function () {
+    $client = User::factory()->client()->create();
+    $coach = publishedCoach('directory-coach');
+
+    actingAs($client)->post("/messages/with/{$coach->id}")->assertRedirect();
+    expect(Conversation::where('coach_id', $coach->id)->where('client_id', $client->id)->exists())->toBeTrue();
+});
+
+it('searches the published coach directory for a client', function () {
+    $client = User::factory()->client()->create();
+    $alice = publishedCoach('alice-coach');
+    $alice->update(['name' => 'Alice Dupont']);
+    $bob = publishedCoach('bob-coach');
+    $bob->update(['name' => 'Bob Martin']);
+    $unpublished = User::factory()->coach()->create(['name' => 'Alice Cachée']);
+
+    actingAs($client)
+        ->getJson('/messages/coaches/search?q=Alice')
+        ->assertOk()
+        ->assertJsonCount(1, 'coaches')
+        ->assertJsonPath('coaches.0.user_id', $alice->id);
+});
+
+it('forbids a coach from using the client coach-search endpoint', function () {
+    $coach = User::factory()->coach()->create();
+
+    actingAs($coach)->getJson('/messages/coaches/search?q=x')->assertForbidden();
 });
 
 it('lets an admin browse conversations and open one in the admin panel', function () {

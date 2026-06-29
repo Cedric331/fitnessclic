@@ -54,6 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Messagerie (coach ↔ client)
     Route::get('/messages', [ConversationsController::class, 'index'])->name('messages.index');
     Route::get('/messages/unread-count', [ConversationsController::class, 'unreadCount'])->name('messages.unread-count');
+    Route::get('/messages/coaches/search', [ConversationsController::class, 'searchCoaches'])->name('messages.search-coaches');
     Route::get('/messages/{conversation}', [ConversationsController::class, 'show'])->name('messages.show');
 
     // Écriture (anti-spam) : throttle par utilisateur authentifié.

@@ -34,6 +34,13 @@ const targetLabel = computed(() =>
     page.props.auth?.user?.role === 'coach' ? 'client' : 'coach',
 );
 
+// Côté client : la recherche tape dans l'annuaire complet des coachs publiés.
+const searchUrl = computed(() =>
+    page.props.auth?.user?.role === 'client'
+        ? '/messages/coaches/search'
+        : undefined,
+);
+
 const search = ref('');
 const newConversationOpen = ref(false);
 
@@ -192,6 +199,7 @@ const initials = (name: string | null) =>
             v-model:open="newConversationOpen"
             :contacts="contacts"
             :target-label="targetLabel"
+            :search-url="searchUrl"
         />
     </div>
 </template>

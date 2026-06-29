@@ -136,6 +136,35 @@ class ConversationsController extends Controller
     }
 
     /**
+     * Search the published coach directory so a client can start a conversation
+     * with any coach, not only those who already manage them.
+     */
+    public function searchCoaches(Request $request): JsonResponse
+    {
+        /** @var User $me */
+        $me = Auth::user();
+        abort_unless($me->isClientAccount(), 403);
+
+        $term = trim((string) $request->query('q', ''));
+
+        $coaches = User::query()
+            ->where('role', \App\Enums\UserRole::COACH)
+            ->whereHas('coachProfile', fn ($q) => $q->where('is_published', true))
+            ->when($term !== '', fn ($q) => $q->where('name', 'like', '%'.$term.'%'))
+            ->with('coachProfile.media')
+            ->orderBy('name')
+            ->limit(20)
+            ->get()
+            ->map(fn (User $coach) => [
+                'user_id' => (int) $coach->id,
+                'name' => $coach->name,
+                'avatar' => $this->avatarFor($coach),
+            ]);
+
+        return response()->json(['coaches' => $coaches]);
+    }
+
+    /**
      * Show a conversation thread and mark incoming messages as read.
      */
     public function show(Conversation $conversation): Response
@@ -225,10 +254,11 @@ class ConversationsController extends Controller
             $coachId = $me->id;
             $clientId = $other->id;
         } elseif ($me->isClientAccount() && $other->isCoach()) {
+            // Un client peut contacter n'importe quel coach dont le profil est publié.
             abort_unless(
-                $me->customerRecords()->where('user_id', $other->id)->exists(),
+                $other->coachProfile()->where('is_published', true)->exists(),
                 403,
-                'Ce coach ne fait pas partie de vos contacts.'
+                "Ce coach n'est pas disponible."
             );
             $coachId = $other->id;
             $clientId = $me->id;
