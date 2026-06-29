@@ -105,7 +105,7 @@ test('customers index forbids team filter for non-member', function () {
     $response->assertStatus(403);
 });
 
-test('free user cannot create customer', function () {
+test('user without subscription can create customer', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->post(route('client.customers.store'), [
@@ -115,8 +115,11 @@ test('free user cannot create customer', function () {
     ]);
 
     $response->assertRedirect(route('client.customers.index'));
-    $response->assertSessionHas('error', 'La création de clients est réservée aux abonnés Pro. Passez à Pro pour créer des clients illimités.');
-    $this->assertDatabaseMissing('customers', ['email' => 'john@example.com']);
+    $response->assertSessionHas('success', 'Client créé avec succès.');
+    $this->assertDatabaseHas('customers', [
+        'email' => 'john@example.com',
+        'user_id' => $user->id,
+    ]);
 });
 
 test('pro user can create customer', function () {

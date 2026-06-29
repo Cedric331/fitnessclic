@@ -12,7 +12,7 @@ class CustomerPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isPro();
+        return $user->isCoach() || $user->isAdmin();
     }
 
     /**
@@ -28,7 +28,7 @@ class CustomerPolicy
      */
     public function update(User $user, Customer $customer): bool
     {
-        return $user->id === $customer->user_id && $user->isPro();
+        return $user->id === $customer->user_id;
     }
 
     /**
@@ -36,6 +36,6 @@ class CustomerPolicy
      */
     public function delete(User $user, Customer $customer): bool
     {
-        return $user->id === $customer->user_id && $user->isPro();
+        return $user->id === $customer->user_id;
     }
 }
