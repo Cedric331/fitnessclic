@@ -752,7 +752,7 @@ const removeExerciseFromSession = (index: number) => {
 };
 
 const handleExerciseUpdate = (exercise: SessionExercise | undefined, updates: Partial<SessionExercise>) => {
-    if (!sessionExercises) {
+    if (!sessionExercises.value) {
         return;
     }
     

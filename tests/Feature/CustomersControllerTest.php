@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Conversation;
 use App\Models\Customer;
 use App\Models\Session;
 use App\Models\Team;
@@ -105,7 +106,7 @@ test('customers index forbids team filter for non-member', function () {
     $response->assertStatus(403);
 });
 
-test('user without subscription can create customer', function () {
+test('free user cannot create customer', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->post(route('client.customers.store'), [
@@ -115,11 +116,8 @@ test('user without subscription can create customer', function () {
     ]);
 
     $response->assertRedirect(route('client.customers.index'));
-    $response->assertSessionHas('success', 'Client créé avec succès.');
-    $this->assertDatabaseHas('customers', [
-        'email' => 'john@example.com',
-        'user_id' => $user->id,
-    ]);
+    $response->assertSessionHas('error', 'La création de clients est réservée aux abonnés Pro. Passez à Pro pour créer des clients illimités.');
+    $this->assertDatabaseMissing('customers', ['email' => 'john@example.com']);
 });
 
 test('pro user can create customer', function () {
@@ -176,8 +174,12 @@ test('user cannot view another user customer', function () {
     $response->assertSessionHas('error', 'Vous n\'avez pas les permissions pour voir ce client.');
 });
 
-test('user can update own customer', function () {
+test('pro user can update own customer', function () {
     $user = User::factory()->create();
+    Subscription::factory()->create([
+        'user_id' => $user->id,
+        'stripe_status' => 'active',
+    ]);
     $customer = Customer::factory()->for($user)->create([
         'first_name' => 'John',
         'last_name' => 'Doe',
@@ -196,6 +198,27 @@ test('user can update own customer', function () {
         'first_name' => 'Jane',
         'last_name' => 'Smith',
         'email' => 'jane@example.com',
+    ]);
+});
+
+test('free user cannot update own customer', function () {
+    $user = User::factory()->create();
+    $customer = Customer::factory()->for($user)->create([
+        'first_name' => 'John',
+        'last_name' => 'Doe',
+    ]);
+
+    $response = $this->actingAs($user)->put(route('client.customers.update', $customer), [
+        'first_name' => 'Jane',
+        'last_name' => 'Smith',
+        'email' => 'jane@example.com',
+    ]);
+
+    $response->assertForbidden();
+    $this->assertDatabaseHas('customers', [
+        'id' => $customer->id,
+        'first_name' => 'John',
+        'last_name' => 'Doe',
     ]);
 });
 
@@ -220,4 +243,69 @@ test('user cannot delete another user customer', function () {
     $response->assertRedirect(route('client.customers.index'));
     $response->assertSessionHas('error', 'Vous n\'avez pas les permissions pour supprimer ce client.');
     $this->assertDatabaseHas('customers', ['id' => $customer->id]);
+});
+
+test('pro coach can add conversation client as customer from messaging', function () {
+    $coach = User::factory()->create();
+    Subscription::factory()->create([
+        'user_id' => $coach->id,
+        'stripe_status' => 'active',
+    ]);
+    $client = User::factory()->client()->create([
+        'name' => 'Alice Martin',
+        'email' => 'alice@example.com',
+    ]);
+    $conversation = Conversation::create([
+        'coach_id' => $coach->id,
+        'client_id' => $client->id,
+    ]);
+
+    $response = $this->actingAs($coach)->post(route('messages.add-customer', $conversation));
+
+    $response->assertSessionHas('success');
+    $this->assertDatabaseHas('customers', [
+        'user_id' => $coach->id,
+        'account_user_id' => $client->id,
+        'first_name' => 'Alice',
+        'last_name' => 'Martin',
+        'email' => 'alice@example.com',
+    ]);
+});
+
+test('free coach cannot add conversation client as customer', function () {
+    $coach = User::factory()->create();
+    $client = User::factory()->client()->create();
+    $conversation = Conversation::create([
+        'coach_id' => $coach->id,
+        'client_id' => $client->id,
+    ]);
+
+    $response = $this->actingAs($coach)->post(route('messages.add-customer', $conversation));
+
+    $response->assertSessionHas('error', 'La création de clients est réservée aux abonnés Pro. Passez à Pro pour ajouter ce client.');
+    $this->assertDatabaseMissing('customers', ['account_user_id' => $client->id]);
+});
+
+test('coach cannot add a client already in their list', function () {
+    $coach = User::factory()->create();
+    Subscription::factory()->create([
+        'user_id' => $coach->id,
+        'stripe_status' => 'active',
+    ]);
+    $client = User::factory()->client()->create([
+        'email' => 'bob@example.com',
+    ]);
+    Customer::factory()->for($coach)->create([
+        'account_user_id' => $client->id,
+        'email' => 'bob@example.com',
+    ]);
+    $conversation = Conversation::create([
+        'coach_id' => $coach->id,
+        'client_id' => $client->id,
+    ]);
+
+    $response = $this->actingAs($coach)->post(route('messages.add-customer', $conversation));
+
+    $response->assertSessionHas('error', 'Ce client fait déjà partie de votre liste.');
+    expect($coach->customers()->where('account_user_id', $client->id)->count())->toBe(1);
 });

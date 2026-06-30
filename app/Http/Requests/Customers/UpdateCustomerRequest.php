@@ -22,7 +22,7 @@ class UpdateCustomerRequest extends FormRequest
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
-        return $user && $user->hasCustomer($customer);
+        return $user && $user->hasCustomer($customer) && $user->isPro();
     }
 
     /**

@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import ConversationList from '@/components/messaging/ConversationList.vue';
+import UpgradeModal from '@/components/UpgradeModal.vue';
+import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { type BreadcrumbItem } from '@/types';
-import { ArrowLeft, SendHorizontal } from 'lucide-vue-next';
+import { ArrowLeft, Check, SendHorizontal, UserPlus } from 'lucide-vue-next';
+import { useNotifications } from '@/composables/useNotifications';
 
 type ChatMessage = {
     id: number;
@@ -34,9 +37,69 @@ type Contact = {
 const props = defineProps<{
     conversations: ConversationItem[];
     contacts: Contact[];
-    conversation: { id: number; other_name: string | null; other_avatar: string | null };
+    conversation: {
+        id: number;
+        other_name: string | null;
+        other_avatar: string | null;
+        is_coach?: boolean;
+        is_customer?: boolean;
+    };
     messages: ChatMessage[];
 }>();
+
+const page = usePage();
+const { success: notifySuccess, error: notifyError } = useNotifications();
+
+// L'utilisateur connecté est-il un coach (côté coach de cette conversation) ?
+const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
+const canAddCustomer = computed(() => props.conversation.is_coach && !props.conversation.is_customer);
+const isUpgradeModalOpen = ref(false);
+const addingCustomer = ref(false);
+
+const addCustomer = () => {
+    if (!isPro.value) {
+        isUpgradeModalOpen.value = true;
+        return;
+    }
+    if (addingCustomer.value) return;
+    addingCustomer.value = true;
+    router.post(
+        `/messages/${props.conversation.id}/add-customer`,
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                addingCustomer.value = false;
+            },
+        },
+    );
+};
+
+// Écouter les messages flash et les convertir en notifications
+const shownFlashMessages = ref(new Set<string>());
+
+watch(
+    () => (page.props as any).flash,
+    (flash) => {
+        if (!flash) return;
+
+        const successKey = flash.success ? `success-${flash.success}` : null;
+        const errorKey = flash.error ? `error-${flash.error}` : null;
+
+        if (successKey && !shownFlashMessages.value.has(successKey)) {
+            shownFlashMessages.value.add(successKey);
+            nextTick(() => notifySuccess(flash.success));
+            setTimeout(() => shownFlashMessages.value.delete(successKey), 4500);
+        }
+
+        if (errorKey && !shownFlashMessages.value.has(errorKey)) {
+            shownFlashMessages.value.add(errorKey);
+            nextTick(() => notifyError(flash.error));
+            setTimeout(() => shownFlashMessages.value.delete(errorKey), 6500);
+        }
+    },
+    { immediate: true },
+);
 
 const breadcrumbItems: BreadcrumbItem[] = [
     { title: 'Messagerie', href: '/messages' },
@@ -153,6 +216,26 @@ const timeLabel = (iso: string) =>
                             <p class="truncate font-semibold leading-tight">{{ conversation.other_name }}</p>
                             <p class="text-xs text-muted-foreground">Messagerie</p>
                         </div>
+
+                        <!-- Ajouter le client (coach uniquement) -->
+                        <Button
+                            v-if="canAddCustomer"
+                            size="sm"
+                            class="ml-auto shrink-0 bg-blue-600 text-white hover:bg-blue-700"
+                            :disabled="addingCustomer"
+                            @click="addCustomer"
+                        >
+                            <Spinner v-if="addingCustomer" class="mr-2 size-4" />
+                            <UserPlus v-else class="mr-2 size-4" />
+                            Ajouter le client
+                        </Button>
+                        <span
+                            v-else-if="conversation.is_coach && conversation.is_customer"
+                            class="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        >
+                            <Check class="size-3.5" />
+                            Dans vos clients
+                        </span>
                     </header>
 
                     <!-- Messages -->
@@ -280,5 +363,10 @@ const timeLabel = (iso: string) =>
                 </section>
             </div>
         </div>
+
+        <UpgradeModal
+            v-model:open="isUpgradeModalOpen"
+            feature="L'ajout de clients est réservé aux abonnés Pro. Passez à Pro pour ajouter ce client à votre liste."
+        />
     </AppLayout>
 </template>

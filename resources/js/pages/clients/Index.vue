@@ -9,6 +9,9 @@ import CustomerCreateDialog from './CustomerCreateDialog.vue';
 import CustomerEditDialog from './CustomerEditDialog.vue';
 import CustomerList from './CustomerList.vue';
 import CustomerDeleteDialog from './CustomerDeleteDialog.vue';
+import UpgradeModal from '@/components/UpgradeModal.vue';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-vue-next';
 import type { Customer, CustomersProps } from './types';
 import { useNotifications } from '@/composables/useNotifications';
 
@@ -16,6 +19,10 @@ const props = defineProps<CustomersProps>();
 const page = usePage();
 const { success: notifySuccess, error: notifyError } = useNotifications();
 const hasTeam = computed(() => (page.props.auth as any)?.user?.hasTeam ?? false);
+
+// Vérifier si l'utilisateur est Pro (la création de clients est réservée aux abonnés)
+const isPro = computed(() => (page.props.auth as any)?.user?.isPro ?? false);
+const isUpgradeModalOpen = ref(false);
 
 // Écouter les messages flash et les convertir en notifications
 const shownFlashMessages = ref(new Set<string>());
@@ -188,11 +195,21 @@ watch(isDeleteDialogOpen, (open) => {
                 </div>
             
                 <CustomerCreateDialog
+                    v-if="isPro"
                     v-model:open="isCreateDialogOpen"
                     trigger-label="Nouveau Client"
                     trigger-variant="sm"
                     :show-trigger="true"
                 />
+                <Button
+                    v-else
+                    size="sm"
+                    class="bg-blue-600 hover:bg-blue-700 text-white"
+                    @click="isUpgradeModalOpen = true"
+                >
+                    <Plus class="h-4 w-4 mr-2" />
+                    Nouveau Client
+                </Button>
             </div>
 
             <!-- Filters -->
@@ -244,6 +261,11 @@ watch(isDeleteDialogOpen, (open) => {
                 :customer="customerToDelete"
                 :loading="isDeleteProcessing"
                 @confirm="confirmDelete"
+            />
+
+            <UpgradeModal
+                v-model:open="isUpgradeModalOpen"
+                feature="La création de clients est réservée aux abonnés Pro. Passez à Pro pour créer des clients illimités."
             />
         </div>
     </AppLayout>

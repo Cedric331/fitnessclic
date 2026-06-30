@@ -69,6 +69,14 @@ class CustomersController extends Controller
      */
     public function store(StoreCustomerRequest $request)
     {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if (! $user->can('create', Customer::class)) {
+            return redirect()->route('client.customers.index')
+                ->with('error', 'La création de clients est réservée aux abonnés Pro. Passez à Pro pour créer des clients illimités.');
+        }
+
         $validated = $request->validated();
 
         $customer = Customer::create([

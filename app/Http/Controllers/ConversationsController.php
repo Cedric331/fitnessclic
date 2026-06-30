@@ -190,6 +190,12 @@ class ConversationsController extends Controller
         ]);
         $other = $conversation->otherParticipant($user);
 
+        // Le coach peut ajouter son interlocuteur (le client) à sa liste de clients.
+        $isCoachOfConversation = $user->id === $conversation->coach_id;
+        $alreadyCustomer = $isCoachOfConversation && $other
+            ? $this->coachHasCustomerFor($user, $other)
+            : false;
+
         return Inertia::render('messaging/Show', [
             'conversations' => $this->conversationsFor($user),
             'contacts' => $this->contactsFor($user),
@@ -197,6 +203,8 @@ class ConversationsController extends Controller
                 'id' => $conversation->id,
                 'other_name' => $other?->name,
                 'other_avatar' => $this->avatarFor($other),
+                'is_coach' => $isCoachOfConversation,
+                'is_customer' => $alreadyCustomer,
             ],
             'messages' => $conversation->messages->map(fn ($m) => [
                 'id' => $m->id,
@@ -294,6 +302,79 @@ class ConversationsController extends Controller
         ]);
 
         return redirect()->route('messages.show', $conversation->id);
+    }
+
+    /**
+     * Add the conversation's client as a customer of the coach (from the messaging header).
+     */
+    public function addCustomer(Conversation $conversation): RedirectResponse
+    {
+        Gate::authorize('view', $conversation);
+
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Seul le coach de la conversation peut ajouter son interlocuteur comme client.
+        $other = $conversation->otherParticipant($user);
+        abort_unless($user->id === $conversation->coach_id && $other !== null, 403);
+
+        // La création de clients est réservée aux abonnés Pro.
+        if (! $user->can('create', Customer::class)) {
+            return back()->with('error', 'La création de clients est réservée aux abonnés Pro. Passez à Pro pour ajouter ce client.');
+        }
+
+        // Le client est-il déjà dans la liste du coach ?
+        if ($this->coachHasCustomerFor($user, $other)) {
+            return back()->with('error', 'Ce client fait déjà partie de votre liste.');
+        }
+
+        [$firstName, $lastName] = $this->splitName($other->name);
+
+        Customer::create([
+            'user_id' => $user->id,
+            'account_user_id' => $other->id,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $other->email,
+            'is_active' => true,
+        ]);
+
+        return back()->with('success', $other->name.' a été ajouté à votre liste de clients.');
+    }
+
+    /**
+     * Whether the coach already has a customer record matching the given user
+     * (linked by account or by email).
+     */
+    private function coachHasCustomerFor(User $coach, User $other): bool
+    {
+        return $coach->customers()
+            ->where(function ($q) use ($other) {
+                $q->where('account_user_id', $other->id);
+
+                if ($other->email) {
+                    $q->orWhere('email', $other->email);
+                }
+            })
+            ->exists();
+    }
+
+    /**
+     * Split a single display name into a first and last name for a customer record.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function splitName(?string $name): array
+    {
+        $name = trim((string) $name);
+
+        if ($name === '') {
+            return ['Client', ''];
+        }
+
+        $parts = preg_split('/\s+/', $name, 2);
+
+        return [$parts[0], $parts[1] ?? ''];
     }
 
     /**
