@@ -2,6 +2,7 @@
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import NotificationTemplate from '@/components/NotificationTemplate.vue';
 import AnnouncementModal from '@/components/AnnouncementModal.vue';
+import ProfileCompletionBanner from '@/components/ProfileCompletionBanner.vue';
 import type { BreadcrumbItemType } from '@/types';
 
 interface Props {
@@ -15,6 +16,7 @@ withDefaults(defineProps<Props>(), {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
+        <ProfileCompletionBanner />
         <slot />
     </AppLayout>
     <!-- Modal d'annonces pour les mises à jour -->

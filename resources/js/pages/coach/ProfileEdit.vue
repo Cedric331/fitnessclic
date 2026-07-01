@@ -11,8 +11,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Spinner } from '@/components/ui/spinner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { type BreadcrumbItem } from '@/types';
-import { ExternalLink } from 'lucide-vue-next';
+import { CheckCircle2, Circle, ExternalLink } from 'lucide-vue-next';
+
+const COACHING_MODES = [
+    { value: 'in_person', label: 'En présentiel' },
+    { value: 'online', label: 'En visio' },
+    { value: 'both', label: 'Présentiel et visio' },
+] as const;
+
+type CompletionItem = { key: string; label: string; done: boolean };
+type Completion = {
+    items: CompletionItem[];
+    completed: number;
+    total: number;
+    percentage: number;
+    is_complete: boolean;
+};
 
 type Profile = {
     slug: string;
@@ -22,9 +38,11 @@ type Profile = {
     city: string | null;
     postal_code: string | null;
     specialties: string;
+    coaching_mode: string;
     is_published: boolean;
     avatar_url: string | null;
     public_url: string;
+    completion: Completion;
 };
 
 const props = defineProps<{ profile: Profile }>();
@@ -45,6 +63,7 @@ const form = useForm({
     latitude: null as number | null,
     longitude: null as number | null,
     specialties: props.profile.specialties ?? '',
+    coaching_mode: props.profile.coaching_mode ?? 'in_person',
     is_published: props.profile.is_published,
     photo: null as File | null,
 });
@@ -69,6 +88,8 @@ watch(
         }
     },
 );
+
+const completion = computed(() => props.profile.completion);
 
 const previewUrl = computed(() => {
     if (form.photo) {
@@ -97,7 +118,7 @@ const submit = () => {
     <AppLayout :breadcrumbs="breadcrumbItems">
         <Head title="Mon profil coach" />
 
-        <div class="mx-auto w-full max-w-2xl space-y-6 p-4">
+        <div class="w-full space-y-6 p-4">
             <div class="flex items-start justify-between gap-4">
                 <HeadingSmall
                     title="Mon profil coach"
@@ -118,6 +139,43 @@ const submit = () => {
                 class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200"
             >
                 {{ flashSuccess }}
+            </div>
+
+            <!-- Complétion du profil -->
+            <div
+                class="rounded-lg border p-4"
+                :class="completion.is_complete
+                    ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40'
+                    : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40'"
+            >
+                <div class="flex items-center justify-between gap-4">
+                    <span class="text-sm font-medium">
+                        <template v-if="completion.is_complete">🎉 Votre profil est complet !</template>
+                        <template v-else>Profil complété à {{ completion.percentage }}%</template>
+                    </span>
+                    <span class="text-xs text-muted-foreground">
+                        {{ completion.completed }}/{{ completion.total }}
+                    </span>
+                </div>
+                <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                    <div
+                        class="h-full rounded-full transition-all"
+                        :class="completion.is_complete ? 'bg-green-500' : 'bg-blue-600'"
+                        :style="{ width: completion.percentage + '%' }"
+                    />
+                </div>
+                <ul class="mt-3 grid gap-2 sm:grid-cols-2">
+                    <li
+                        v-for="item in completion.items"
+                        :key="item.key"
+                        class="flex items-center gap-2 text-sm"
+                        :class="item.done ? 'text-slate-700 dark:text-slate-300' : 'text-muted-foreground'"
+                    >
+                        <CheckCircle2 v-if="item.done" class="size-4 text-green-500" />
+                        <Circle v-else class="size-4 text-slate-400" />
+                        {{ item.label }}
+                    </li>
+                </ul>
             </div>
 
             <form class="space-y-6" @submit.prevent="submit">
@@ -200,6 +258,28 @@ const submit = () => {
                         <p class="text-xs text-muted-foreground">Séparées par des virgules.</p>
                         <InputError :message="form.errors.specialties" />
                     </div>
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="coaching_mode">Modalité des séances</Label>
+                    <Select v-model="form.coaching_mode">
+                        <SelectTrigger id="coaching_mode" class="w-full">
+                            <SelectValue placeholder="Choisissez une modalité" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem
+                                v-for="mode in COACHING_MODES"
+                                :key="mode.value"
+                                :value="mode.value"
+                            >
+                                {{ mode.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <p class="text-xs text-muted-foreground">
+                        Indiquez si vous proposez vos séances en présentiel, en visio, ou les deux.
+                    </p>
+                    <InputError :message="form.errors.coaching_mode" />
                 </div>
 
                 <!-- Publication -->

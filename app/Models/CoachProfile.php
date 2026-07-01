@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CoachingMode;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,7 @@ class CoachProfile extends Model implements HasMedia
         'latitude',
         'longitude',
         'specialties',
+        'coaching_mode',
         'is_published',
         'published_at',
     ];
@@ -45,6 +47,7 @@ class CoachProfile extends Model implements HasMedia
     {
         return [
             'specialties' => 'array',
+            'coaching_mode' => CoachingMode::class,
             'hourly_rate' => 'integer',
             'latitude' => 'float',
             'longitude' => 'float',
@@ -120,6 +123,8 @@ class CoachProfile extends Model implements HasMedia
             'city' => $this->city,
             'distance_km' => isset($this->distance) ? round((float) $this->distance) : null,
             'specialties' => array_slice($this->specialties ?? [], 0, 3),
+            'coaching_mode' => ($this->coaching_mode ?? CoachingMode::InPerson)->value,
+            'coaching_mode_label' => ($this->coaching_mode ?? CoachingMode::InPerson)->label(),
             'avatar_url' => $this->avatar_url,
             'is_founder' => $this->is_founder,
         ];
@@ -144,6 +149,38 @@ class CoachProfile extends Model implements HasMedia
             ?: $this->getFirstMediaUrl(self::MEDIA_AVATAR);
 
         return $url ?: ($this->user?->avatar_url ?: null);
+    }
+
+    /**
+     * Complétion du profil sur les 4 critères clés attendus d'un coach :
+     * photo, biographie, spécialités et tarif horaire. Sert à afficher une
+     * checklist et une barre de progression (page profil + rappel global).
+     *
+     * @return array{items: array<int, array{key: string, label: string, done: bool}>, completed: int, total: int, percentage: int, is_complete: bool}
+     */
+    public function completion(): array
+    {
+        // On vérifie une photo coach réellement uploadée (et non le fallback avatar utilisateur).
+        $hasPhoto = $this->getFirstMediaUrl(self::MEDIA_AVATAR) !== '';
+
+        $items = [
+            ['key' => 'photo', 'label' => 'Photo de profil', 'done' => $hasPhoto],
+            ['key' => 'bio', 'label' => 'Biographie', 'done' => filled($this->bio)],
+            ['key' => 'specialties', 'label' => 'Spécialités', 'done' => ! empty($this->specialties)],
+            ['key' => 'hourly_rate', 'label' => 'Tarif horaire', 'done' => ($this->hourly_rate ?? 0) > 0],
+            ['key' => 'location', 'label' => 'Ville / Code postal', 'done' => filled($this->city)],
+        ];
+
+        $completed = count(array_filter($items, fn ($item) => $item['done']));
+        $total = count($items);
+
+        return [
+            'items' => $items,
+            'completed' => $completed,
+            'total' => $total,
+            'percentage' => (int) round($completed / $total * 100),
+            'is_complete' => $completed === $total,
+        ];
     }
 
     /**

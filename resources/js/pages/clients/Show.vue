@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Eye, Download, Printer, Mail, Edit, Trash2, Layout, MessageCircle } from 'lucide-vue-next';
+import { ArrowLeft, Eye, Download, Printer, Mail, Edit, Trash2, Layout, MessageCircle, UserPlus } from 'lucide-vue-next';
 import { computed, ref, watch, nextTick } from 'vue';
 import type { Customer, TrainingSessionHistory } from './types';
 import { useNotifications } from '@/composables/useNotifications';
@@ -639,6 +639,23 @@ const sendMessageToClient = () => {
     router.post(`/customers/${props.customer.id}/message`);
 };
 
+// Invite le client à créer son compte (réservé aux abonnés Pro).
+const isInviting = ref(false);
+const handleInviteClient = () => {
+    if (!isPro.value) {
+        isUpgradeModalOpen.value = true;
+        return;
+    }
+    if (isInviting.value) return;
+    isInviting.value = true;
+    router.post(`/customers/${props.customer.id}/invite`, {}, {
+        preserveScroll: true,
+        onFinish: () => {
+            isInviting.value = false;
+        },
+    });
+};
+
 const handleDeleteCustomer = () => {
     isDeleteDialogOpen.value = true;
 };
@@ -699,6 +716,16 @@ watch(isDeleteDialogOpen, (open) => {
                     >
                         <MessageCircle class="size-4" />
                         <span>Envoyer un message</span>
+                    </Button>
+                    <Button
+                        v-if="isOwner && !props.customer.has_account && props.customer.email"
+                        size="sm"
+                        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                        :disabled="isInviting"
+                        @click="handleInviteClient"
+                    >
+                        <UserPlus class="size-4" />
+                        <span>{{ isInviting ? 'Envoi…' : 'Inviter à créer son compte' }}</span>
                     </Button>
                     <Button
                         v-if="isOwner"

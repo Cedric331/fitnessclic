@@ -18,9 +18,7 @@ class CoachDirectoryController extends Controller
 
     private const DEFAULT_RADIUS = 25;
 
-    public function __construct(private readonly GeocodingService $geocoder)
-    {
-    }
+    public function __construct(private readonly GeocodingService $geocoder) {}
 
     /**
      * Public directory of published coaches (superprof-style).
@@ -297,6 +295,8 @@ class CoachDirectoryController extends Controller
                 'hourly_rate' => $profile->hourly_rate_euros,
                 'city' => $profile->city,
                 'specialties' => $profile->specialties ?? [],
+                'coaching_mode' => ($profile->coaching_mode ?? \App\Enums\CoachingMode::InPerson)->value,
+                'coaching_mode_label' => ($profile->coaching_mode ?? \App\Enums\CoachingMode::InPerson)->label(),
                 'avatar_url' => $profile->avatar_url,
                 'is_founder' => $profile->is_founder,
             ],

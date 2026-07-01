@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
                     'isClient' => $request->user()->isClientAccount(),
                     'unreadMessages' => $request->user()->unreadMessagesCount(),
                     'hasTeam' => $request->user()->teams()->exists(),
+                    'profileCompletion' => $this->coachProfileCompletion($request),
                 ] : null,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
@@ -64,6 +65,34 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
             ],
             'csrfToken' => $request->session()->token(),
+        ];
+    }
+
+    /**
+     * Résumé léger de complétion du profil coach (pour le bandeau de rappel global).
+     * Null pour les non-coachs ; profil absent = 0 %.
+     *
+     * @return array{percentage: int, is_complete: bool}|null
+     */
+    private function coachProfileCompletion(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->isCoach()) {
+            return null;
+        }
+
+        $profile = $user->coachProfile;
+
+        if (! $profile) {
+            return ['percentage' => 0, 'is_complete' => false];
+        }
+
+        $completion = $profile->completion();
+
+        return [
+            'percentage' => $completion['percentage'],
+            'is_complete' => $completion['is_complete'],
         ];
     }
 }

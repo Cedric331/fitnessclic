@@ -6,6 +6,8 @@ export type Coach = {
     city: string | null;
     distance_km: number | null;
     specialties: string[];
+    coaching_mode: string;
+    coaching_mode_label: string;
     avatar_url: string | null;
     is_founder: boolean;
 };

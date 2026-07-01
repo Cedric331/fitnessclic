@@ -49,6 +49,7 @@ class ClientSpaceController extends Controller
             ->map(fn (User $coach) => [
                 'id' => $coach->id,
                 'name' => $coach->name,
+                'avatar_url' => $coach->coachProfile?->avatar_url,
                 'profile_url' => $coach->coachProfile && $coach->coachProfile->is_published
                     ? route('coachs.show', $coach->coachProfile->slug)
                     : null,

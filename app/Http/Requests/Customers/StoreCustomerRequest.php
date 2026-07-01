@@ -28,6 +28,7 @@ class StoreCustomerRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:255'],
             'internal_note' => ['nullable', 'string'],
             'is_active' => ['nullable', 'boolean'],
+            'send_invitation' => ['nullable', 'boolean'],
         ];
     }
 }

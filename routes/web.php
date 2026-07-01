@@ -8,6 +8,7 @@ use App\Http\Controllers\ClientSpaceController;
 use App\Http\Controllers\CoachDirectoryController;
 use App\Http\Controllers\CoachProfileController;
 use App\Http\Controllers\ConversationsController;
+use App\Http\Controllers\CustomerInvitationsController;
 use App\Http\Controllers\ExercisesController;
 use App\Http\Controllers\PopinsController;
 use App\Http\Controllers\PublicSessionController;
@@ -83,6 +84,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/announcements/current', [AnnouncementsController::class, 'current'])->name('announcements.current');
     Route::post('/announcements/{announcement}/seen', [AnnouncementsController::class, 'markAsSeen'])->name('announcements.seen');
 
+    // Acceptation d'une invitation client (par le client authentifié)
+    Route::post('/customers/invitations/{token}/accept', [CustomerInvitationsController::class, 'accept'])
+        ->whereUuid('token')
+        ->name('customers.invitations.accept');
+
     // ───────── Routes réservées aux coachs (et admins) ─────────
     Route::middleware('coach')->group(function () {
 
@@ -92,6 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/customers/{customer}/message', [ConversationsController::class, 'startFromCustomer'])->name('client.customers.message');
         Route::post('/messages/{conversation}/add-customer', [ConversationsController::class, 'addCustomer'])->name('messages.add-customer');
         Route::post('/customers', [\App\Http\Controllers\CustomersController::class, 'store'])->name('client.customers.store');
+        Route::post('/customers/{customer}/invite', [CustomerInvitationsController::class, 'store'])->name('client.customers.invite');
         Route::put('/customers/{customer}', [\App\Http\Controllers\CustomersController::class, 'update'])->name('client.customers.update');
         Route::delete('/customers/{customer}', [\App\Http\Controllers\CustomersController::class, 'destroy'])->name('client.customers.destroy');
 
@@ -165,6 +172,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Team invitation landing page (public)
 Route::get('/team/invitations/{token}', [TeamInvitationsController::class, 'show'])->name('team.invitations.show');
+
+// Customer invitation landing page (public)
+Route::get('/customers/invitations/{token}', [CustomerInvitationsController::class, 'show'])->name('customers.invitations.show');
 
 // Stripe
 Route::post(

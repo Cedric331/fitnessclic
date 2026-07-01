@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CoachingMode;
 use App\Http\Requests\Coach\UpdateCoachProfileRequest;
 use App\Models\CoachProfile;
 use App\Models\User;
@@ -14,9 +15,7 @@ use Inertia\Response;
 
 class CoachProfileController extends Controller
 {
-    public function __construct(private readonly GeocodingService $geocoder)
-    {
-    }
+    public function __construct(private readonly GeocodingService $geocoder) {}
 
     /**
      * Show the coach's own profile edit form.
@@ -83,6 +82,7 @@ class CoachProfileController extends Controller
             'latitude' => $latitude,
             'longitude' => $longitude,
             'specialties' => $this->parseSpecialties($validated['specialties'] ?? null),
+            'coaching_mode' => $validated['coaching_mode'] ?? CoachingMode::InPerson->value,
             'is_published' => $request->boolean('is_published'),
         ]);
         $profile->save();
@@ -126,9 +126,11 @@ class CoachProfileController extends Controller
             'city' => $profile->city,
             'postal_code' => $profile->postal_code,
             'specialties' => implode(', ', $profile->specialties ?? []),
+            'coaching_mode' => ($profile->coaching_mode ?? CoachingMode::InPerson)->value,
             'is_published' => $profile->is_published,
             'avatar_url' => $profile->avatar_url,
             'public_url' => route('coachs.show', $profile->slug),
+            'completion' => $profile->completion(),
         ];
     }
 }

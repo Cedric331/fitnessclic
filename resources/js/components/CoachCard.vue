@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Crown } from 'lucide-vue-next';
+import { MapPin, Crown, Video } from 'lucide-vue-next';
 import type { Coach } from '@/types/coach';
 
 defineProps<{ coach: Coach }>();
@@ -64,6 +64,13 @@ const initials = (name: string | null) =>
                 <span v-if="coach.distance_km !== null" class="text-xs text-primary">
                     · à {{ coach.distance_km }} km
                 </span>
+            </p>
+            <p
+                v-if="coach.coaching_mode && coach.coaching_mode !== 'in_person'"
+                class="flex items-center gap-1 text-xs text-muted-foreground"
+                :class="{ 'mt-auto': !coach.city }"
+            >
+                <Video class="size-3.5" /> {{ coach.coaching_mode_label }}
             </p>
             <div v-if="coach.specialties.length" class="flex flex-wrap gap-1.5">
                 <Badge v-for="s in coach.specialties" :key="s" variant="secondary">

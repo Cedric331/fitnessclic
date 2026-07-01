@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Coach;
 
+use App\Enums\CoachingMode;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateCoachProfileRequest extends FormRequest
 {
@@ -27,6 +29,7 @@ class UpdateCoachProfileRequest extends FormRequest
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'specialties' => ['nullable', 'string', 'max:500'],
+            'coaching_mode' => ['nullable', Rule::enum(CoachingMode::class)],
             'is_published' => ['nullable', 'boolean'],
             'photo' => ['nullable', 'image', 'max:5120'], // 5 Mo
         ];

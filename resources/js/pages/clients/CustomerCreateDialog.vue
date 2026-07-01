@@ -55,6 +55,14 @@ const customerForm = useForm({
     phone: '',
     internal_note: '',
     is_active: true,
+    send_invitation: false,
+});
+
+// Si l'email est retiré, on ne peut plus envoyer d'invitation.
+watch(() => customerForm.email, (email) => {
+    if (!email) {
+        customerForm.send_invitation = false;
+    }
 });
 
 const handleCreateCustomer = () => {
@@ -196,6 +204,25 @@ const formId = `customer-form-${Math.random().toString(36).substr(2, 9)}`;
                         class="text-sm font-normal cursor-pointer text-slate-700 dark:text-slate-300"
                     >
                         Client actif
+                    </Label>
+                </div>
+                <div class="flex items-start space-x-2">
+                    <Checkbox
+                        :id="`send_invitation_${formId}`"
+                        :model-value="customerForm.send_invitation"
+                        :disabled="!customerForm.email"
+                        @update:model-value="(checked: boolean) => customerForm.send_invitation = checked"
+                    />
+                    <Label
+                        :for="`send_invitation_${formId}`"
+                        class="text-sm font-normal cursor-pointer text-slate-700 dark:text-slate-300"
+                        :class="{ 'opacity-50 cursor-not-allowed': !customerForm.email }"
+                    >
+                        Envoyer une invitation par email
+                        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                            Le client reçoit un lien pour créer son compte et être associé à sa fiche.
+                            <template v-if="!customerForm.email">Renseignez un email pour l'activer.</template>
+                        </span>
                     </Label>
                 </div>
             </form>

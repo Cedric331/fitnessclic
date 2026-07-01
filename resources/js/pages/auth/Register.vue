@@ -12,6 +12,7 @@ import { Form, Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const inviteToken = ref<string | null>(null);
+const customerInviteToken = ref<string | null>(null);
 const inviteEmail = ref<string | null>(null);
 const emailValue = ref('');
 const selectedRole = ref<'coach' | 'client'>('coach');
@@ -21,12 +22,13 @@ const contactCoach = ref<string | null>(null);
 if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     inviteToken.value = params.get('invite');
+    customerInviteToken.value = params.get('customer_invite');
     inviteEmail.value = params.get('email');
     if (inviteEmail.value) {
         emailValue.value = inviteEmail.value;
     }
-    // Pré-sélection du rôle via ?role= (ex. bouton « Contacter » → role=client).
-    if (params.get('role') === 'client') {
+    // Une invitation client force le rôle « client ».
+    if (customerInviteToken.value || params.get('role') === 'client') {
         selectedRole.value = 'client';
     }
     // Destination post-inscription (ex. retour sur la fiche du coach).
@@ -37,6 +39,9 @@ if (typeof window !== 'undefined') {
     // Coach à contacter → conversation ouverte automatiquement après vérification.
     contactCoach.value = params.get('contact');
 }
+
+// L'email est verrouillé lorsqu'il provient d'une invitation (équipe ou client).
+const emailLocked = computed(() => !!inviteToken.value || !!customerInviteToken.value);
 
 // Le lien « se connecter » conserve la destination pour un client déjà inscrit.
 const loginHref = computed(() =>
@@ -65,14 +70,20 @@ const loginHref = computed(() =>
                 name="invite_token"
                 :value="inviteToken"
             />
-            <!-- Le rôle est toujours envoyé ; côté serveur une invitation force "coach". -->
+            <input
+                v-if="customerInviteToken"
+                type="hidden"
+                name="customer_invite"
+                :value="customerInviteToken"
+            />
+            <!-- Le rôle est toujours envoyé ; côté serveur une invitation force le rôle. -->
             <input type="hidden" name="role" :value="selectedRole" />
             <!-- Destination post-inscription (ex. retour sur la fiche du coach). -->
             <input v-if="redirectTo" type="hidden" name="redirect" :value="redirectTo" />
             <!-- Coach à contacter automatiquement après vérification de l'e-mail. -->
             <input v-if="contactCoach" type="hidden" name="contact_coach" :value="contactCoach" />
             <div class="grid gap-6">
-                <div v-if="!inviteToken" class="grid gap-2">
+                <div v-if="!inviteToken && !customerInviteToken" class="grid gap-2">
                     <Label>Je suis…</Label>
                     <div class="grid grid-cols-2 gap-3">
                         <button
@@ -135,11 +146,11 @@ const loginHref = computed(() =>
                         name="email"
                         placeholder="email@exemple.com"
                         v-model="emailValue"
-                        :readonly="!!inviteToken"
-                        :class="inviteToken ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''"
+                        :readonly="emailLocked"
+                        :class="emailLocked ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''"
                     />
                     <InputError :message="errors.email" />
-                    <p v-if="inviteToken" class="text-xs text-slate-500">
+                    <p v-if="emailLocked" class="text-xs text-slate-500">
                         L’adresse email est verrouillée car l’inscription vient d’une invitation.
                     </p>
                 </div>

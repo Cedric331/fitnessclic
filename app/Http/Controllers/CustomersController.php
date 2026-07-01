@@ -5,9 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Customers\IndexCustomerRequest;
 use App\Http\Requests\Customers\StoreCustomerRequest;
 use App\Http\Requests\Customers\UpdateCustomerRequest;
+use App\Mail\CustomerInvitationMail;
 use App\Models\Customer;
+use App\Models\CustomerInvitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -78,12 +82,31 @@ class CustomersController extends Controller
         }
 
         $validated = $request->validated();
+        $sendInvitation = (bool) ($validated['send_invitation'] ?? false);
+        unset($validated['send_invitation']);
 
         $customer = Customer::create([
             ...$validated,
             'user_id' => Auth::id(),
             'is_active' => $validated['is_active'] ?? true,
         ]);
+
+        // Invitation optionnelle : uniquement si un email est fourni et que la
+        // fiche n'a pas déjà été auto-associée à un compte client existant.
+        if ($sendInvitation && $customer->email && ! $customer->isLinkedToAccount()) {
+            $invitation = CustomerInvitation::create([
+                'customer_id' => $customer->id,
+                'invited_by_user_id' => $user->id,
+                'email' => $customer->email,
+                'token' => Str::uuid()->toString(),
+                'expires_at' => now()->addHours(48),
+            ]);
+
+            Mail::to($customer->email)->send(new CustomerInvitationMail($invitation));
+
+            return redirect()->route('client.customers.index')
+                ->with('success', 'Client créé et invitation envoyée à '.$customer->email.'.');
+        }
 
         return redirect()->route('client.customers.index')
             ->with('success', 'Client créé avec succès.');

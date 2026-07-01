@@ -13,6 +13,7 @@ import {
     ShieldCheck,
     Clock,
     Crown,
+    Video,
 } from 'lucide-vue-next';
 import { type BreadcrumbItem } from '@/types';
 
@@ -24,6 +25,8 @@ type Coach = {
     hourly_rate: number | null;
     city: string | null;
     specialties: string[];
+    coaching_mode: string;
+    coaching_mode_label: string;
     avatar_url: string | null;
     is_founder: boolean;
 };
@@ -143,12 +146,14 @@ const steps = [
                         <p v-if="coach.headline" class="mt-1 text-white/80">
                             {{ coach.headline }}
                         </p>
-                        <p
-                            v-if="coach.city"
-                            class="mt-2 flex items-center gap-1.5 text-sm text-white/70"
-                        >
-                            <MapPin class="size-4" /> {{ coach.city }}
-                        </p>
+                        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-white/70">
+                            <span v-if="coach.city" class="flex items-center gap-1.5">
+                                <MapPin class="size-4" /> {{ coach.city }}
+                            </span>
+                            <span v-if="coach.coaching_mode_label" class="flex items-center gap-1.5">
+                                <Video class="size-4" /> {{ coach.coaching_mode_label }}
+                            </span>
+                        </div>
                     </div>
 
                     <div class="hidden sm:block">
