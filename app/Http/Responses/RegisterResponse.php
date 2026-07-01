@@ -14,9 +14,12 @@ class RegisterResponse implements RegisterResponseContract
 
     /**
      * Redirige vers la destination demandée après inscription (ex. la fiche du
-     * coach depuis laquelle un client s'est inscrit via « Contacter »), sinon
-     * vers la destination Fortify par défaut. Mémorise aussi l'intention de
-     * contacter un coach pour ouvrir la conversation après vérification e-mail.
+     * coach depuis laquelle un client s'est inscrit via « Contacter »). À défaut,
+     * un coach est envoyé vers la gestion de son profil (via le middleware
+     * `verified`, cette URL est mémorisée comme « intended » et le coach y est
+     * ramené après vérification de son e-mail) ; sinon destination Fortify par
+     * défaut. Mémorise aussi l'intention de contacter un coach pour ouvrir la
+     * conversation après vérification e-mail.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Symfony\Component\HttpFoundation\Response
@@ -31,9 +34,17 @@ class RegisterResponse implements RegisterResponseContract
 
         $redirect = (string) $request->input('redirect', '');
 
-        return $this->isSafeInternalPath($redirect)
-            ? redirect()->to($redirect)
-            : redirect()->intended(Fortify::redirects('register'));
+        if ($this->isSafeInternalPath($redirect)) {
+            return redirect()->to($redirect);
+        }
+
+        $user = $request->user();
+
+        if ($user && $user->isCoach()) {
+            return redirect()->route('coach.profile.edit');
+        }
+
+        return redirect()->intended(Fortify::redirects('register'));
     }
 
     /**

@@ -195,7 +195,7 @@
                         <img src="{{ $logoUrl }}" alt="FitnessClic" class="logo">
                     </div>
                     <h1 class="header-title">Bienvenue !</h1>
-                    <p class="header-subtitle">Votre aventure commence maintenant</p>
+                    <p class="header-subtitle">{{ $headerSubtitle }}</p>
                 </div>
 
                 <!-- Contenu principal -->
@@ -204,21 +204,13 @@
                         Bonjour <span class="greeting-name">{{ $userName }}</span>,
                     </p>
                     
-                    <p class="content-text">
-                        Merci pour votre inscription sur <strong>FitnessClic</strong> ! Nous sommes ravis de vous accueillir dans notre communauté de coachs sportifs passionnés.
-                    </p>
-                    
-                    <p class="content-text">
-                        Vous disposez maintenant d'un outil puissant pour créer, gérer et partager vos séances d'entraînement personnalisées.
-                    </p>
-
-                    <p class="content-text">
-                        Si vous avez des questions ou besoin d'aide, notre équipe est là pour vous accompagner. N'hésitez pas à nous contacter !
-                    </p>
+                    @foreach ($paragraphs as $paragraph)
+                        <p class="content-text">{!! $paragraph !!}</p>
+                    @endforeach
 
                     <!-- Bouton CTA -->
                     <div class="cta-section">
-                        <a href="{{ $loginUrl }}" class="cta-button">Accéder à mon compte</a>
+                        <a href="{{ $ctaUrl }}" class="cta-button">{{ $ctaLabel }}</a>
                     </div>
 
                     <!-- Signature -->
