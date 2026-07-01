@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -20,6 +21,11 @@ class CoachProfile extends Model implements HasMedia
 
     public const MEDIA_DISK = 'public';
 
+    /**
+     * Date limite d'inscription (incluse) pour bénéficier du statut « Fondateur ».
+     */
+    public const FOUNDER_CUTOFF = '2026-08-31';
+
     protected $fillable = [
         'user_id',
         'slug',
@@ -28,6 +34,8 @@ class CoachProfile extends Model implements HasMedia
         'hourly_rate',
         'city',
         'postal_code',
+        'latitude',
+        'longitude',
         'specialties',
         'is_published',
         'published_at',
@@ -38,6 +46,8 @@ class CoachProfile extends Model implements HasMedia
         return [
             'specialties' => 'array',
             'hourly_rate' => 'integer',
+            'latitude' => 'float',
+            'longitude' => 'float',
             'is_published' => 'boolean',
             'published_at' => 'datetime',
         ];
@@ -71,6 +81,61 @@ class CoachProfile extends Model implements HasMedia
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('is_published', true);
+    }
+
+    /**
+     * Restrict to profiles within $radiusKm of the given coordinates,
+     * exposing a `distance` (km) attribute and ordering by proximity.
+     * Formule de Haversine (6371 = rayon terrestre en km).
+     */
+    public function scopeNearby(Builder $query, float $lat, float $lng, float $radiusKm): Builder
+    {
+        $haversine = '(6371 * acos('
+            .'cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) '
+            .'+ sin(radians(?)) * sin(radians(latitude))'
+            .'))';
+
+        return $query
+            ->select('coach_profiles.*')
+            ->selectRaw("{$haversine} as distance", [$lat, $lng, $lat])
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->whereRaw("{$haversine} <= ?", [$lat, $lng, $lat, $radiusKm])
+            ->orderBy('distance');
+    }
+
+    /**
+     * Présentation « carte » du coach, partagée entre l'annuaire et la home.
+     * `distance` n'est présent qu'après une recherche de proximité (scopeNearby).
+     *
+     * @return array<string, mixed>
+     */
+    public function toCard(): array
+    {
+        return [
+            'slug' => $this->slug,
+            'name' => $this->user?->name,
+            'headline' => $this->headline,
+            'hourly_rate' => $this->hourly_rate_euros,
+            'city' => $this->city,
+            'distance_km' => isset($this->distance) ? round((float) $this->distance) : null,
+            'specialties' => array_slice($this->specialties ?? [], 0, 3),
+            'avatar_url' => $this->avatar_url,
+            'is_founder' => $this->is_founder,
+        ];
+    }
+
+    /**
+     * Statut « Fondateur » : réservé aux coachs dont le compte a été créé au
+     * plus tard le 31 août 2026 inclus. On se base sur la date d'inscription
+     * de l'utilisateur, la fiche coach étant créée paresseusement plus tard.
+     */
+    public function getIsFounderAttribute(): bool
+    {
+        $registeredAt = $this->user?->created_at;
+
+        return $registeredAt !== null
+            && $registeredAt->lessThanOrEqualTo(Carbon::parse(self::FOUNDER_CUTOFF)->endOfDay());
     }
 
     public function getAvatarUrlAttribute(): ?string

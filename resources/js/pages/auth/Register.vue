@@ -9,12 +9,14 @@ import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 import { Form, Head } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const inviteToken = ref<string | null>(null);
 const inviteEmail = ref<string | null>(null);
 const emailValue = ref('');
 const selectedRole = ref<'coach' | 'client'>('coach');
+const redirectTo = ref<string | null>(null);
+const contactCoach = ref<string | null>(null);
 
 if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -23,7 +25,25 @@ if (typeof window !== 'undefined') {
     if (inviteEmail.value) {
         emailValue.value = inviteEmail.value;
     }
+    // Pré-sélection du rôle via ?role= (ex. bouton « Contacter » → role=client).
+    if (params.get('role') === 'client') {
+        selectedRole.value = 'client';
+    }
+    // Destination post-inscription (ex. retour sur la fiche du coach).
+    const redirect = params.get('redirect');
+    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+        redirectTo.value = redirect;
+    }
+    // Coach à contacter → conversation ouverte automatiquement après vérification.
+    contactCoach.value = params.get('contact');
 }
+
+// Le lien « se connecter » conserve la destination pour un client déjà inscrit.
+const loginHref = computed(() =>
+    redirectTo.value
+        ? `${login.url()}?redirect=${encodeURIComponent(redirectTo.value)}`
+        : login.url(),
+);
 </script>
 
 <template>
@@ -47,6 +67,10 @@ if (typeof window !== 'undefined') {
             />
             <!-- Le rôle est toujours envoyé ; côté serveur une invitation force "coach". -->
             <input type="hidden" name="role" :value="selectedRole" />
+            <!-- Destination post-inscription (ex. retour sur la fiche du coach). -->
+            <input v-if="redirectTo" type="hidden" name="redirect" :value="redirectTo" />
+            <!-- Coach à contacter automatiquement après vérification de l'e-mail. -->
+            <input v-if="contactCoach" type="hidden" name="contact_coach" :value="contactCoach" />
             <div class="grid gap-6">
                 <div v-if="!inviteToken" class="grid gap-2">
                     <Label>Je suis…</Label>
@@ -163,7 +187,7 @@ if (typeof window !== 'undefined') {
             <div class="text-center text-sm text-muted-foreground">
                 Vous avez déjà un compte ?
                 <TextLink
-                    :href="login.url()"
+                    :href="loginHref"
                     class="underline underline-offset-4"
                     :tabindex="6"
                     >Se connecter</TextLink

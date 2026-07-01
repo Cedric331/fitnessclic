@@ -13,9 +13,13 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Laravel\Fortify\Contracts\LoginResponse;
+use Laravel\Fortify\Contracts\RegisterResponse;
+use Laravel\Fortify\Contracts\VerifyEmailResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use App\Http\Responses\LoginResponse as CustomLoginResponse;
+use App\Http\Responses\RegisterResponse as CustomRegisterResponse;
+use App\Http\Responses\VerifyEmailResponse as CustomVerifyEmailResponse;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -51,6 +55,8 @@ class FortifyServiceProvider extends ServiceProvider
     private function registerResponses(): void
     {
         $this->app->singleton(LoginResponse::class, CustomLoginResponse::class);
+        $this->app->singleton(RegisterResponse::class, CustomRegisterResponse::class);
+        $this->app->singleton(VerifyEmailResponse::class, CustomVerifyEmailResponse::class);
     }
 
     /**

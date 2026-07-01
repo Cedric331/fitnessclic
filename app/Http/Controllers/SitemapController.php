@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\BlogPost;
 use App\Models\CoachProfile;
+use App\Support\CoachTaxonomy;
 use Illuminate\Http\Response;
+use Illuminate\Support\Str;
 
 class SitemapController extends Controller
 {
@@ -89,6 +91,33 @@ class SitemapController extends Controller
                 'lastmod' => ($coach->updated_at ?? $coach->published_at ?? now())->toAtomString(),
                 'changefreq' => 'weekly',
                 'priority' => '0.6',
+            ];
+        }
+
+        // Pages d'atterrissage SEO par discipline
+        foreach (CoachTaxonomy::disciplines() as $discipline) {
+            $urls[] = [
+                'loc' => route('coachs.discipline', $discipline['slug']),
+                'lastmod' => $now,
+                'changefreq' => 'weekly',
+                'priority' => '0.7',
+            ];
+        }
+
+        // Pages d'atterrissage SEO par ville (villes de coachs publiés)
+        $cities = CoachProfile::query()
+            ->published()
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->distinct()
+            ->pluck('city');
+
+        foreach ($cities as $city) {
+            $urls[] = [
+                'loc' => route('coachs.city', Str::slug($city)),
+                'lastmod' => $now,
+                'changefreq' => 'weekly',
+                'priority' => '0.7',
             ];
         }
 

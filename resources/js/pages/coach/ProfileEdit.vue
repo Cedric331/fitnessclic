@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
+import CityAutocomplete from '@/components/CityAutocomplete.vue';
+import type { Commune } from '@/composables/useCommuneSearch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,10 +42,33 @@ const form = useForm({
     hourly_rate: props.profile.hourly_rate ?? '',
     city: props.profile.city ?? '',
     postal_code: props.profile.postal_code ?? '',
+    latitude: null as number | null,
+    longitude: null as number | null,
     specialties: props.profile.specialties ?? '',
     is_published: props.profile.is_published,
     photo: null as File | null,
 });
+
+// Dernière ville issue d'une sélection : permet de repérer une saisie manuelle
+// et d'invalider les coordonnées pour forcer un géocodage côté serveur.
+let lastSelectedCity = props.profile.city ?? '';
+
+const onCitySelect = (commune: Commune) => {
+    lastSelectedCity = commune.city;
+    form.postal_code = commune.postalCode ?? '';
+    form.latitude = commune.lat;
+    form.longitude = commune.lng;
+};
+
+watch(
+    () => form.city,
+    (city) => {
+        if (city !== lastSelectedCity) {
+            form.latitude = null;
+            form.longitude = null;
+        }
+    },
+);
 
 const previewUrl = computed(() => {
     if (form.photo) {
@@ -149,7 +174,12 @@ const submit = () => {
                     </div>
                     <div class="grid gap-2">
                         <Label for="city">Ville</Label>
-                        <Input id="city" v-model="form.city" placeholder="Paris" />
+                        <CityAutocomplete
+                            id="city"
+                            v-model="form.city"
+                            placeholder="Paris"
+                            @select="onCitySelect"
+                        />
                         <InputError :message="form.errors.city" />
                     </div>
                 </div>

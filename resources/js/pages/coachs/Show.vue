@@ -12,6 +12,7 @@ import {
     CalendarCheck,
     ShieldCheck,
     Clock,
+    Crown,
 } from 'lucide-vue-next';
 import { type BreadcrumbItem } from '@/types';
 
@@ -24,6 +25,7 @@ type Coach = {
     city: string | null;
     specialties: string[];
     avatar_url: string | null;
+    is_founder: boolean;
 };
 
 type Meta = {
@@ -47,12 +49,16 @@ const formatRate = (rate: number | null) =>
     rate === null ? null : `${Number.isInteger(rate) ? rate : rate.toFixed(2)}`;
 
 // Un client connecté ouvre (ou rouvre) une conversation avec ce coach ;
-// un visiteur non connecté est redirigé vers la connexion.
+// un visiteur non connecté est invité à créer un compte client (l'inscription
+// d'un client se fait depuis le bouton de contact), avec un lien vers la
+// connexion sur la page d'inscription pour ceux qui ont déjà un compte.
 const contact = () => {
     if (user.value?.isClient) {
         router.post('/messages/start', { coach_slug: props.coach.slug });
     } else {
-        window.location.href = `/login?redirect=${encodeURIComponent(`/coachs/${props.coach.slug}`)}`;
+        const slug = props.coach.slug;
+        const redirect = encodeURIComponent(`/coachs/${slug}`);
+        window.location.href = `/register?role=client&redirect=${redirect}&contact=${encodeURIComponent(slug)}`;
     }
 };
 
@@ -122,11 +128,17 @@ const steps = [
                     </div>
 
                     <div class="flex-1">
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
                             <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
                                 {{ coach.name }}
                             </h1>
                             <BadgeCheck class="size-5 text-sky-400" />
+                            <span
+                                v-if="coach.is_founder"
+                                class="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white shadow-sm ring-1 ring-amber-600/50"
+                            >
+                                <Crown class="size-3.5" /> Fondateur
+                            </span>
                         </div>
                         <p v-if="coach.headline" class="mt-1 text-white/80">
                             {{ coach.headline }}

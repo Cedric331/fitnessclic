@@ -16,6 +16,7 @@ import { ref } from 'vue';
 const inviteToken = ref<string | null>(null);
 const inviteEmail = ref<string | null>(null);
 const emailValue = ref('');
+const redirectTo = ref<string | null>(null);
 
 if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -23,6 +24,11 @@ if (typeof window !== 'undefined') {
     inviteEmail.value = params.get('email');
     if (inviteEmail.value) {
         emailValue.value = inviteEmail.value;
+    }
+    // Destination post-connexion (ex. fiche du coach depuis « Contacter »).
+    const redirect = params.get('redirect');
+    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+        redirectTo.value = redirect;
     }
 }
 
@@ -59,6 +65,7 @@ defineProps<{
                 name="invite_token"
                 :value="inviteToken"
             />
+            <input v-if="redirectTo" type="hidden" name="redirect" :value="redirectTo" />
             <div class="grid gap-6">
                 <div class="grid gap-2">
                     <Label for="email">Adresse e-mail</Label>

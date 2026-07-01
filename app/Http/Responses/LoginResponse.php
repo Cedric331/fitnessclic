@@ -2,12 +2,15 @@
 
 namespace App\Http\Responses;
 
+use App\Http\Responses\Concerns\ResolvesSafeRedirect;
 use App\Models\TeamInvitation;
 use Illuminate\Http\RedirectResponse;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 
 class LoginResponse implements LoginResponseContract
 {
+    use ResolvesSafeRedirect;
+
     /**
      * @return RedirectResponse
      */
@@ -45,6 +48,12 @@ class LoginResponse implements LoginResponseContract
 
             return redirect()->route('team.index')
                 ->with('success', 'Bienvenue dans l\'équipe !');
+        }
+
+        // Retour vers la page d'origine (ex. fiche du coach) si demandée.
+        $redirect = (string) $request->input('redirect', '');
+        if ($this->isSafeInternalPath($redirect)) {
+            return redirect()->to($redirect);
         }
 
         return redirect()->intended(route('dashboard'));

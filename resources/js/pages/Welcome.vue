@@ -2,22 +2,27 @@
 import { Head } from '@inertiajs/vue3';
 import { computed, onMounted, onUnmounted } from 'vue';
 import NavBar from '@/components/welcome/NavBar.vue';
-import HeroSection from '@/components/welcome/HeroSection.vue';
-import FeaturesSection from '@/components/welcome/FeaturesSection.vue';
-import ScreenshotsSection from '@/components/welcome/ScreenshotsSection.vue';
-import BenefitsSection from '@/components/welcome/BenefitsSection.vue';
-import PricingSection from '@/components/welcome/PricingSection.vue';
-import CtaSection from '@/components/welcome/CtaSection.vue';
+import MarketplaceHero from '@/components/welcome/MarketplaceHero.vue';
+import FeaturedCoaches from '@/components/welcome/FeaturedCoaches.vue';
+import DisciplinesSection from '@/components/welcome/DisciplinesSection.vue';
+import HowItWorksSection from '@/components/welcome/HowItWorksSection.vue';
+import BecomeCoachSection from '@/components/welcome/BecomeCoachSection.vue';
+import CoachToolsSection from '@/components/welcome/CoachToolsSection.vue';
+import FaqSection from '@/components/welcome/FaqSection.vue';
+import FinalCtaSection from '@/components/welcome/FinalCtaSection.vue';
 import Footer from '@/components/welcome/Footer.vue';
 import CookieBanner from '@/components/welcome/CookieBanner.vue';
 import PopinModal from '@/components/welcome/PopinModal.vue';
+import type { Coach } from '@/types/coach';
 
 withDefaults(
     defineProps<{
         canRegister: boolean;
+        featuredCoaches?: Coach[];
     }>(),
     {
         canRegister: true,
+        featuredCoaches: () => [],
     },
 );
 
@@ -41,9 +46,9 @@ const currentUrl = computed(() => {
     }
     return defaultSiteUrl;
 });
-const title = 'FitnessClic - Logiciel pour coachs sportifs, créer vos programmes rapidement';
-const description = 'L\'outil professionnel pour les coachs sportifs et particuliers. Créez, organisez et partagez vos programmes d\'entraînement facilement. Bibliothèque d\'exercices, gestion de clients, export PDF. Compte gratuit disponible.';
-const keywords = 'coach sportif, séance d\'entraînement, programme fitness, création séance, gestion clients, bibliothèque exercices, fitness, sport, entraînement personnalisé';
+const title = 'FitnessClic - Trouvez votre coach sportif près de chez vous ou en ligne';
+const description = 'FitnessClic, la marketplace des coachs sportifs. Comparez les profils, les spécialités et les tarifs, puis contactez votre coach en quelques clics. Coachs vérifiés, près de chez vous ou en visio.';
+const keywords = 'coach sportif, trouver un coach, coaching sportif, personal trainer, musculation, perte de poids, yoga, préparation physique, coach en ligne, coach à domicile';
 // URL absolue de l'image pour Open Graph (Facebook nécessite une URL absolue en HTTPS)
 // Valeur statique pour garantir l'accessibilité lors du scraping par Facebook
 const imageUrl = `${defaultSiteUrl}/assets/logo_fitnessclic.png`;
@@ -168,12 +173,14 @@ onUnmounted(() => {
     <div class="flex min-h-screen flex-col bg-white dark:bg-gray-900">
         <NavBar />
         <main class="flex-1">
-            <HeroSection />
-            <FeaturesSection />
-            <ScreenshotsSection />
-            <BenefitsSection />
-            <PricingSection />
-            <CtaSection />
+            <MarketplaceHero />
+            <FeaturedCoaches :coaches="featuredCoaches" />
+            <DisciplinesSection />
+            <HowItWorksSection />
+            <BecomeCoachSection />
+            <CoachToolsSection />
+            <FaqSection />
+            <FinalCtaSection />
         </main>
         <Footer />
         <CookieBanner />

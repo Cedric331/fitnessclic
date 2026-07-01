@@ -23,6 +23,9 @@ class UpdateCoachProfileRequest extends FormRequest
             'hourly_rate' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'city' => ['nullable', 'string', 'max:255', 'required_if:is_published,true'],
             'postal_code' => ['nullable', 'string', 'max:10'],
+            // Coordonnées issues de l'autocomplétion de ville (API Géo gouv.fr).
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'specialties' => ['nullable', 'string', 'max:500'],
             'is_published' => ['nullable', 'boolean'],
             'photo' => ['nullable', 'image', 'max:5120'], // 5 Mo

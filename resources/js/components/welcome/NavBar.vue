@@ -64,7 +64,7 @@ onMounted(() => {
     <header class="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-sm dark:border-gray-800 dark:bg-gray-900/95">
         <nav class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
             <div class="flex items-center gap-6">
-                <Link :href="dashboard.url()" class="flex items-center gap-3 transition-opacity hover:opacity-80" aria-label="FitnessClic - Accueil">
+                <Link :href="$page.props.auth.user ? dashboard.url() : '/'" class="flex items-center gap-3 transition-opacity hover:opacity-80" aria-label="FitnessClic - Accueil">
                     <img 
                         src="/assets/logo_fitnessclic.png" 
                         alt="FitnessClic - Logiciel pour coachs sportifs, créer vos programmes rapidement" 
@@ -119,16 +119,16 @@ onMounted(() => {
                 </Link>
                 <template v-else>
                     <Link
-                        :href="login.url()"
-                        class="inline-block rounded-lg border border-transparent px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 dark:text-gray-200 dark:hover:border-gray-600"
+                        :href="register.url()"
+                        class="inline-flex items-center whitespace-nowrap rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:from-blue-700 hover:to-purple-700 hover:shadow-md"
                     >
-                        Connexion
+                        S'inscrire en tant que coach
                     </Link>
                     <Link
-                        :href="register.url()"
-                        class="inline-block rounded-lg border border-blue-600 bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:border-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600"
+                        :href="login.url()"
+                        class="inline-block rounded-lg border border-gray-300 px-5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
                     >
-                        S'inscrire
+                        Connexion
                     </Link>
                 </template>
             </div>
@@ -209,18 +209,18 @@ onMounted(() => {
                     </Link>
                     <template v-else>
                         <Link
-                            :href="login.url()"
-                            @click="closeMobileMenu"
-                            class="block rounded-lg border border-transparent px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
-                        >
-                            Connexion
-                        </Link>
-                        <Link
                             :href="register.url()"
                             @click="closeMobileMenu"
-                            class="block rounded-lg border border-blue-600 bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 dark:border-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600"
+                            class="block rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition-all hover:from-blue-700 hover:to-purple-700"
                         >
-                            S'inscrire
+                            S'inscrire en tant que coach
+                        </Link>
+                        <Link
+                            :href="login.url()"
+                            @click="closeMobileMenu"
+                            class="block rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+                        >
+                            Connexion
                         </Link>
                     </template>
                 </div>

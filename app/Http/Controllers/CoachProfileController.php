@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Coach\UpdateCoachProfileRequest;
 use App\Models\CoachProfile;
 use App\Models\User;
+use App\Services\GeocodingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -13,6 +14,10 @@ use Inertia\Response;
 
 class CoachProfileController extends Controller
 {
+    public function __construct(private readonly GeocodingService $geocoder)
+    {
+    }
+
     /**
      * Show the coach's own profile edit form.
      */
@@ -42,14 +47,41 @@ class CoachProfileController extends Controller
 
         $validated = $request->validated();
 
+        $city = $validated['city'] ?? null;
+        $postalCode = $validated['postal_code'] ?? null;
+
+        // Coordonnées fournies par l'autocomplétion ; sinon géocodage de secours
+        // (ville saisie manuellement) tout en préservant les coordonnées
+        // existantes lorsque la ville n'a pas changé.
+        $latitude = $validated['latitude'] ?? null;
+        $longitude = $validated['longitude'] ?? null;
+
+        if (! $city) {
+            $latitude = null;
+            $longitude = null;
+        } elseif ($latitude === null || $longitude === null) {
+            $cityChanged = $city !== $profile->city || $postalCode !== $profile->postal_code;
+
+            if ($cityChanged || $profile->latitude === null) {
+                $coordinates = $this->geocoder->geocodeCity($city, $postalCode);
+                $latitude = $coordinates['lat'] ?? null;
+                $longitude = $coordinates['lng'] ?? null;
+            } else {
+                $latitude = $profile->latitude;
+                $longitude = $profile->longitude;
+            }
+        }
+
         $profile->fill([
             'headline' => $validated['headline'] ?? null,
             'bio' => $validated['bio'] ?? null,
             'hourly_rate' => isset($validated['hourly_rate'])
                 ? (int) round((float) $validated['hourly_rate'] * 100)
                 : null,
-            'city' => $validated['city'] ?? null,
-            'postal_code' => $validated['postal_code'] ?? null,
+            'city' => $city,
+            'postal_code' => $postalCode,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
             'specialties' => $this->parseSpecialties($validated['specialties'] ?? null),
             'is_published' => $request->boolean('is_published'),
         ]);

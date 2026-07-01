@@ -15,14 +15,26 @@ use App\Http\Controllers\SessionsController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInvitationsController;
+use App\Models\CoachProfile;
 use App\Models\Session;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
+    $featuredCoaches = CoachProfile::query()
+        ->published()
+        ->with('user:id,name,avatar_url,created_at')
+        ->with('media')
+        ->latest('published_at')
+        ->take(6)
+        ->get()
+        ->map(fn (CoachProfile $p) => $p->toCard())
+        ->all();
+
     return Inertia::render('Welcome', [
         'canRegister' => Features::enabled(Features::registration()),
+        'featuredCoaches' => $featuredCoaches,
     ]);
 })->name('home');
 
@@ -37,6 +49,9 @@ Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 
 // Annuaire public des coachs
 Route::get('/coachs', [CoachDirectoryController::class, 'index'])->name('coachs.index');
+// Pages d'atterrissage SEO (déclarées avant {slug} pour la priorité de matching)
+Route::get('/coachs/ville/{city}', [CoachDirectoryController::class, 'cityLanding'])->name('coachs.city');
+Route::get('/coachs/discipline/{discipline}', [CoachDirectoryController::class, 'disciplineLanding'])->name('coachs.discipline');
 Route::get('/coachs/{slug}', [CoachDirectoryController::class, 'show'])->name('coachs.show');
 
 // dashboard redirect: clients go to their space, coaches to session creation
